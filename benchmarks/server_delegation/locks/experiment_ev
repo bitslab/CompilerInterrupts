@@ -1,0 +1,15 @@
+avg_cl_local_mops
+avg_cl_poll_cl
+clients_avg_mops
+clients_nr
+client_work
+duration
+interrupt_fr
+ml_ops_per_sec
+server_client_mops
+server_local_mops
+server_nr
+std_dev_mops_server
+std_dev_ops_server
+tot_ops
+tot_server_increments

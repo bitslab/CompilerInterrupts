@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Directories
+exp_results
+plots

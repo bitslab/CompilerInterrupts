@@ -1,0 +1,22 @@
+digraph "CFG for 'SYSCNS' function" {
+	label="CFG for 'SYSCNS' function";
+
+	Node0x6019080 [shape=record,label="{entry|{<s0>T|<s1>F}}"];
+	Node0x6019080:s0 -> Node0x6021a60;
+	Node0x6019080:s1 -> Node0x6021b30;
+	Node0x6021a60 [shape=record,label="{if.then|{<s0>T|<s1>F}}"];
+	Node0x6021a60:s0 -> Node0x6020e50;
+	Node0x6021a60:s1 -> Node0x6020f00;
+	Node0x6020e50 [shape=record,label="{cond.true}"];
+	Node0x6020e50 -> Node0x6022140;
+	Node0x6020f00 [shape=record,label="{cond.false}"];
+	Node0x6020f00 -> Node0x6022140;
+	Node0x6022140 [shape=record,label="{cond.end}"];
+	Node0x6022140 -> Node0x6021b30;
+	Node0x6021b30 [shape=record,label="{if.end|{<s0>T|<s1>F}}"];
+	Node0x6021b30:s0 -> Node0x6022580;
+	Node0x6021b30:s1 -> Node0x6022660;
+	Node0x6022580 [shape=record,label="{if.then22}"];
+	Node0x6022580 -> Node0x6022660;
+	Node0x6022660 [shape=record,label="{if.end23}"];
+}

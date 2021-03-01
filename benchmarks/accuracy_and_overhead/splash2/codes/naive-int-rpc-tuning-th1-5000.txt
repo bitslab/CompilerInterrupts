@@ -1,0 +1,14 @@
+radix 75
+fft 10
+lu-c 10
+lu-nc 10
+cholesky 50
+water-nsquared 10
+water-spatial 10
+ocean-cp 10
+ocean-ncp 90
+barnes 10
+volrend 50
+fmm 10
+raytrace 25
+radiosity 10

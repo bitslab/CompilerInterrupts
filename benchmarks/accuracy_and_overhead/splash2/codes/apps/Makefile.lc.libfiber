@@ -1,0 +1,154 @@
+CI_LIB_HOME := $(shell pwd)/../../../../
+CI_HOME := $(shell pwd)/../../../
+
+CFLAGS := -O3 -g -pthread -D_POSIX_C_SOURCE=200112 -integrated-as -msoft-float
+CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+CFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME) -I$(CI_HOME)/../ 
+CFLAGS += -Wl,-rpath=../ -Wl,-rpath=../../
+LDFLAGS := -lm -lpfm -L../ -L../../ -lci
+
+#************************************ For libfiber **********************************#
+# Integration specific variables
+CURR_DIR := $(shell pwd)
+LIBFIBER_DIR := $(CURR_DIR)/../../../libfiber
+CFLAGS := $(CFLAGS) -DLIBFIBER -DLC -I$(LIBFIBER_DIR)/include -Wl,-rpath,"$(LIBFIBER_DIR)"
+LDFLAGS := $(LDFLAGS) -L$(LIBFIBER_DIR) -lfiber
+#export LIBFIBER_FLAGS = -DLC
+export LIBFIBER_FLAGS = -DINT_ENABLED # interrupts always enabled
+export MACRO_NAME = c.m4.null.libfiber
+
+# Libfiber module specific definitions
+OS ?= $(shell uname -s)
+
+ARCH ?= $(shell uname -m)
+ifeq ($(ARCH),i386)
+ARCH=x86
+endif
+ifeq ($(ARCH),i86pc)
+ARCH=x86
+endif
+ifeq ($(ARCH),i686)
+ARCH=x86
+endif
+
+ifeq ($(ARCH),x86_64)
+CFLAGS += -m64 -DARCH_x86_64
+endif
+ifeq ($(ARCH),x86)
+CFLAGS += -m32 -march=i686 -DARCH_x86
+endif
+
+#************************************ Export variables **********************************#
+export LLVM_BUILD ?= /mnt/nilanjana
+export CC := clang 
+export M4 := m4 -s -Ulen -Uindex
+export CFLAGS
+export LDFLAGS
+SUFFIX := lc
+
+# for LibFiber, to use split-stack approach
+export APP := splash2
+
+# these variables may be exported from outside
+export INST_LEVEL ?= 1
+export PUSH_INTV ?= 5000
+export CMMT_INTV ?= 1000
+export ALLOWED_DEVIATION ?= 100
+export CLOCK_TYPE ?= 1
+export CONFIG = 2
+export FIBER_CONFIG ?= 0
+CI_LIB_HOME := $(shell pwd)/../../../../
+
+CFLAGS += -I$(CI_LIB_HOME) -I/$(shell pwd)/../
+
+#disable-verify
+export LC_FLAGS =  -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file
+export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+
+# Turn off if error needs to be seen on screen
+BUILD_LOG ?= make_log
+ERROR_LOG ?= make_error
+REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
+
+.PHONY: water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity
+
+default: all
+
+all: libfiber.so libci.so water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity
+
+libfiber.so:
+	@$(MAKE) -C $(LIBFIBER_DIR) -f Makefile.int libfiber.so --no-print-directory $(REDIRECT)
+
+ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
+	@gcc -c -fPIC $< -o $@
+
+libci.so: ci_lib.o
+	@gcc -shared $< -o $@
+
+water-nsquared: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+water-spatial: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+ocean-cp: libfiber.so libci.so
+	@$(MAKE) -C ocean/contiguous_partitions -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+ocean-ncp: libfiber.so libci.so
+	@$(MAKE) -C ocean/non_contiguous_partitions -f Makefile.int  $@-$(SUFFIX) --no-print-directory$(REDIRECT)
+
+barnes: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+volrend: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+fmm: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+raytrace: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+radiosity: libfiber.so libci.so
+	@$(MAKE) -C $@/glibdumb --no-print-directory $(REDIRECT)
+	@$(MAKE) -C $@/glibps --no-print-directory $(REDIRECT)
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+
+clean: libci-clean libfiber-clean water-nsquared-clean water-spatial-clean ocean-cp-clean ocean-ncp-clean barnes-clean volrend-clean fmm-clean raytrace-clean radiosity-clean
+
+libci-clean:
+	@rm -f ci_lib.o libci.so
+
+libfiber-clean:
+	@$(MAKE) -C $(LIBFIBER_DIR) -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+water-nsquared-clean: libfiber-clean libci-clean
+	@$(MAKE) -C water-nsquared -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+water-spatial-clean: libfiber-clean libci-clean
+	@$(MAKE) -C water-spatial -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+ocean-cp-clean: libfiber-clean libci-clean
+	@$(MAKE) -C ocean/contiguous_partitions -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+ocean-ncp-clean: libfiber-clean libci-clean
+	@$(MAKE) -C ocean/non_contiguous_partitions -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+barnes-clean: libfiber-clean libci-clean
+	@$(MAKE) -C barnes -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+volrend-clean: libfiber-clean libci-clean
+	@$(MAKE) -C volrend -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+fmm-clean: libfiber-clean libci-clean
+	@$(MAKE) -C fmm -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+raytrace-clean: libfiber-clean libci-clean
+	@$(MAKE) -C raytrace -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+radiosity-clean: libfiber-clean libci-clean
+	@$(MAKE) -C radiosity/glibdumb clean --no-print-directory $(REDIRECT)
+	@$(MAKE) -C radiosity/glibps clean --no-print-directory $(REDIRECT)
+	@$(MAKE) -C radiosity -f Makefile.int clean --no-print-directory $(REDIRECT)

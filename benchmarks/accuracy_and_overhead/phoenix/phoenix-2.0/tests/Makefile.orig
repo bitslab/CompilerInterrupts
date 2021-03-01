@@ -1,0 +1,84 @@
+#------------------------------------------------------------------------------
+# Copyright (c) 2007-2009, Stanford University
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Stanford University nor the names of its 
+#       contributors may be used to endorse or promote products derived from 
+#       this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY STANFORD UNIVERSITY ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL STANFORD UNIVERSITY BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#------------------------------------------------------------------------------ 
+
+# This Makefile requires GNU make.
+
+HOME = ..
+
+.PHONY: default all clean histogram linear_regression string_match matrix_multiply kmeans pca word_count reverse_index
+
+all: histogram linear_regression string_match matrix_multiply kmeans pca word_count reverse_index
+
+histogram:
+	$(MAKE) -f Makefile.orig -C histogram --no-print-directory
+
+linear_regression:
+	$(MAKE) -f Makefile.orig -C linear_regression --no-print-directory
+
+string_match:
+	$(MAKE) -f Makefile.orig -C string_match --no-print-directory
+
+matrix_multiply:
+	$(MAKE) -f Makefile.orig -C matrix_multiply --no-print-directory
+
+kmeans:
+	$(MAKE) -f Makefile.orig -C kmeans --no-print-directory
+
+pca:
+	$(MAKE) -f Makefile.orig -C pca --no-print-directory
+
+word_count:
+	$(MAKE) -f Makefile.orig -C word_count --no-print-directory
+
+reverse_index:
+	$(MAKE) -f Makefile.orig -C reverse_index --no-print-directory
+
+clean: histogram-clean linear_regression-clean string_match-clean matrix_multiply-clean kmeans-clean pca-clean word_count-clean reverse_index-clean
+
+histogram-clean:
+	$(MAKE) -C histogram clean -f Makefile.orig --no-print-directory
+
+linear_regression-clean:
+	$(MAKE) -C linear_regression clean -f Makefile.orig --no-print-directory
+
+string_match-clean:
+	$(MAKE) -C string_match clean -f Makefile.orig --no-print-directory
+
+matrix_multiply-clean:
+	$(MAKE) -C matrix_multiply clean -f Makefile.orig --no-print-directory
+
+kmeans-clean:
+	$(MAKE) -C kmeans clean -f Makefile.orig --no-print-directory
+
+pca-clean:
+	$(MAKE) -C pca clean -f Makefile.orig --no-print-directory
+
+word_count-clean:
+	$(MAKE) -C word_count clean -f Makefile.orig --no-print-directory
+
+reverse_index-clean:
+	$(MAKE) -C reverse_index clean -f Makefile.orig --no-print-directory

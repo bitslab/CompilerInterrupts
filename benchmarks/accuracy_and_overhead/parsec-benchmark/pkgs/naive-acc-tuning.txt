@@ -1,0 +1,6 @@
+blackscholes 20000 0
+swaptions 10000 0
+canneal 10000 0
+streamcluster 15000 0
+fluidanimate 10000 0
+dedup 20000 0

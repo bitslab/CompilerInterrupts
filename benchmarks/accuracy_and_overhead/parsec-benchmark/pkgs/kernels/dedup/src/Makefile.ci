@@ -1,0 +1,102 @@
+# Makefile for dedup kernel
+
+PREFIX=${PARSECDIR}/pkgs/kernels/dedup/inst/${PARSECPLAT}
+
+TARGET=dedup
+
+CFLAGS += -Wall -fno-strict-aliasing -D_XOPEN_SOURCE=600
+
+ostype=$(findstring solaris, ${PARSECPLAT})
+
+ifeq "$(ostype)" "solaris"
+    CFLAGS += -std=gnu99
+endif
+
+LIBS += -lm
+
+DEDUP_OBJ = hashtable.o util.o dedup.o rabin.o encoder.o decoder.o mbuffer.o sha.o
+
+# Uncomment the following to enable gzip compression
+#CFLAGS += -DENABLE_GZIP_COMPRESSION
+#LIBS += -lz
+
+# Uncomment the following to enable bzip2 compression
+#CFLAGS += -DENABLE_BZIP2_COMPRESSION
+#LIBS += -lbz2
+
+
+LLVM_BUILD_PATH	?= /mnt/nilanjana/
+LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
+CONFIG_FILE	?= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+LLVM_TARGET 	= dedup_ci
+OPT_FLAGS	?= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH	= /AD-home/cmonta9/parsec-benchmark/pkgs/kernels/dedup/inst/amd64-linux.gcc
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK_TYPE		?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+CXXFLAGS_LLVM		+= -D_GNU_SOURCE -D_c_ -DOPENSSL_NO_INLINE_ASM -O3 -DCI_PASS -pthread -DENABLE_PTHREADS $(CFLAGS) $(CXXFLAGS) 
+PARSEC_FLAGS    	= -I/AD-home/cmonta9/parsec-benchmark/pkgs/libs/ssl/inst/amd64-linux.gcc/include -I/AD-home/cmonta9/parsec-benchmark/pkgs/libs/zlib/inst/amd64-linux.gcc/include   
+LDFLAGS			+= -L/AD-home/cmonta9/parsec-benchmark/pkgs/libs/ssl/inst/amd64-linux.gcc/lib -L/AD-home/cmonta9/parsec-benchmark/pkgs/libs/zlib/inst/amd64-linux.gcc/lib
+
+CI_PASS_OPT 	?= -load $(LLVM_BUILD_PATH)/lib/LLVMLogicalClockParsec.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE)
+
+CI_PASS_OPT_NO_VAR 	= $(CI_PASS_OPT) -defclock=false
+
+SRC_FILES_C 		= $(wildcard ./*.c)
+INTERMEDIATE_FILES 	= $(patsubst ./%.c, ./llvm_%.ll, $(SRC_FILES_C))
+INTERMEDIATE_OPT_FILES  = $(patsubst ./%.c, ./opt_llvm_%.ll, $(SRC_FILES_C))
+INTERMEDIATE_CI_FILES  	= $(patsubst ./%.c, ./ci_llvm_%.ll, $(filter-out ./dedup.c, $(SRC_FILES_C)))
+
+
+all: $(TARGET)
+
+.c.o:
+	$(CC) -c $(CFLAGS) $< -o $@
+
+$(TARGET): $(DEDUP_OBJ)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(DEDUP_OBJ) $(LIBS)
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.c
+	clang-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) -S -emit-llvm -o $@ $<
+
+dedup_llvm_all.ll: $(INTERMEDIATE_FILES)
+	llvm-link-9 $^ -o $@
+
+dedup_llvm_opt.ll: dedup_llvm_all.ll
+	opt-9 $(OPT_FLAGS) -S $^ -o $@
+
+dedup_llvm_ci.ll: dedup_llvm_opt.ll
+	opt-9 $(CI_PASS_OPT) < $< > $@
+
+$(LLVM_TARGET): dedup_llvm_ci.ll
+	clang-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $^ -o $@
+
+#$(INTERMEDIATE_OPT_FILES): opt_llvm_%.ll : llvm_%.ll
+#	opt-9 $(OPT_FLAGS) -S $< -o $@
+#
+#$(INTERMEDIATE_CI_FILES): ci_llvm_%.ll : opt_llvm_%.ll
+#	opt-9 $(CI_PASS_OPT_NO_VAR) < $< > $@
+#
+#ci_llvm_dedup.ll: opt_llvm_dedup.ll
+#	opt-9 $(CI_PASS_OPT) < $< > $@
+#
+#$(LLVM_TARGET): $(INTERMEDIATE_CI_FILES) ci_llvm_dedup.ll
+#	clang-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $^ -o $@
+#
+clean:
+	rm -f *~ *.o $(TARGET) *.ll $(LLVM_TARGET)
+
+install:
+	mkdir -p $(PREFIX)/bin
+	cp -f $(TARGET) $(PREFIX)/bin/$(TARGET)
+
+install_llvm:
+	mkdir -p $(LOCAL_PATH)/bin
+	cp -f $(LLVM_TARGET) $(LOCAL_PATH)/bin/$(TARGET)
+	

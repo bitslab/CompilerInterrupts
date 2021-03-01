@@ -1,0 +1,14 @@
+radix 300
+fft 1800
+lu-c 3000
+lu-nc 2800
+cholesky 1600
+water-nsquared 10000
+water-spatial 8200
+ocean-cp 8500
+ocean-ncp 8800
+barnes 2900
+volrend 1600
+fmm 1800
+raytrace 2100
+radiosity 1300

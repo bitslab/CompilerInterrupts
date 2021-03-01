@@ -1,0 +1,132 @@
+PREFIX = ${PARSECDIR}/pkgs/apps/ferret/inst/${PARSECPLAT}
+TARGET = ferret
+ARCH = parsec
+
+LDLIBS += $(LIBS) -lrt -lm -lcass -lgsl -lgslcblas -ljpeg -lstdc++
+
+LLVM_BUILD_PATH	= /mnt/nilanjana/
+LLVM_SRC_PATH	= /home/nbasu4/logicalclock/ci-llvm-v9/
+CONFIG_FILE	= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+LLVM_TARGET 	= ferret_llvm
+OPT_FLAGS	= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH	= /AD-home/cmonta9/parsec-benchmark/pkgs/apps/ferret/inst/amd64-linux.gcc
+PAPI_DIR	= /AD-home/cmonta9/parsec-benchmark/pkgs/performance_counter_based_interrupts
+PAPI_H_FILES	= $(wildcard $(PAPI_DIR)/*.h)
+PAPI_C_FILES	= $(wildcard $(PAPI_DIR)/*.c)
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK 			?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+.PHONY:	all clean install dirs lib tools image server benchmark 
+
+CURDIR = $(LOCAL_PATH)
+ROOT   = $(CURDIR)
+SRCDIR = $(ROOT)/src
+INCDIR = $(ROOT)/include
+
+BINDIR = $(ROOT)/$(ARCH)/bin
+LIBDIR = $(ROOT)/$(ARCH)/lib
+OBJDIR = $(ROOT)/$(ARCH)/obj
+
+
+VPATH = $(CURDIR)/src:$(CURDIR)/src/lsh:$(CURDIR)/tools:$(CURDIR)/image:$(CURDIR)/benchmark
+
+
+PARSEC_FLAGS 	= -I/AD-home/cmonta9/parsec-benchmark/pkgs/libs/gsl/inst/amd64-linux.gcc/include -I/AD-home/cmonta9/parsec-benchmark/pkgs/libs/libjpeg/inst/amd64-linux.gcc/include -DPARSEC_VERSION=3.0-beta-20150206 -I$(INCDIR) 
+PARSEC_LDFLAGS	= -L/AD-home/cmonta9/parsec-benchmark/pkgs/libs/gsl/inst/amd64-linux.gcc/lib -L/AD-home/cmonta9/parsec-benchmark/pkgs/libs/libjpeg/inst/amd64-linux.gcc/lib -L$(LIBDIR)
+CXXFLAGS 	+= -O3 $(MT) $(NCO) $(FUNC) $(ERR) $(CSRC)
+CXXFLAGS_LLVM	+= -O3 $(MT) $(NCO) $(FUNC) $(ERR)
+CI_PASS_OPT	= -load $(LLVM_BUILD_PATH)/lib/LLVMLogicalClockParsec.so -S -logicalclock -clock-type $(CLOCK) -config $(CONFIG) -inst-gran 1 -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE) 
+
+
+
+export LIBDIR BINDIR OBJDIR CC CXX CFLAGS LDFLAGS LDLIBS
+
+all:	dirs lib tools benchmark
+
+dirs:
+	mkdir -p $(BINDIR)
+	mkdir -p $(LIBDIR)
+	mkdir -p $(OBJDIR)
+
+# build the cass library
+lib:	$(LIBDIR)/libcass.a 
+
+lib_src := $(wildcard src/*.c) $(wildcard src/lsh/*.c)
+lib_src := $(notdir $(lib_src))
+lib_obj := $(addprefix $(OBJDIR)/, $(lib_src:.c=.ll))
+
+
+$(LIBDIR)/libcass.a: $(OBJDIR)/llvm_objdir_opt.ll $(lib_obj)
+	$(AR) rcs $@ $<
+
+# build the image support library
+libimage_src := image.c extract.c edge.c srm.c
+libimage_obj := $(addprefix $(OBJDIR)/, $(libimage_src:.c=.ll))
+
+
+$(LIBDIR)/libcassimage.a: $(libimage_obj)
+	$(AR) rcs $@ $^
+
+# build the tool programs
+tools_src := $(wildcard tools/*.c)
+tools_tgt := $(notdir $(tools_src))
+tools_tgt := $(addprefix $(BINDIR)/, $(tools_tgt:.c=))
+
+tools : $(tools_tgt)
+
+server_src := $(wildcard server/*.c) 
+server_tgt := $(notdir $(server_src))
+server_tgt := $(addprefix $(BINDIR)/, $(server_tgt:.c=))
+
+server : $(server_tgt)
+
+# Default version to build
+benchmark_base := ferret-pthreads
+
+benchmark_src := $(benchmark_base).c
+
+benchmark_tgt := $(notdir $(benchmark_src))
+benchmark_tgt := $(addprefix $(BINDIR)/, $(benchmark_tgt:.c=))
+
+benchmark : $(benchmark_tgt)
+
+image_tgt := cass_img_extract
+image_tgt := $(addprefix $(BINDIR)/, $(image_tgt))
+
+image: $(image_tgt)
+
+clean:
+	-rm $(OBJDIR)/*
+
+install:
+	cp -r $(BINDIR) $(PREFIX)
+	cp -r $(LIBDIR) $(PREFIX)
+	mv $(PREFIX)/bin/$(benchmark_base) $(PREFIX)/bin/$(TARGET)
+
+$(OBJDIR)/%.ll : %.c
+	clang++-9 $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -S -emit-llvm -o $@ $<
+
+$(OBJDIR)/%.ll : %.cpp
+	clang++-9 $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -S -emit-llvm -o $@ $<
+
+$(OBJDIR)/llvm_objdir_all.ll: $(OBJDIR)/%.ll 
+	llvm-link-9 $^ -o $@
+
+$(OBJDIR)/llvm_objdir_opt.ll: $(OBJDIR)/llvm_objdir_all.ll
+	opt-9 $(OPT_FLAGS) -S $< -o $@
+
+$(tools_tgt): $(BINDIR)/% : $(OBJDIR)/%.ll $(LIBDIR)/libcass.a
+	clang++-9 $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -S emit-llvm -o $@ $^
+
+$(benchmark_tgt): $(BINDIR)/% : $(OBJDIR)/%.o $(LIBDIR)/libcass.a $(LIBDIR)/libcassimage.a
+	$(CXX) $(CFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+$(image_tgt): $(BINDIR)/% : $(OBJDIR)/%.o $(LIBDIR)/libcass.a $(LIBDIR)/libcassimage.a
+	$(CXX) $(CFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+

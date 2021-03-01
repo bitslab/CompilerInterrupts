@@ -1,0 +1,71 @@
+TARGET   = fluidanimate
+OBJS     = pthreads.o cellpool.o parsec_barrier.o
+CXXFLAGS += -pthread -D_GNU_SOURCE -D__XOPEN_SOURCE=600
+
+# To enable visualization comment out the following lines (don't do this for benchmarking)
+#OBJS     += fluidview.o
+#CXXFLAGS += -DENABLE_VISUALIZATION
+#LIBS     += -lglut
+
+ostype=$(findstring solaris, ${PARSECPLAT})
+
+ifeq "$(ostype)" "solaris"
+    CXXFLAGS += -DSPARC_SOLARIS
+endif
+
+LLVM_BUILD_PATH	?= /mnt/nilanjana/
+LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
+CONFIG_FILE	?= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+LLVM_TARGET 	= fluidanimate_ci
+OPT_FLAGS	?= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH	= /AD-home/cmonta9/parsec-benchmark/pkgs/apps/fluidanimate/inst/amd64-linux.gcc
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK_TYPE		?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+PARSEC_FLAGS 	= -fpermissive -fno-exceptions -Wno-invalid-offsetof
+CXXFLAGS_LLVM		+= -O3 -DCI_PASS $(CXXFLAGS) 
+INTERMEDIATE_FILES 	= llvm_pthreads.ll llvm_cellpool.ll llvm_parsec_barrier.ll
+
+CI_PASS_OPT ?= -load $(LLVM_BUILD_PATH)/lib/LLVMLogicalClockParsec.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE)
+
+all: pthreads fluidcmp
+
+pthreads: $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LDFLAGS) $(LIBS) -o $(TARGET)
+
+%.o : %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+fluidcmp: fluidcmp.cpp
+	rm -rf fluidcmp
+	$(CXX) $(CXXFLAGS) fluidcmp.cpp -o fluidcmp
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.cpp
+	clang++-9 $(PARSEC_FLAGS) $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(EXTRA_FLAGS) -S -emit-llvm -o $@ $<
+
+fluidanimate_llvm_all.ll: $(INTERMEDIATE_FILES)
+	llvm-link-9 $^ -o $@
+
+fluidanimate_llvm_opt.ll: fluidanimate_llvm_all.ll
+	opt-9 $(OPT_FLAGS) -S $^ -o $@
+
+fluidanimate_llvm_ci.ll: fluidanimate_llvm_opt.ll
+	opt-9 $(CI_PASS_OPT) < $< > $@
+
+$(LLVM_TARGET): fluidanimate_llvm_ci.ll
+	clang++-9 $(PARSEC_FLAGS) $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(EXTRA_FLAGS) -o $@ $^
+
+install_llvm:
+	mkdir -p $(LOCAL_PATH)/bin
+	cp -f $(LLVM_TARGET) $(LOCAL_PATH)/bin/$(TARGET)	
+
+clean:
+	rm -rf $(TARGET)
+	rm -rf fluidcmp
+	rm -f $(LLVM_TARGET) *.ll

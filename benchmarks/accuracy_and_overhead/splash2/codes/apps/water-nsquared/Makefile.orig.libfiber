@@ -1,0 +1,44 @@
+#CC := gcc
+#CC := clang 
+#CFLAGS := -O -pthread -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float
+#CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+#CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+#LDFLAGS := -lm -static
+#M4 := m4 -s -Ulen -Uindex
+
+SRC_DIR = .
+OBJ_DIR = .
+ROOT = ../../../..
+BASEDIR := $(ROOT)/splash2/codes/
+MACROS := $(BASEDIR)/null_macros/c.m4.null.libfiber
+
+SRC_FILES_H := $(wildcard $(SRC_DIR)/*.H)
+SRC_FILES_C := $(wildcard $(SRC_DIR)/*.C)
+HDR_FILES := $(patsubst $(SRC_DIR)/%.H, $(SRC_DIR)/%.h, $(SRC_FILES_H))
+SRC_FILES := $(patsubst $(SRC_DIR)/%.C, $(SRC_DIR)/%.c, $(SRC_FILES_C))
+INTERMEDIATE_FILES := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.ll, $(SRC_FILES))
+
+TARGET = WATER-NSQUARED
+OBJS = bndry.o cnstnt.o cshift.o initia.o interf.o intraf.o kineti.o mdmain.o poteng.o predcor.o syscons.o water.o
+
+all: createfiles $(TARGET)
+
+$(TARGET): lc_all.ll
+	/mnt/ramlc/bin/clang -g $(CFLAGS) -fstandalone-debug $^ -o $@ $(LDFLAGS)
+
+lc_all.ll: $(INTERMEDIATE_FILES)
+	@/mnt/ramlc/bin/llvm-link $^ -o $@
+
+$(INTERMEDIATE_FILES): %.ll : %.c
+	@/mnt/ramlc/bin/clang $(CFLAGS) -S -emit-llvm -o $@ $< > /dev/null 2>&1
+
+createfiles: $(HDR_FILES) $(SRC_FILES)
+
+$(HDR_FILES): %.h: %.H
+	$(M4) $(MACROS) $< > $@
+
+$(SRC_FILES): %.c: %.C
+	$(M4) $(MACROS) $< > $@
+
+clean:
+	rm -rf *.c *.h *.ll *.o $(TARGET)

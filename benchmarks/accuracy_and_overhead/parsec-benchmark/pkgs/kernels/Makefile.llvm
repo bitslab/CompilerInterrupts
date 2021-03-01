@@ -1,0 +1,66 @@
+#export EXTRA_FLAGS = -DAVG_STATS
+#CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float -D_GNU_SOURCE
+#CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+#CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+#CFLAGS := $(CFLAGS) $(EXTRA_FLAGS) -I../ -I../../
+#LDFLAGS := -lm -static -lpapi -lpfm
+CI_LIB_HOME := $(shell pwd)/../../../../
+CI_HOME := $(shell pwd)/../../../
+
+CXXFLAGS := -I../../../apps/ -I../../ -Wl,-rpath=../../../apps/ -Wl,-rpath=../../
+CXXFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME)
+
+LDFLAGS := -lm -lpapi -lpfm
+
+#************************************ Export variables **********************************#
+export LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
+export LLVM_BUILD_PATH 	?= /mnt/nilanjana/
+export CONFIG_FILE 	= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+#export MACRO_NAME = c.m4.null
+#export CC := clang 
+#export M4 := m4 -s -Ulen -Uindex
+export CXXFLAGS
+export LDFLAGS
+SUFFIX := llvm 
+
+export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+
+
+# Turn off if error needs to be seen on screen
+BUILD_LOG ?= make_log
+ERROR_LOG ?= make_error
+REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
+
+.PHONY: canneal dedup streamcluster 
+
+default: all
+
+all: libci.so canneal dedup streamcluster
+
+libci.so: 
+	@$(MAKE) -C ../apps -f Makefile.$(SUFFIX) $@ $(REDIRECT) 
+
+canneal: libci.so
+	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
+
+dedup: libci.so
+	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
+
+streamcluster: libci.so
+	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
+
+
+clean: libci-clean canneal-clean dedup-clean streamcluster-clean  
+
+libci-clean:
+	@$(MAKE) -C ../apps/ -f Makefile.$(SUFFIX) $@ $(REDIRECT)
+
+canneal-clean: libci-clean
+	@$(MAKE) -C canneal/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
+
+dedup-clean: libci-clean
+	@$(MAKE) -C dedup/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
+
+streamcluster-clean: libci-clean
+	@$(MAKE) -C streamcluster/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
+

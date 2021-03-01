@@ -1,0 +1,89 @@
+CI_LIB_HOME := $(shell pwd)/../../../../
+CI_HOME := $(shell pwd)/../../../
+
+CFLAGS := -O3 -pthread -D_GNU_SOURCE -D_POSIX_C_SOURCE=200112 -integrated-as -msoft-float # _GNU_SOURCE is added to support pthread_setaffinity_np
+CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+CFLAGS := $(CFLAGS) $(EXTRA_FLAGS) -I$(CI_LIB_HOME) -I$(CI_HOME) -I$(CI_LIB_HOME)/../
+LDFLAGS := -lm -lpapi -lpfm
+
+#************************************ Export variables **********************************#
+export LLVM_BUILD ?= /mnt/nilanjana
+export MACRO_NAME = c.m4.null
+export CC := clang 
+export M4 := m4 -s -Ulen -Uindex
+export CFLAGS
+export LDFLAGS
+SUFFIX := orig
+
+# Turn off if error needs to be seen on screen
+BUILD_LOG ?= make_log
+ERROR_LOG ?= make_error
+REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
+
+.PHONY: water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity
+
+default: all
+
+all: water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity
+
+water-nsquared:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+water-spatial:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+ocean-cp:
+	@$(MAKE) -C ocean/contiguous_partitions -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+ocean-ncp:
+	@$(MAKE) -C ocean/non_contiguous_partitions -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+barnes:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+volrend:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+fmm:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+raytrace:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+radiosity:
+	@$(MAKE) -C $@/glibdumb --no-print-directory $(REDIRECT)
+	@$(MAKE) -C $@/glibps --no-print-directory $(REDIRECT)
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+
+clean: water-nsquared-clean water-spatial-clean ocean-cp-clean ocean-ncp-clean barnes-clean volrend-clean fmm-clean raytrace-clean radiosity-clean
+
+water-nsquared-clean:
+	@$(MAKE) -C water-nsquared clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+water-spatial-clean:
+	@$(MAKE) -C water-spatial clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+ocean-cp-clean:
+	@$(MAKE) -C ocean/contiguous_partitions clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+ocean-ncp-clean:
+	@$(MAKE) -C ocean/non_contiguous_partitions clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+barnes-clean:
+	@$(MAKE) -C barnes clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+volrend-clean:
+	@$(MAKE) -C volrend clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+fmm-clean:
+	@$(MAKE) -C fmm clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+raytrace-clean:
+	@$(MAKE) -C raytrace clean -f Makefile.int --no-print-directory $(REDIRECT)
+
+radiosity-clean:
+#@$(MAKE) clean -C radiosity/glibdumb --no-print-directory $(REDIRECT)
+#@$(MAKE) clean -C radiosity/glibps --no-print-directory $(REDIRECT)
+	@$(MAKE) -C radiosity clean -f Makefile.int --no-print-directory $(REDIRECT)

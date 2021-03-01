@@ -1,0 +1,80 @@
+PREFIX := ${PARSECDIR}/pkgs/apps/swaptions/inst/${PARSECPLAT}
+DEF =
+INCLUDE =
+
+EXEC = swaptions 
+
+LLVM_BUILD_PATH	?= /mnt/nilanjana/
+LLVM_TARGET 	= swaptions_llvm
+OPT_FLAGS	?= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH     = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/parsec-benchmark/pkgs/apps/swaptions/inst/amd64-linux.gcc
+
+M4 		?= m4
+MACRO_NAME	?= c.m4.null
+MACROS		?= $(PWD)/../../../null_macros/$(MACRO_NAME)
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK_TYPE		?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+CXXFLAGS_LLVM		+= -O3 -DCI_PASS -pthread $(CXXFLAGS)
+PARSEC_FLAGS    	= -fpermissive -fno-exceptions 
+
+DEF := $(DEF) -DENABLE_THREADS
+
+OBJS= CumNormalInv.o MaxFunction.o RanUnif.o nr_routines.o icdf.o \
+	HJM_SimPath_Forward_Blocking.o HJM.o HJM_Swaption_Blocking.o  \
+	HJM_Securities.o
+
+PREPROC_FILES_CPP = $(wildcard ./*.CPP)
+SRC_FILES_CPP = $(wildcard ./*.cpp)
+
+SRC_INTERMEDIATE_FILES = $(patsubst ./%.CPP, ./%.cpp, $(PREPROC_FILES_CPP))
+INTERMEDIATE_FILES = $(patsubst ./%.cpp, ./llvm_%.ll, $(SRC_FILES_CPP))
+INTERMEDIATE_FILES += $(patsubst ./%.CPP, ./llvm_%.ll, $(PREPROC_FILES_CPP))
+
+all: $(EXEC)
+
+$(EXEC): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(DEF) $(OBJS) $(INCLUDE) $(LIBS) -o $(EXEC)
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $(DEF) -c $*.cpp -o $*.o
+
+.c.o:
+	$(CXX) $(CXXFLAGS) $(DEF) -c $*.c -o $*.o
+
+$(SRC_INTERMEDIATE_FILES): %.cpp : %.CPP
+	$(M4) $(MACROS) $< > $@
+
+llvm_nr_routines.ll: nr_routines.c
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(DEF) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -S -emit-llvm -o $@ $^
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.cpp
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(DEF) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -S -emit-llvm -o $@ $<
+
+swaptions_llvm_all.ll: $(INTERMEDIATE_FILES) llvm_nr_routines.ll
+	llvm-link-9 $^ -o $@
+
+swaptions_llvm_opt.ll: swaptions_llvm_all.ll
+	opt-9 $(OPT_FLAGS) -S $^ -o $@
+
+$(LLVM_TARGET): swaptions_llvm_opt.ll
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(DEF) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -o $@ $^	
+
+clean:
+	rm -f $(OBJS) $(EXEC) *.ll $(LLVM_TARGET) $(SRC_INTERMEDIATE_FILES)
+
+install:
+	mkdir -p $(PREFIX)/bin
+	cp -f $(EXEC) $(PREFIX)/bin/$(EXEC)
+
+install_llvm:
+	mkdir -p $(LOCAL_PATH)/bin
+	cp -f $(LLVM_TARGET) $(LOCAL_PATH)/bin/$(EXEC)
+
+

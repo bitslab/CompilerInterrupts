@@ -1,0 +1,101 @@
+#export EXTRA_FLAGS = -DAVG_STATS
+#CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float -D_GNU_SOURCE
+#CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+#CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+#CFLAGS := $(CFLAGS) $(EXTRA_FLAGS) -I../ -I../../
+#LDFLAGS := -lm -static -lpapi -lpfm
+
+
+#************************************ For libfiber **********************************#
+# Integration specific variables
+CURR_DIR 		:= $(shell pwd)
+LIBFIBER_DIR		:= $(CURR_DIR)/../../../libfiber
+CFLAGS			:= $(CFLAGS) -DLIBFIBER -DLC -I$(LIBFIBER_DIR)/include -Wl,-rpath,"$(LIBFIBER_DIR)"
+LDFLAGS			:= $(LDFLAGS) -L$(LIBFIBER_DIR) -lfiber
+export LIBFIBER_FLAGS	= -DLC -DINT_ENABLED
+export MACRO_NAME	= c.m4.null.libfiber
+
+# Libfiber module specific definitions
+OS ?= $(shell uname -s)
+
+ARCH ?= $(shell uname -m)
+ifeq ($(ARCH),i386)
+ARCH=x86
+endif
+ifeq ($(ARCH),i86pc)
+ARCH=x86
+endif
+ifeq ($(ARCH),i686)
+ARCH=x86
+endif
+
+ifeq ($(ARCH),x86_64)
+CFLAGS += -m64 -DARCH_x86_64
+endif
+ifeq ($(ARCH),x86)
+CFLAGS += -m32 -march=i686 -DARCH_x86
+endif
+
+#************************************ Export variables **********************************#
+export LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
+export LLVM_BUILD_PATH 	?= /mnt/nilanjana/
+export CONFIG_FILE 	= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+
+export M4 := m4 #-s -Ulen -Uindex
+export CFLAGS
+export LDFLAGS
+SUFFIX := ci
+
+# these variables may be exported from outside
+export INST_LEVEL ?= 1
+export PUSH_INTV ?= 5000
+export CMMT_INTV ?= 1000
+export ALLOWED_DEVIATION ?= 100
+export CLOCK_TYPE ?= 1
+export CONFIG = 2
+export FIBER_CONFIG ?= 0
+
+#disable-verify
+
+export CI_PASS_OPT = -load $(LLVM_BUILD_PATH)/lib/LLVMLogicalClockParsec.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE)
+export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+
+
+# Turn off if error needs to be seen on screen
+BUILD_LOG ?= make_log
+ERROR_LOG ?= make_error
+REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
+
+.PHONY: blackscholes fluidanimate swaptions 
+
+default: all
+
+all: blackscholes fluidanimate swaptions  
+
+libfiber.so:
+	@$(MAKE) -C $(LIBFIBER_DIR) -f Makefile.int libfiber.so --no-print-directory $(REDIRECT)
+
+blackscholes: libfiber.so
+	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
+
+fluidanimate: libfiber.so
+	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
+
+swaptions: libfiber.so
+	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
+
+
+clean: blackscholes-clean fluidanimate-clean swaptions-clean libfiber-clean
+
+libfiber-clean:
+	@$(MAKE) -C $(LIBFIBER_DIR) -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+blackscholes-clean: libfiber-clean
+	@$(MAKE) -C blackscholes/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
+
+fluidanimate-clean: libfiber-clean
+	@$(MAKE) -C fluidanimate/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
+
+swaptions-clean: libfiber-clean
+	@$(MAKE) -C swaptions/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
+

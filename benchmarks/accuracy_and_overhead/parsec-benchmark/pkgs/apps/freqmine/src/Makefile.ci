@@ -1,0 +1,85 @@
+PREFIX=${PARSECDIR}/pkgs/apps/freqmine/inst/${PARSECPLAT}
+
+TARGET = freqmine
+
+CXXFLAGS += -Wno-deprecated
+
+#CXXFLAGS += -O2
+
+LLVM_BUILD_PATH	= /mnt/nilanjana/
+LLVM_SRC_PATH	= /home/nbasu4/logicalclock/ci-llvm-v9/
+CONFIG_FILE	= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+LLVM_TARGET 	= freqmine_llvm
+OPT_FLAGS	= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH	= /AD-home/cmonta9/parsec-benchmark/pkgs/apps/freqmine/inst/amd64-linux.gcc
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK 			?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+CXXFLAGS_LLVM		+= -O3 -DCI_PASS $(CXXFLAGS)
+SRC_FILES_C		= $(wildcard ./*.cpp)
+INTERMEDIATE_FILES 	= $(patsubst ./%.cpp, ./llvm_%.ll, $(SRC_FILES_C))
+
+CI_PASS_OPT = -load $(LLVM_BUILD_PATH)/lib/LLVMLogicalClockParsec.so -S -logicalclock -clock-type $(CLOCK) -config $(CONFIG) -inst-gran 1 -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE) 
+
+
+all: $(TARGET)
+
+$(TARGET): fpgrowth.o data.o fp_tree.o buffer.o fsout.o fp_node.o wtime.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) fpgrowth.o data.o fp_tree.o buffer.o fsout.o fp_node.o wtime.o $(LIBS) -o $(TARGET)
+
+wtime.o: wtime.cpp wtime.h
+	$(CXX) $(CXXFLAGS) -c wtime.cpp -o wtime.o
+
+fpgrowth.o: fpmax.cpp data.h fp_tree.h common.h fsout.h
+	$(CXX) $(CXXFLAGS) -c fpmax.cpp -o fpgrowth.o
+
+data.o: data.cpp data.h
+	$(CXX) $(CXXFLAGS) -c data.cpp
+
+fp_tree.o: fp_tree.cpp data.h fp_tree.h common.h fsout.h
+	$(CXX) $(CXXFLAGS) -c fp_tree.cpp
+
+buffer.o: buffer.cpp data.h buffer.h
+	$(CXX) $(CXXFLAGS) -c buffer.cpp
+
+fsout.o: fsout.cpp fsout.h common.h
+	$(CXX) $(CXXFLAGS) -c fsout.cpp
+
+fp_node.o: fp_node.cpp fp_node.h fsout.h common.h
+	$(CXX) $(CXXFLAGS) -c fp_node.cpp
+
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.cpp
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(EXTRA_FLAGS) -S -emit-llvm -o $@ $<
+
+freqmine_llvm_all.ll: $(INTERMEDIATE_FILES)
+	llvm-link-9 $^ -o $@
+
+freqmine_llvm_opt.ll: freqmine_llvm_all.ll
+	opt-9 $(OPT_FLAGS) -S $^ -o $@
+
+freqmine_llvm_ci.ll: freqmine_llvm_opt.ll
+	opt-9 $(CI_PASS_OPT) < $< > $@
+
+freqmine_llvm: freqmine_llvm_ci.ll
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(EXTRA_FLAGS) -o $@ $^
+
+clean:
+	rm -f *.o $(TARGET) $(LLVM_TARGET) *.ll
+
+install:
+	mkdir -p $(PREFIX)/bin
+	cp -f $(TARGET) $(PREFIX)/bin/$(TARGET)
+
+install_llvm: 
+	mkdir -p $(LOCAL_PATH)/bin
+	cp -f $(LLVM_TARGET) $(LOCAL_PATH)/bin/$(TARGET)
+
+
+

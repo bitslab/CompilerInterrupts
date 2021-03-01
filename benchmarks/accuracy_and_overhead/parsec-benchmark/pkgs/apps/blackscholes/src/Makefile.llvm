@@ -1,0 +1,115 @@
+PREFIX=${PARSECDIR}/pkgs/apps/blackscholes/inst/${PARSECPLAT}
+
+CSRC    = $(SRC)
+TARGET  = blackscholes
+
+LLVM_BUILD_PATH	?= /mnt/nilanjana/
+LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
+CONFIG_FILE	?= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+LLVM_TARGET 	= blackscholes_llvm
+OPT_FLAGS	?= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH	= /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/parsec-benchmark/pkgs/apps/blackscholes/inst/amd64-linux.gcc
+
+M4 		?= m4
+MACRO_NAME	?= c.m4.null
+MACROS		?= /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/parsec-benchmark/pkgs/null_macros/$(MACRO_NAME)
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK 			?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+ifdef source
+	ifeq "$(source)" "simd" 
+		SRC = blackscholes.simd.c
+		CXXFLAGS += -msse3
+	endif
+else
+	SRC	= blackscholes_new.m4.cpp
+endif
+
+ifdef version
+  ifeq "$(version)" "pthreads"
+    M4_SRC    = blackscholes.m4.cpp
+    CSRC      = $(M4_SRC)
+    MT        = -DENABLE_THREADS
+    CXXFLAGS += -pthread
+  endif
+  ifeq "$(version)" "openmp"
+    MT        = -DENABLE_OPENMP
+  endif
+  ifeq "$(version)" "tbb"
+    MT        = -DENABLE_TBB
+  endif
+else
+  MT        = 
+endif
+
+M4_SRC   	= blackscholes_llvm.m4.cpp
+CSRC     	= $(M4_SRC)
+MT       	= -DENABLE_THREADS
+CXXFLAGS_LLVM 	+= -pthread
+ 
+
+# Default build single precision version
+NCO     = -DNCO=4
+
+ifdef chk_err
+ERR     = -DERR_CHK
+endif
+
+ifdef single
+NCO = -DNCO=4
+endif
+
+ifdef size
+SZ = -DN=$(size)
+else
+SZ = -DN=960
+endif
+
+ifdef double
+NCO = -DNCO=2
+endif
+
+PARSEC_FLAGS 	= -fpermissive -fno-exceptions 
+#CXXFLAGS 	+= -O3 $(MT) $(NCO) $(FUNC) $(ERR) $(CSRC)
+CXXFLAGS_LLVM	+= -O3 $(MT) $(NCO) $(FUNC) $(ERR) $(CXXFLAGS)
+
+
+all: $(TARGET)
+
+$(TARGET): clean $(CSRC)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LIBS) -o $(TARGET)
+
+$(M4_SRC): $(SRC)
+	$(M4) ./c.m4.pthreads $< > $@
+
+#blackscholes.m4.cpp: $(SRC) 	
+#	$(M4) ./c.m4.pthreads $< > $@
+
+blackscholes_llvm.m4.cpp: blackscholes_new.m4.cpp
+	$(M4) $(MACROS) $< > $@
+
+blackscholes_llvm.ll: blackscholes_llvm.m4.cpp 
+	clang++-9 -S -emit-llvm $(PARSEC_FLAGS) $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -o $@ $^
+
+blackscholes_llvm_opt.ll: blackscholes_llvm.ll
+	opt-9 $(OPT_FLAGS) -S $^ -o $@ 
+
+$(LLVM_TARGET): blackscholes_llvm_opt.ll
+	clang++-9 $(PARSEC_FLAGS) $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -o $@ $^ 
+	
+clean:
+	rm -f $(TARGET) $(M4_SRC) $(LLVM_TARGET) *.ll
+
+install:
+	mkdir -p $(PREFIX)/bin
+	cp -f $(TARGET) $(PREFIX)/bin/$(TARGET)
+
+install_llvm: 
+	mkdir -p $(LOCAL_PATH)/bin
+	cp -f $(LLVM_TARGET) $(LOCAL_PATH)/bin/$(TARGET)

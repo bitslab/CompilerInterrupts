@@ -84,7 +84,7 @@ plot_client_latency_cdf(){
 mkdir -p $EXP_DIR $PLOT_DIR
 
 run_standard_delegation_latency
-#run_delegation_latency
-#run_delegation_variation_latency
-#run_locks_latency
+run_delegation_latency
+run_delegation_variation_latency
+run_locks_latency
 plot_client_latency_cdf

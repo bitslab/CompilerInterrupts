@@ -1,0 +1,10 @@
+digraph "CFG for 'WorkStart' function" {
+	label="CFG for 'WorkStart' function";
+
+	Node0x600b560 [shape=record,label="{entry|{<s0>T|<s1>F}}"];
+	Node0x600b560:s0 -> Node0x600c680;
+	Node0x600b560:s1 -> Node0x600c750;
+	Node0x600c680 [shape=record,label="{if.then}"];
+	Node0x600c680 -> Node0x600c750;
+	Node0x600c750 [shape=record,label="{if.end}"];
+}

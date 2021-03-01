@@ -1,0 +1,55 @@
+HOME = ..
+
+include $(HOME)/Defines.mk
+
+ifeq ($(LINKAGE),dynamic)
+CFLAGS += -fPIC
+endif
+
+.PHONY: default all clean
+
+SRCS := \
+        map_reduce.c \
+        memory.c \
+        processor.c \
+        scheduler.c \
+        synch.c \
+        taskQ.c \
+        mcs.c \
+        pt_mutex.c \
+        locality.c \
+        iterator.c \
+        tpool.c \
+
+OBJS := ${SRCS:.c=.o}
+#SRC_FILES := $(wildcard *.c)
+INTERMEDIATE_FILES := $(patsubst %.c, %.ll, $(SRCS))
+
+default: all
+
+all: $(HOME)/$(LIB_DIR)/$(TARGET)
+
+$(HOME)/$(LIB_DIR)/$(TARGET): $(TARGET)
+	cp $< $(HOME)/$(LIB_DIR)
+
+$(LIB_PHOENIX).a: phoenix.o
+	$(AR) cr $@ $<
+	$(RANLIB) $@
+
+$(LIB_PHOENIX).so: phoenix.o
+	$(CC) --shared -o $@ $<
+
+phoenix.o: opt_phoenix.ll
+	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj $< -o $@
+
+opt_phoenix.ll: llvm_phoenix.ll
+	opt-9 $(OPT_FLAGS) -S < $< > $@
+
+llvm_phoenix.ll: $(INTERMEDIATE_FILES)
+	llvm-link-9 $^ -o $@
+
+$(INTERMEDIATE_FILES): %.ll : %.c
+	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+
+clean:
+	rm -f $(HOME)/$(LIB_DIR)/$(TARGET) $(TARGET) $(OBJS) $(INTERMEDIATE_FILES) *.a *.so *.o *.ll

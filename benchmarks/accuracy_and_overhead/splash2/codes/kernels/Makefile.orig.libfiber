@@ -1,0 +1,98 @@
+CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112 -integrated-as -msoft-float
+CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+CFLAGS := $(CFLAGS) -I../ -I../../ -I../../apps/ -I../../../apps/ -Wl,-rpath=../ -Wl,-rpath=../../
+LDFLAGS := -lm -lpfm -L../ -L../../ -lci
+
+#************************************** For libfiber ************************************#
+# Integration specific variables
+CURR_DIR := $(shell pwd)
+LIBFIBER_DIR := $(CURR_DIR)/../../../libfiber
+CFLAGS := $(CFLAGS) -DLIBFIBER -I$(LIBFIBER_DIR)/include -Wl,-rpath,"$(LIBFIBER_DIR)"
+LDFLAGS := $(LDFLAGS) -L$(LIBFIBER_DIR) -lfiber
+export LIBFIBER_FLAGS = -DINT_ENABLED # interrupts always enabled
+export MACRO_NAME = c.m4.null.libfiber
+
+# Libfiber module specific definitions
+OS ?= $(shell uname -s)
+
+ARCH ?= $(shell uname -m)
+ifeq ($(ARCH),i386)
+ARCH=x86
+endif
+ifeq ($(ARCH),i86pc)
+ARCH=x86
+endif
+ifeq ($(ARCH),i686)
+ARCH=x86
+endif
+
+ifeq ($(ARCH),x86_64)
+CFLAGS += -m64 -DARCH_x86_64
+endif
+ifeq ($(ARCH),x86)
+CFLAGS += -m32 -march=i686 -DARCH_x86
+endif
+
+#************************************ Export variables **********************************#
+export APP := splash2 # for libfiber
+export LLVM_BUILD ?= /mnt/nilanjana
+export CC := clang 
+export M4 := m4 -s -Ulen -Uindex
+export CFLAGS
+export LDFLAGS
+SUFFIX := orig
+
+# Turn off if error needs to be seen on screen
+BUILD_LOG ?= make_log
+ERROR_LOG ?= make_error
+REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
+
+APPS := radix fft lu-c lu-nc cholesky
+
+.PHONY: $(APPS)
+
+default: $(APPS)
+
+all: libfiber.so libci.so $(APPS)
+
+libfiber.so:
+	$(MAKE) -C $(LIBFIBER_DIR) -f Makefile.int libfiber.so --no-print-directory $(REDIRECT)
+
+ci_lib.o: ../apps/ci_lib.c ../apps/ci_lib.h
+	@gcc -c -fPIC $< -o $@
+
+libci.so: ci_lib.o
+	@gcc -shared $< -o $@
+
+radix fft cholesky: libfiber.so libci.so
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+lu-c: libfiber.so libci.so
+	@$(MAKE) -C lu/contiguous_blocks -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+lu-nc: libfiber.so libci.so
+	@$(MAKE) -C lu/non_contiguous_blocks -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+clean: libci-clean libfiber-clean radix-clean fft-clean lu-c-clean lu-nc-clean cholesky-clean
+
+libci-clean:
+	@rm -f ci_lib.o libci.so
+
+libfiber-clean:
+	@$(MAKE) -C $(LIBFIBER_DIR) -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+radix-clean: libfiber-clean libci-clean
+	@$(MAKE) -C radix -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+fft-clean: libfiber-clean libci-clean
+	@$(MAKE) -C fft -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+lu-c-clean: libfiber-clean libci-clean
+	@$(MAKE) -C lu/contiguous_blocks -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+lu-nc-clean: libfiber-clean libci-clean
+	@$(MAKE) -C lu/non_contiguous_blocks -f Makefile.int clean --no-print-directory $(REDIRECT)
+
+cholesky-clean: libfiber-clean libci-clean
+	@$(MAKE) -C cholesky -f Makefile.int clean --no-print-directory $(REDIRECT)

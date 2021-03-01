@@ -9842,14 +9842,12 @@ namespace {
       IRBuilder<> Builder(I);
       std::vector<Type*> funcArgs;
       funcArgs.push_back(Builder.getInt64Ty());
-#if 1
-      Value* funcPtr = M->getGlobalVariable("intvActionHook",PointerType::getUnqual(FunctionType::get(Builder.getVoidTy(), funcArgs, false)));
-#else /* This is needed for Shenango, for thread local interrupts. Check how to make both work before committing. */
+      //Value* funcPtr = M->getGlobalVariable("intvActionHook",PointerType::getUnqual(FunctionType::get(Builder.getVoidTy(), funcArgs, false)));
+      /* Declare the  thread local interrupt handler pointer, if it is not present in the module. */
       Value* funcPtr = M->getOrInsertGlobal("intvActionHook",PointerType::getUnqual(FunctionType::get(Builder.getVoidTy(), funcArgs, false)));
       GlobalVariable* gCIFuncPtr = static_cast<GlobalVariable *>(funcPtr);
       gCIFuncPtr->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
       assert(funcPtr && "Could not find intvActionHook");
-#endif
 
       return funcPtr;
     }

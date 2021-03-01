@@ -1,0 +1,60 @@
+#CC := gcc
+CC := clang 
+ROOT=../../../../../
+
+CFLAGS := -O -pthread -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float
+#CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112
+#CFLAGS := -g3 -pthread -D_POSIX_C_SOURCE=200112
+CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+#LDFLAGS := -lm
+LDFLAGS := -lm -static
+
+SRC_DIR = .
+OBJ_DIR = .
+ROOT ?= ../../../..
+BASEDIR := $(ROOT)/splash2/codes/
+#BASEDIR := $(HOME)/splash2/codes
+#BASEDIR := /mnt/misc/splash2/codes
+MACROS := $(BASEDIR)/null_macros/c.m4.null
+M4 := m4 -s -Ulen -Uindex
+
+INST_LEVEL ?= 1
+PUSH_INTV ?= 100
+CMMT_INTV ?= 10
+
+SRC_FILES_H := $(wildcard $(SRC_DIR)/*.H)
+SRC_FILES_C := $(wildcard $(SRC_DIR)/*.C)
+HDR_FILES := $(patsubst $(SRC_DIR)/%.H, $(SRC_DIR)/%.h, $(SRC_FILES_H))
+SRC_FILES := $(patsubst $(SRC_DIR)/%.C, $(SRC_DIR)/%.c, $(SRC_FILES_C))
+OBJ_FILES := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/lc_%.ll, $(SRC_FILES))
+INTERMEDIATE_FILES := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/llvm_%.ll, $(SRC_FILES))
+OPT_FILES := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/opt_%.ll, $(SRC_FILES)) 
+
+TARGET = OCEAN
+OBJS = jacobcalc.o jacobcalc2.o laplacalc.o linkup.o main.o multi.o slave1.o slave2.o subblock.o
+
+all: createfiles $(TARGET)
+
+$(TARGET): $(OBJ_FILES)
+	/mnt/ramlc/bin/clang -g -fstandalone-debug $^ -o $@ -pthread -lm
+
+$(OBJ_FILES): lc_%.ll : opt_%.ll
+	/mnt/ramlc/bin/opt -load /mnt/ramlc/lib/LLVMLogicalClock.so -S -logicalclock -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -inst-gran $(INST_LEVEL) -mem-ops-cost 10 -config-file $(ROOT)/lc-config.txt < $< > $@
+
+$(OPT_FILES): opt_%.ll : llvm_%.ll
+	/mnt/ramlc/bin/opt -postdomtree -mem2reg -indvars -loop-simplify -scalar-evolution -S < $< > $@
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.c
+	/mnt/ramlc/bin/clang -S -emit-llvm -o $@ $<
+
+createfiles: $(HDR_FILES) $(SRC_FILES)
+
+$(HDR_FILES): %.h: %.H
+	$(M4) $(MACROS) $< > $@
+
+$(SRC_FILES): %.c: %.C
+	$(M4) $(MACROS) $< > $@
+
+clean:
+	rm -rf *.ll *.o $(TARGET)

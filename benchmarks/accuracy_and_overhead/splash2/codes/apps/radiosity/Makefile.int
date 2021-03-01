@@ -1,0 +1,39 @@
+# variables might be exported from parent makefiles
+#CC ?= clang 
+#CFLAGS ?= -O -pthread -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float
+#CFLAGS ?= $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+#CFLAGS ?= $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+#LDFLAGS ?= -lm -static
+#INST_LEVEL ?= 1
+#PUSH_INTV ?= 5000
+#CMMT_INTV ?= 1000
+#ALLOWED_DEVIATION ?= 50
+#CONFIG ?= 2
+#LC_FLAGS ?= -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -config $(CONFIG) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -inst-gran $(INST_LEVEL) -mem-ops-cost 1 -config-file $(ROOT)/lc-config.txt
+#OPT_FLAGS ?= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+#M4 ?= m4 -s -Ulen -Uindex
+
+INCLUDES = -I./glibdumb -I./glibps -I. 
+export CFLAGS += $(INCLUDES)
+LOADLIBS = glibdumb/glib.a glibps/glibps.a
+
+SRC_DIR := .
+OBJ_DIR := .
+ROOT := ../../../..
+BASEDIR := $(ROOT)/splash2/codes/
+MACROS := $(BASEDIR)/null_macros/$(MACRO_NAME)
+LLVM_BUILD ?= /mnt/nilanjana
+
+SRC_FILES_H := model.H parallel.H patch.H radiosity.H task.H
+SRC_FILES_C := $(wildcard $(SRC_DIR)/*.C)
+HDR_FILES := task.h model.h parallel.h patch.h radiosity.h
+SRC_FILES := $(patsubst $(SRC_DIR)/%.C, $(SRC_DIR)/%.c, $(SRC_FILES_C))
+INTERMEDIATE_FILES := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/llvm_%.ll, $(SRC_FILES))
+
+LC_FLAGS += $(ROOT)/lc-config.txt
+
+TARGET_NAME := radiosity
+OBJS = display.o elemman.o modelman.o patchman.o rad_main.o rad_tools.o room_model.o smallobj.o taskman.o visible.o
+
+include ../Defines.mk
+

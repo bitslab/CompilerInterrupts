@@ -1,0 +1,8 @@
+reverse_index 35500
+histogram 84000
+kmeans 57500
+pca 69000
+matrix_multiply 39500
+string_match 93000
+linear_regression 53500
+word_count 56000

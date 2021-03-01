@@ -1,0 +1,6 @@
+blackscholes 25000
+swaptions 25000
+canneal 25000
+streamcluster 25000
+fluidanimate 25000
+dedup 24500

@@ -1,0 +1,97 @@
+HOME = ../..
+
+#INST_LEVEL ?= 1
+#PUSH_INTV ?= 5000
+#CMMT_INTV ?= 1000
+#CONFIG ?= 2
+#ALLOWED_DEVIATION ?= 50
+#ROOT ?= ../../../../
+
+include $(HOME)/Defines.mk
+
+LIBS += -L$(HOME)/$(LIB_DIR) -l$(PHOENIX)
+
+HIST_OBJS = histogram.o
+HIST_SEQ_OBJS = histogram-seq.o
+HIST_PTHREAD_OBJS = histogram-pthread.o
+
+OS ?= $(shell uname -s)
+
+ARCH1 ?= $(shell uname -m)
+ifeq ($(ARCH1),i386)
+ARCH1=x86
+endif
+ifeq ($(ARCH1),i86pc)
+ARCH1=x86
+endif
+ifeq ($(ARCH1),i686)
+ARCH1=x86
+endif
+
+ifeq ($(ARCH1),x86_64)
+CFLAGS += -m64 -DARCH_x86_64
+endif
+ifeq ($(ARCH1),x86)
+CFLAGS += -m32 -march=i686 -DARCH_x86
+endif
+
+SRC_FILES := $(wildcard *.c)
+INTERMEDIATE_FILES := $(patsubst %.c, llvm_%.ll, $(SRC_FILES))
+CFLAGS += -DLC
+
+PROGS = histogram histogram-seq histogram-pthread
+PROGS = histogram
+
+.PHONY: default all clean
+
+default: all
+
+all: $(PROGS)
+
+histogram: $(HIST_OBJS) $(LIB_DEP)
+	$(CC) $(CFLAGS) -o $@ $(HIST_OBJS) $(LIBS)
+
+$(HIST_OBJS): histogram.ll
+	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
+
+histogram.ll: opt_histogram.ll
+	opt-9 $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
+
+opt_histogram.ll: llvm_histogram.ll
+	opt-9 $(OPT_FLAGS) -S < $< > $@
+
+
+
+histogram-seq: $(HIST_SEQ_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(HIST_SEQ_OBJS) $(LIBS)
+
+$(HIST_SEQ_OBJS): histogram-seq.ll
+	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
+
+histogram-seq.ll: opt_histogram-seq.ll
+	opt-9 $(LC_FLAGS) < $< > $@
+
+opt_histogram-seq.ll: llvm_histogram-seq.ll
+	opt-9 $(OPT_FLAGS) -S < $< > $@
+
+
+
+histogram-pthread: $(HIST_PTHREAD_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(HIST_PTHREAD_OBJS) $(LIBS)
+
+$(HIST_PTHREAD_OBJS): histogram-pthread.ll
+	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
+
+histogram-pthread.ll: opt_histogram-pthread.ll
+	opt-9  $(LC_FLAGS) < $< > $@
+
+opt_histogram-pthread.ll: llvm_histogram-pthread.ll
+	opt-9 $(OPT_FLAGS) -S < $< > $@
+
+
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.c
+	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+
+clean:
+	rm -f $(PROGS) $(HIST_OBJS) $(HIST_SEQ_OBJS) $(HIST_PTHREAD_OBJS) $(INTERMEDIATE_FILES) *.ll

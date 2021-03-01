@@ -419,7 +419,6 @@ void* client(void *input_data){
 }
 
 int main (int argc, char ** argv){
-  intvActionHook(0); // one time call to not make the variable disappear in .ll files. TODO: Need to fix
     if(numa_available() < 0){
         printf("System does not support NUMA API!\n");
     }

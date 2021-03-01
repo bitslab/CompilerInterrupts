@@ -1,0 +1,56 @@
+CI_LIB_HOME := $(shell pwd)/../../../../
+CI_HOME := $(shell pwd)/../../../
+
+CFLAGS := -O3 -pthread -D_GNU_SOURCE -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float # _GNU_SOURCE is added to support pthread_setaffinity_np
+CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
+CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
+CFLAGS := $(CFLAGS) $(EXTRA_FLAGS) -I$(CI_LIB_HOME) -I$(CI_HOME) -I$(CI_LIB_HOME)/../
+LDFLAGS := -lm -static -lpapi -lpfm
+
+#************************************ Export variables **********************************#
+export LLVM_BUILD ?= /mnt/nilanjana
+export MACRO_NAME = c.m4.null
+export CC := clang 
+export M4 := m4 -s -Ulen -Uindex
+export CFLAGS
+export LDFLAGS
+SUFFIX := orig
+
+# Turn off if error needs to be seen on screen
+BUILD_LOG ?= make_log
+ERROR_LOG ?= make_error
+REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
+
+APPS := radix fft lu-c lu-nc cholesky
+
+.PHONY: $(APPS)
+
+default: $(APPS)
+
+all: $(APPS)
+
+radix fft cholesky:
+	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+lu-c:
+	@$(MAKE) -C lu/contiguous_blocks -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+lu-nc:
+	@$(MAKE) -C lu/non_contiguous_blocks -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
+
+clean: radix-clean fft-clean lu-c-clean lu-nc-clean cholesky-clean
+
+radix-clean:
+	@$(MAKE) -C radix clean-radix-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
+
+fft-clean:
+	@$(MAKE) -C fft clean-fft-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
+
+lu-c-clean:
+	@$(MAKE) -C lu/contiguous_blocks clean-lu-c-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
+
+lu-nc-clean:
+	@$(MAKE) -C lu/non_contiguous_blocks clean-lu-nc-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
+
+cholesky-clean:
+	@$(MAKE) -C cholesky clean-cholesky-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)

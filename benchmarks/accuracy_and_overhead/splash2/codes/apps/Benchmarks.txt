@@ -1,0 +1,39 @@
+
+This file describes the procedures & files required for different experiments with splash2
+
+1. Performance (runtime duration) over #Threads
+experiment script: perf_test_over_threads.sh (any clock, pinned* or unpinned mode)
+plot script: plot_bar_chart_splash2.sh per thread, plot_line_splash2.sh per benchmark
+
+2. Performance (runtime duration) over Allowed Deviation
+experiment script: perf_test_over_allowed_dev.sh for pinned mode, perf_test_over_allowed_dev_without_fiber.sh (old file, may need updating) unpinned mode, without libfiber
+plot script: plot_bench_stats.sh?
+
+3. Performance (runtime duration) over Push Interval
+experiment script: perf_test_over_push_intv.sh for pinned mode
+plot script: plot_bench_stats.sh?
+
+4. Average interval accuracy over Allowed Deviation
+experiment script: perf_test_over_allowed_dev.sh for pinned mode
+plot script: plot_bench_stats.sh
+plot func: plot_ad, plot_ad_basic. Use magnified=1, to magnify the plot
+
+5. Average interval accuracy over Push Interval
+experiment script: perf_test_over_push_intv.sh for pinned mode & define INTV_STATS in CompilerInterrupt.h
+plot script: plot_bench_stats.sh
+plot func: plot_pi, plot_pi_basic. Use magnified=1, to magnify the plot
+
+6. Overall interval accuracy (over time & CDF)
+experiment script: perf_test_over_allowed_dev.sh for pinned mode & define INTV_STATS in CompilerInterrupt.h
+conversion script: convert_to_cdf.sh to convert distribution data to cdf
+plot script: plot_cdf_tsc.sh for cdf, plot_pushseq_vs_intvic.sh & plot_pushseq_vs_intvtsc.sh for overall distribution over timeline, plot_pushintv_vs_intvtsc.sh for IR inst vs timestamp plot
+
+7. Comparison of performance between software instruction counter & hardware performance counters
+experiment script: perf_test_vs_papi.sh
+plot script: plot_vs_papi.sh
+
+*pinned mode stands for tests for cooperative multitasking, where multiple threads are run on single core, or multiple fibers on single thread
+
+NOTE: All legacy data files for the first draft of evaluation, including scripts for plots are stored in backup_stats
+
+NOTE: PAPI based interrupt mode is not enabled for fiber based implementations

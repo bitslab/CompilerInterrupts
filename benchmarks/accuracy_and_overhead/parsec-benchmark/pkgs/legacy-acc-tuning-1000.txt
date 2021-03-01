@@ -1,0 +1,6 @@
+blackscholes 1000
+swaptions 1000
+canneal 1000
+streamcluster 1000
+fluidanimate 1000
+dedup 1000

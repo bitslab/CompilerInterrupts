@@ -1,0 +1,5 @@
+digraph "CFG for 'xrand' function" {
+	label="CFG for 'xrand' function";
+
+	Node0x5f2a620 [shape=record,label="{entry}"];
+}

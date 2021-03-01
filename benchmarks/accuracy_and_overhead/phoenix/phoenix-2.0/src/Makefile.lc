@@ -1,0 +1,74 @@
+HOME = ..
+
+include $(HOME)/Defines.mk
+
+ifeq ($(LINKAGE),dynamic)
+CFLAGS += -fPIC
+endif
+
+EXTRA_FLAGS ?= -DAVG_STATS
+CFLAGS += $(EXTRA_FLAGS)
+
+COST_FILE_PATH = $(shell pwd)
+
+CFLAGS += -DLC
+
+.PHONY: default all clean
+
+SRCS := \
+        map_reduce.c \
+        memory.c \
+        processor.c \
+        scheduler.c \
+        synch.c \
+        taskQ.c \
+        mcs.c \
+        pt_mutex.c \
+        locality.c \
+        iterator.c \
+        tpool.c \
+
+#SRC_FILES := $(wildcard *.c)
+INTERMEDIATE_FILES := $(patsubst %.c, llvm_%.ll, $(SRCS))
+
+default: all
+
+all: $(HOME)/$(LIB_DIR)/libci.so $(HOME)/$(LIB_DIR)/$(TARGET)
+
+ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
+	gcc -c -fPIC $(FLAGS_CI) $< -o $@
+
+libci.so: ci_lib.o
+	gcc -shared $< -o $@
+
+$(HOME)/$(LIB_DIR)/libci.so: libci.so
+	cp $< $(HOME)/$(LIB_DIR)
+
+$(HOME)/$(LIB_DIR)/$(TARGET): $(TARGET)
+	cp $< $(HOME)/$(LIB_DIR)
+
+$(LIB_PHOENIX).a: lc_all.o
+	$(AR) cr $@ $<
+	$(RANLIB) $@
+
+$(LIB_PHOENIX).so: lc_all.o
+	$(CC) --shared -o $@ $<
+
+lc_all.o: lc_all.ll
+	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj $<
+
+lc_all.ll: opt_all.ll
+	echo "COST_FILE_PATH $(COST_FILE_PATH)"
+	opt-9 $(SRC_LC_FLAGS) -defclock=false -out-cost-file $(COST_FILE_PATH)/cost.txt < $< > $@
+
+opt_all.ll: llvm_all.ll
+	opt-9 $(OPT_FLAGS) -S < $< > $@
+
+llvm_all.ll: $(INTERMEDIATE_FILES)
+	llvm-link-9 $^ -o $@
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.c
+	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+
+clean:
+	rm -f $(HOME)/$(LIB_DIR)/$(TARGET) $(TARGET) $(INTERMEDIATE_FILES) *.a *.so *.o *.ll

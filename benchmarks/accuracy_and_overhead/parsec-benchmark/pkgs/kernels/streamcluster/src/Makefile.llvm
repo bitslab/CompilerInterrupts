@@ -1,0 +1,58 @@
+# Makefile for streamcluster
+
+PREFIX=${PARSECDIR}/pkgs/kernels/streamcluster/inst/${PARSECPLAT}
+
+TARGET=streamcluster
+OBJS=streamcluster.o
+
+LLVM_BUILD_PATH	?= /mnt/nilanjana/
+LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
+CONFIG_FILE	?= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
+LLVM_TARGET 	= streamcluster_llvm
+OPT_FLAGS	?= -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+LOCAL_PATH	= /AD-home/cmonta9/parsec-benchmark/pkgs/kernels/streamcluster/inst/amd64-linux.gcc
+
+INST_LEVEL 		?= 1
+PUSH_INTV 		?= 5000
+CMMT_INTV 		?= 1000
+ALLOWED_DEVIATION 	?= 100
+CLOCK 			?= 1 # Periodic CI
+FIBER_CONFIG 		?= 5
+CONFIG 			?= 2
+
+CXXFLAGS_LLVM		+= -O3 -DCI_PASS -pthread -DENABLE_THREADS $(CXXFLAGS) 
+PARSEC_FLAGS    	= -fpermissive -fno-exceptions 
+
+SRC_FILES_CPP 		= $(wildcard ./*.cpp)
+INTERMEDIATE_FILES 	= $(patsubst ./%.cpp, ./llvm_%.ll, $(SRC_FILES_CPP))
+
+
+all: $(OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJS) $(LIBS) -o $(TARGET)
+
+%.o : %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+$(INTERMEDIATE_FILES): llvm_%.ll : %.cpp
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -S -emit-llvm -o $@ $<
+
+streamcluster_llvm_all.ll: $(INTERMEDIATE_FILES)
+	llvm-link-9 $^ -o $@
+
+streamcluster_llvm_opt.ll: streamcluster_llvm_all.ll
+	opt-9 $(OPT_FLAGS) -S $^ -o $@
+
+$(LLVM_TARGET): streamcluster_llvm_opt.ll
+	clang++-9 $(CXXFLAGS_LLVM) $(LDFLAGS) $(LIBS) $(PARSEC_FLAGS) $(EXTRA_FLAGS) $(PAPI_FLAGS) -o $@ $^
+
+clean:
+	rm -f *.o $(TARGET) *.ll $(LLVM_TARGET)
+
+install:
+	mkdir -p $(PREFIX)/bin
+	cp -f $(TARGET) $(PREFIX)/bin/$(TARGET)
+
+install_llvm: 
+	mkdir -p $(LOCAL_PATH)/bin
+	cp -f $(LLVM_TARGET) $(LOCAL_PATH)/bin/$(TARGET)
+

@@ -1,0 +1,26 @@
+HOME = ..
+
+include $(HOME)/Defines.mk
+
+ifeq ($(LINKAGE),dynamic)
+CFLAGS += -fPIC
+endif
+
+CFLAGS += -DLC
+
+.PHONY: default all clean
+
+SRCS := \
+        map_reduce.c \
+        memory.c \
+        processor.c \
+        scheduler.c \
+        synch.c \
+        taskQ.c \
+        mcs.c \
+        pt_mutex.c \
+        locality.c \
+        iterator.c \
+        tpool.c \
+
+include $(HOME)/Common.mk

@@ -1,0 +1,6 @@
+blackscholes 0
+swaptions 100
+canneal 0
+streamcluster 0
+fluidanimate 100
+dedup 100

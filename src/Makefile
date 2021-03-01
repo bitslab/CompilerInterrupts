@@ -43,4 +43,4 @@ $(LIB_DIR)/$(CI_LIB): $(CI_LIB_OBJECTS)
 	$(QUIET)gcc -shared $< -o $@
 
 clean:
-	$(QUIET)rm -f $(LIB_DIR)/$(CI_PASS) $(CI_PASS_OBJECTS)
+	$(QUIET)rm -f $(LIB_DIR)/$(CI_PASS) $(CI_PASS_OBJECTS) $(LIB_DIR)/$(CI_LIB) $(CI_LIB_OBJECTS)

@@ -1,0 +1,14 @@
+radix 1500
+fft 18500
+lu-c 23500
+lu-nc 18000
+cholesky 19500
+water-nsquared 50000
+water-spatial 50000
+ocean-cp 50000
+ocean-ncp 50000
+barnes 17500
+volrend 17000
+fmm 24500
+raytrace 11500
+radiosity 8500

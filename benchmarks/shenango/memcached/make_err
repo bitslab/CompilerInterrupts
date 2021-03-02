@@ -1,0 +1,6 @@
+memcached-memcached.o: In function `printf':
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:104: undefined reference to `parked'
+collect2: error: ld returned 1 exit status
+make[2]: *** [memcached] Error 1
+make[1]: *** [all-recursive] Error 1
+make: *** [all] Error 2

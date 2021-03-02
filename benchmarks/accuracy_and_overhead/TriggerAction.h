@@ -32,7 +32,7 @@ __thread double last_avg_ret_ic = 0;
 __thread double last_avg_tsc = 0;
 
 __thread int counter_id = 0;
-int counter_id_alloc = -1;
+int counter_id_alloc = 0;
 int __get_id_and_increment() {
   //using the gcc atomic built-ins
   return __sync_fetch_and_add(&counter_id_alloc, 1);
@@ -433,30 +433,14 @@ void heapSort(long arr[], int n)
     if(0 != pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) {
       printf("Unable to set thread affinity\n");
     }
-
-    #ifdef INTV_SAMPLING
-      if(!buffer_tsc) 
-        buffer_tsc = (uint64_t *) malloc(BUF_SIZE*sizeof(uint64_t));
-      if(!buffer_ret_ic) 
-        buffer_ret_ic = (long *) malloc(BUF_SIZE*sizeof(long));
-    #endif
   }
 
   __thread int64_t sample_count = -1;
   void hw_interrupt_handler(long long tot_inst, long long tot_cyc) {
 
     if(sample_count >= 0) {
-      #ifdef INTV_SAMPLING
-        if(sample_count >= 0 && sample_count < BUF_SIZE) {
-          if(buffer_tsc)
-            buffer_tsc[sample_count] = tot_cyc;
-          if(buffer_ret_ic)
-            buffer_ret_ic[sample_count] = tot_inst;
-        }
-      #else
         last_avg_tsc = (double)((last_avg_tsc*sample_count) + tot_cyc) / (sample_count+1);
         last_avg_ret_ic = (double)((last_avg_ret_ic*sample_count) + tot_inst) / (sample_count+1);
-      #endif
     }
 
     sample_count++;
@@ -479,41 +463,7 @@ void heapSort(long arr[], int n)
 
   void print_timing_stats(void) {
     /* Print every interval */
-    #ifdef INTV_SAMPLING 
-      int i;
-      char name[500];
-      sprintf(name, "/local_home/nilanjana/temp/interval_stats/interval_stats_thread%ld.txt", counter_id);
-
-      FILE *fp = fopen(name, "w");
-      if(!fp) {
-        printf("Could not open file %s to write\n", name);
-        exit(1);
-      }
-      //printf("PushSeq IC RIC TSC\n");
-      fprintf(fp, "Total Samples: %d\n", sample_count);
-      fprintf(fp, "PushSeq IC RIC TSC\n");
-      //static int first = 1;
-
-      //if(!first)
-        //return;
-      //else
-        //first = 0;
-
-      for(i=0; i<BUF_SIZE && i<sample_count; i++) {
-        if(buffer_ret_ic && buffer_tsc) {
-          fprintf(fp, "%ld 0 %ld %ld\n", i, buffer_ret_ic[i], buffer_tsc[i]);
-        }
-        else {
-          if(!buffer_ret_ic)
-            fprintf(fp, "IC not found\n");
-          if(!buffer_tsc)
-            fprintf(fp, "TSC not found\n");
-        }
-      }
-      fclose(fp);
-    #else
-      printf("samples:%d, avg_intv_cycles:%0.1lf, avg_intv_ret_ic:%0.1lf\n", sample_count, last_avg_tsc, last_avg_ret_ic);
-    #endif
+    printf("samples:%d, avg_intv_cycles:%0.1lf, avg_intv_ret_ic:%0.1lf\n", sample_count, last_avg_tsc, last_avg_ret_ic);
   }
 
   /* Called once in the program, from main() */
@@ -542,6 +492,7 @@ void heapSort(long arr[], int n)
 
     if(counter_id) // thread has already been registered
       return 0;
+
     counter_id = __get_id_and_increment();
     PAPI_register_thread();
 

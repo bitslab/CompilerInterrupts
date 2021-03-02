@@ -36,7 +36,6 @@ void init_stats(int);
 #define TOT_CYC_IDX 1
 #define MAX_COUNT 128 // Change this according to the needs of the benchmark. It represents max number of threads created
 
-extern __thread int events[NUM_HWEVENTS];
 extern int event_set[MAX_COUNT];
 extern __thread int counter_id;
 extern int counter_id_alloc;

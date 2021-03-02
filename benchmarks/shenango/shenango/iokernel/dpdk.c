@@ -50,7 +50,7 @@
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = ETH_MAX_LEN,
 		.offloads = DEV_RX_OFFLOAD_IPV4_CKSUM,
 		.mq_mode = ETH_MQ_RX_RSS | ETH_MQ_RX_RSS_FLAG,
 	},
@@ -124,7 +124,7 @@ static inline int dpdk_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 
 	/* Display the port MAC address. */
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	rte_eth_macaddr_get(port, &addr);
 	printf("dpdk: port %u MAC: %02" PRIx8 " %02" PRIx8 " %02" PRIx8
 			" %02" PRIx8 " %02" PRIx8 " %02" PRIx8 "",

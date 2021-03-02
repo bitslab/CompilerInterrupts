@@ -1,0 +1,148 @@
+diff -ur /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx.c ./ixgbe_rxtx.c
+--- /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx.c	2020-05-26 10:41:39.000000000 -0500
++++ ./ixgbe_rxtx.c	2021-03-02 16:14:40.045463808 -0600
+@@ -554,10 +554,10 @@
+ 
+ /* Default RS bit threshold values */
+ #ifndef DEFAULT_TX_RS_THRESH
+-#define DEFAULT_TX_RS_THRESH   32
++#define DEFAULT_TX_RS_THRESH   64
+ #endif
+ #ifndef DEFAULT_TX_FREE_THRESH
+-#define DEFAULT_TX_FREE_THRESH 32
++#define DEFAULT_TX_FREE_THRESH 64
+ #endif
+ 
+ /* Reset transmit descriptors after they have been used */
+@@ -2485,6 +2485,41 @@
+ 	.free_swring = ixgbe_tx_free_swring,
+ 	.reset = ixgbe_reset_tx_queue,
+ };
++ 
++static uint16_t
++install_txq_ctx(struct ixgbe_tx_queue *txq, uint16_t slot,
++	const uint64_t flags, const union ixgbe_tx_offload tx_offload)
++{
++
++	/* This must be called before any packets are placed in the ring */
++	ASSERT(txq->tx_tail == 0);
++	ASSERT(((struct ixgbe_tx_entry_v *)txq->sw_ring_v)->mbuf == NULL);
++	ASSERT(txq->nb_tx_free >= txq->tx_free_thresh);
++	ASSERT(txq->nb_tx_desc > 0);
++	ASSERT(txq->nb_tx_free >= 1);
++	ASSERT(slot < IXGBE_CTX_NUM);
++
++
++	uint64_t tx_ol_req = flags & IXGBE_TX_OFFLOAD_MASK;
++
++	volatile union ixgbe_adv_tx_desc *txr = txq->tx_ring;
++	volatile struct ixgbe_adv_tx_context_desc *ctx_txd;
++	ctx_txd = (volatile struct ixgbe_adv_tx_context_desc *)txr;
++
++	txq->ctx_curr = slot;
++	ixgbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
++		tx_offload, NULL);
++
++	txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + 1);
++	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - 1);
++
++	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
++		   (unsigned) txq->port_id, (unsigned) txq->queue_id,
++		   (unsigned) 1, (unsigned) 1);
++	IXGBE_PCI_REG_WRITE_RELAXED(txq->tdt_reg_addr, 1);
++	txq->tx_tail = 1;
++	return 1;
++}
+ 
+ /* Takes an ethdev and a queue and sets up the tx function to be used based on
+  * the queue parameters. Used in tx_queue_setup by primary process and then
+@@ -2494,7 +2529,8 @@
+ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
+ {
+ 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
+-	if ((txq->offloads == 0) &&
++	//if ((txq->offloads == 0) &&
++	if ((txq->offloads & ~(DEV_TX_OFFLOAD_IPV4_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM)) == 0 &&
+ #ifdef RTE_LIBRTE_SECURITY
+ 			!(txq->using_ipsec) &&
+ #endif
+@@ -2759,6 +2795,16 @@
+ 	txq->ops->reset(txq);
+ 
+ 	dev->data->tx_queues[queue_idx] = txq;
++ 
++	uint64_t olflags = PKT_TX_IP_CKSUM | PKT_TX_IPV4 | PKT_TX_TCP_CKSUM;
++	union ixgbe_tx_offload tx_offloads;
++	memset(&tx_offloads, 0, sizeof(tx_offloads));
++	tx_offloads.l2_len = RTE_ETHER_HDR_LEN;
++	tx_offloads.l3_len = sizeof(struct rte_ipv4_hdr);
++	tx_offloads.l4_len = sizeof(struct rte_tcp_hdr);
++
++	if (install_txq_ctx(txq, 0, olflags, tx_offloads) != 1)
++		return -EINVAL;
+ 
+ 
+ 	return 0;
+diff -ur /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx.h ./ixgbe_rxtx.h
+--- /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx.h	2020-05-26 10:41:39.000000000 -0500
++++ ./ixgbe_rxtx.h	2021-03-02 16:01:25.513087147 -0600
+@@ -27,14 +27,14 @@
+ #define	IXGBE_MIN_RING_DESC	32
+ #define	IXGBE_MAX_RING_DESC	4096
+ 
+-#define RTE_PMD_IXGBE_TX_MAX_BURST 32
+-#define RTE_PMD_IXGBE_RX_MAX_BURST 32
++#define RTE_PMD_IXGBE_TX_MAX_BURST 64
++#define RTE_PMD_IXGBE_RX_MAX_BURST 64
+ #define RTE_IXGBE_TX_MAX_FREE_BUF_SZ 64
+ 
+ #define RTE_IXGBE_DESCS_PER_LOOP    4
+ 
+ #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
+-#define RTE_IXGBE_RXQ_REARM_THRESH      32
++#define RTE_IXGBE_RXQ_REARM_THRESH      64
+ #define RTE_IXGBE_MAX_RX_BURST          RTE_IXGBE_RXQ_REARM_THRESH
+ #endif
+ 
+diff -ur /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx_vec_common.h ./ixgbe_rxtx_vec_common.h
+--- /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx_vec_common.h	2020-05-26 10:41:39.000000000 -0500
++++ ./ixgbe_rxtx_vec_common.h	2021-03-02 16:02:58.665847978 -0600
+@@ -94,8 +94,10 @@
+ 	 * tx_next_dd - (tx_rs_thresh-1)
+ 	 */
+ 	txep = &txq->sw_ring_v[txq->tx_next_dd - (n - 1)];
+-	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
+-	if (likely(m != NULL)) {
++	//m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
++	//if (likely(m != NULL)) {
++  if (likely(txep[0].mbuf &&
++        (m = rte_pktmbuf_prefree_seg(txep[0].mbuf)) != NULL)) {
+ 		free[0] = m;
+ 		nb_free = 1;
+ 		for (i = 1; i < n; i++) {
+diff -ur /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx_vec_sse.c ./ixgbe_rxtx_vec_sse.c
+--- /home/nbasu4/lines/dpdk-20.05/drivers/net/ixgbe/ixgbe_rxtx_vec_sse.c	2020-05-26 10:41:39.000000000 -0500
++++ ./ixgbe_rxtx_vec_sse.c	2021-03-02 16:03:38.224472062 -0600
+@@ -619,7 +619,21 @@
+ vtx1(volatile union ixgbe_adv_tx_desc *txdp,
+ 		struct rte_mbuf *pkt, uint64_t flags)
+ {
+-	__m128i descriptor = _mm_set_epi64x((uint64_t)pkt->pkt_len << 46 |
++	//__m128i descriptor = _mm_set_epi64x((uint64_t)pkt->pkt_len << 46 |
++	/* Set Packet Length */
++	uint64_t top_flags =  (uint64_t)pkt->pkt_len << 46;
++
++	/* Set IXGBE_TXD_POPTS_IXSM */
++	top_flags |= (pkt->ol_flags & PKT_TX_IP_CKSUM) >> 14;
++	RTE_BUILD_BUG_ON(
++		PKT_TX_IP_CKSUM >> 14 != (uint64_t)IXGBE_TXD_POPTS_IXSM << 40);
++
++	/* Set IXGBE_TXD_POPTS_TXSM */
++	top_flags |= (pkt->ol_flags & PKT_TX_TCP_CKSUM) >> 11;
++	RTE_BUILD_BUG_ON(
++		PKT_TX_TCP_CKSUM >> 11 != (uint64_t)IXGBE_TXD_POPTS_TXSM << 40);
++
++	__m128i descriptor = _mm_set_epi64x(top_flags |
+ 			flags | pkt->data_len,
+ 			pkt->buf_iova + pkt->data_off);
+ 	_mm_store_si128((__m128i *)&txdp->read, descriptor);

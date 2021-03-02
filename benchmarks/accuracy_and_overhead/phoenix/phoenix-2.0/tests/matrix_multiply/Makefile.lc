@@ -84,10 +84,10 @@ $(MM_OBJS): matrix_multiply.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 matrix_multiply.ll: opt_matrix_multiply.ll
-	opt-9 $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
+	$(OPT) $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
 
 opt_matrix_multiply.ll: llvm_matrix_multiply.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 	
@@ -98,10 +98,10 @@ $(MM_SEQ_OBJS): matrix_multiply-seq.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 matrix_multiply-seq.ll: opt_matrix_multiply-seq.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_matrix_multiply-seq.ll: llvm_matrix_multiply-seq.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 	
@@ -112,15 +112,15 @@ $(MM_PTHREAD_OBJS): matrix_multiply-pthread.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 matrix_multiply-pthread.ll: opt_matrix_multiply-pthread.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_matrix_multiply-pthread.ll: llvm_matrix_multiply-pthread.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
 $(INTERMEDIATE_FILES): llvm_%.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 
 
 

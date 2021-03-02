@@ -1,4 +1,4 @@
-CI_LIB_HOME := $(shell pwd)/../../../../
+CI_LIB_HOME := $(shell pwd)/../../../../../
 CI_HOME := $(shell pwd)/../../../
 
 EXTRA_FLAGS ?= -DAVG_STATS
@@ -8,12 +8,14 @@ CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112 -integrated-as -msoft-float -D_G
 CFLAGS += -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
 CFLAGS += -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
 CFLAGS += $(EXTRA_FLAGS)
-CFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME) -I$(CI_LIB_HOME)/../ 
-CFLAGS += -Wl,-rpath=../ -Wl,-rpath=../../
-LDFLAGS := -lm -lpapi -lpfm -L../ -L../../ -lci
+CFLAGS += -I$(CI_LIB_HOME)/src -I$(CI_HOME)
+CFLAGS += -Wl,-rpath=$(CI_LIB_HOME)/lib
+LDFLAGS := -lm -lpapi -lpfm -L$(CI_LIB_HOME)/lib -lci
+
+CI_PASS = $(CI_LIB_HOME)/lib/CompilerInterrupt.so
+CI_LIB = $(CI_LIB_HOME)/lib/libci.so
 
 #************************************ Export variables **********************************#
-export LLVM_BUILD ?= /mnt/nilanjana
 export MACRO_NAME = c.m4.null
 export CC := clang 
 export M4 := m4 -s -Ulen -Uindex
@@ -32,9 +34,8 @@ export FIBER_CONFIG ?= 0
 export CYCLE_INTV ?= 5000
 
 #disable-verify
-export LC_FLAGS = -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file
+export LC_FLAGS = -load $(CI_PASS) -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file
 export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
-#export OPT_FLAGS = -postdomtree -mergereturn -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 
 # Turn off if error needs to be seen on screen
 BUILD_LOG ?= make_log
@@ -45,74 +46,65 @@ REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
 
 default: all
 
-all: libci.so water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity
+all: water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity
 
-ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
-	@gcc -c -fPIC $< -o $@
-
-libci.so: ci_lib.o
-	@gcc -shared $< -o $@
-
-water-nsquared: libci.so
+water-nsquared: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-water-spatial: libci.so
+water-spatial: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-ocean-cp: libci.so
+ocean-cp: $(CI_LIB)
 	@$(MAKE) -C ocean/contiguous_partitions -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-ocean-ncp: libci.so
+ocean-ncp: $(CI_LIB)
 	@$(MAKE) -C ocean/non_contiguous_partitions -f Makefile.int  $@-$(SUFFIX) --no-print-directory$(REDIRECT)
 
-barnes: libci.so
+barnes: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-volrend: libci.so
+volrend: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-fmm: libci.so
+fmm: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-raytrace: libci.so
+raytrace: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-radiosity: libci.so
+radiosity: $(CI_LIB)
 	@$(MAKE) -C $@/glibdumb --no-print-directory $(REDIRECT)
 	@$(MAKE) -C $@/glibps --no-print-directory $(REDIRECT)
 	@$(MAKE) -C $@ -f Makefile.int $@-lc $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
 
-clean: libci-clean water-nsquared-clean water-spatial-clean ocean-cp-clean ocean-ncp-clean barnes-clean volrend-clean fmm-clean raytrace-clean radiosity-clean
+clean: water-nsquared-clean water-spatial-clean ocean-cp-clean ocean-ncp-clean barnes-clean volrend-clean fmm-clean raytrace-clean radiosity-clean
 
-libci-clean:
-	@rm -f ci_lib.o libci.so
-
-water-nsquared-clean: libci-clean
+water-nsquared-clean:
 	@$(MAKE) -C water-nsquared clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-water-spatial-clean: libci-clean
+water-spatial-clean:
 	@$(MAKE) -C water-spatial clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-ocean-cp-clean: libci-clean
+ocean-cp-clean:
 	@$(MAKE) -C ocean/contiguous_partitions clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-ocean-ncp-clean: libci-clean
+ocean-ncp-clean:
 	@$(MAKE) -C ocean/non_contiguous_partitions clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-barnes-clean: libci-clean
+barnes-clean:
 	@$(MAKE) -C barnes clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-volrend-clean: libci-clean
+volrend-clean:
 	@$(MAKE) -C volrend clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-fmm-clean: libci-clean
+fmm-clean:
 	@$(MAKE) -C fmm clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-raytrace-clean: libci-clean
+raytrace-clean:
 	@$(MAKE) -C raytrace clean -f Makefile.int --no-print-directory $(REDIRECT)
 
-radiosity-clean: libci-clean
+radiosity-clean:
 #@$(MAKE) clean -C radiosity/glibdumb --no-print-directory $(REDIRECT)
 #@$(MAKE) clean -C radiosity/glibps --no-print-directory $(REDIRECT)
 	@$(MAKE) -C radiosity clean -f Makefile.int --no-print-directory $(REDIRECT)

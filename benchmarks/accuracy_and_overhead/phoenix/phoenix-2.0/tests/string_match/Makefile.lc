@@ -84,10 +84,10 @@ $(STR_MATCH_OBJS): string_match.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 string_match.ll: opt_string_match.ll
-	opt-9 $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
+	$(OPT) $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
 
 opt_string_match.ll: llvm_string_match.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
@@ -98,10 +98,10 @@ $(STR_MATCH_SEQ_OBJS): string_match-seq.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 string_match-seq.ll: opt_string_match-seq.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_string_match-seq.ll: llvm_string_match-seq.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 	
@@ -112,13 +112,13 @@ $(STR_MATCH_PTHREAD_OBJS): string_match-pthread.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 string_match-pthread.ll: opt_string_match-pthread.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_string_match-pthread.ll: llvm_string_match-pthread.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 $(INTERMEDIATE_FILES): llvm_%.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 	
 
 

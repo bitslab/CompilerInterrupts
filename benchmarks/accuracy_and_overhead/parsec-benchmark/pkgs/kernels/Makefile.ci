@@ -4,13 +4,15 @@
 #CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
 #CFLAGS := -I../ -I../../
 #LDFLAGS := -lm -static -lpapi -lpfm
-CI_LIB_HOME := $(shell pwd)/../../../../
+CI_LIB_HOME := $(shell pwd)/../../../../../
 CI_HOME := $(shell pwd)/../../../
 
-CXXFLAGS := -Wl,-rpath=../ -Wl,-rpath=../../
-CXXFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME)
+CXXFLAGS := -Wl,-rpath=$(CI_LIB_HOME)/lib
+CXXFLAGS += -I$(CI_LIB_HOME)/src -I$(CI_HOME)
+LDFLAGS := -lm -lpapi -lpfm -L$(CI_LIB_HOME)/lib -lci
 
-LDFLAGS := -lm -lpapi -lpfm -L../../../apps/ -L../../ -lci
+CI_PASS = $(CI_LIB_HOME)/lib/CompilerInterrupt.so
+CI_LIB = $(CI_LIB_HOME)/lib/libci.so
 
 #************************************ Export variables **********************************#
 export LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
@@ -24,10 +26,10 @@ export LDFLAGS
 SUFFIX := ci
 
 # these variables may be exported from outside
-export INST_LEVEL ?= 1
+export INST_LEVEL ?= 2
 export PUSH_INTV ?= 5000
 export CMMT_INTV ?= 1000
-export ALLOWED_DEVIATION ?= 0
+export ALLOWED_DEVIATION ?= 100
 export CLOCK_TYPE ?= 0
 export CONFIG = 2
 export FIBER_CONFIG ?= 0
@@ -35,7 +37,7 @@ export CYCLE_INTV ?= 0
 
 #disable-verify
 
-export CI_PASS_OPT = -load $(LLVM_BUILD_PATH)/lib/LLVMLogicalClock.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE)
+export CI_PASS_OPT = -load $(CI_PASS) -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CONFIG_FILE)
 export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 
 
@@ -48,35 +50,26 @@ REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
 
 default: all
 
-all: libci.so canneal dedup streamcluster
+all: canneal dedup streamcluster
 
-ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
-	@g++ -c -fPIC $< -o $@ $(REDIRECT)
-
-libci.so: ci_lib.o
-	@g++ -shared $< -o $@ $(REDIRECT)
-
-canneal: libci.so
+canneal: $(CI_LIB)
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
-dedup: libci.so
+dedup: $(CI_LIB)
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
-streamcluster: libci.so
+streamcluster: $(CI_LIB)
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
 
-clean: libci-clean canneal-clean dedup-clean streamcluster-clean  
+clean: canneal-clean dedup-clean streamcluster-clean  
 
-libci-clean:
-	@rm -f ci_lib.o libci.so
-
-canneal-clean: libci-clean
+canneal-clean:
 	@$(MAKE) -C canneal/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 
-dedup-clean: libci-clean
+dedup-clean:
 	@$(MAKE) -C dedup/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 
-streamcluster-clean: libci-clean
+streamcluster-clean:
 	@$(MAKE) -C streamcluster/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 

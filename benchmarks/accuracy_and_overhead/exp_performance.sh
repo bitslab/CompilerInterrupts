@@ -3,10 +3,11 @@
 CUR_PATH=`pwd`
 SUB_DIR="${SUB_DIR:-"overhead"}"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
+PLOTS_DIR="$CUR_PATH/plots"
 
 CYCLE="${CYCLE:-5000}"
 THREADS="${THREADS:-"1 32"}"
-CI_SETTINGS="2 12 4 6 10"
+CI_SETTINGS="12 2 6 10 4"
 EXTRA_FLAGS="-DAVG_STATS"
 PREFIX=""
 RUNS="${RUNS:-10}"
@@ -153,14 +154,19 @@ perf_overhead_test() {
 
 # Assumption: Order of benchmarks in all files are the same
 process_perf_data() {
+  mkdir -p $PLOTS_DIR
   for thread in $THREADS; do
+    summary_file="$DIR/overhead-th$thread"
+    plot_file="$PLOTS_DIR/overhead-th$thread.pdf"
+    pthread_file="$DIR/pthread-th$thread"
+    gawk 'BEGIN {print "Application"} {print $1}' $pthread_file > $summary_file
+
     for ci_setting in $CI_SETTINGS; do
       ci_str=$(get_ci_str_in_lower_case $ci_setting)
       ci_file="$DIR/${ci_str}-th$thread"
-      pthread_file="$DIR/pthread-th$thread"
       ofile="$DIR/overhead-${ci_str}-th$thread"
 
-      printf "${GREEN}Generating overhead file $ofile from $pthread_file & $ci_file\n${NC}"
+      #printf "${GREEN}Generating overhead file $ofile from $pthread_file & $ci_file\n${NC}"
       gawk 'ARGIND==1 {bench[$1]=$2}
           ARGIND==2 {
             if(bench[$1])
@@ -168,8 +174,24 @@ process_perf_data() {
             else
               printf("%s\t%0.2f%\n", $1, 0); 
           }' \
-      $pthread_file $ci_file | tee $ofile
+      $pthread_file $ci_file > $ofile
+
+      gawk -v str=$(get_ci_str $ci_setting) \
+        'ARGIND==1 {bench[$1]=$2}
+         ARGIND==2 && FNR==1 { printf("%s\t%s\n", $0, str) }
+         ARGIND==2 && FNR>1 {
+            if(bench[$1])
+              printf("%s\t%0.2f\n", $0, bench[$1]);
+            else
+              printf("%s\t%0.2f\n", $0, 0);
+         }' \
+      $ofile $summary_file > tmp; 
+      mv tmp $summary_file
     done
+
+    gnuplot -e "ofile='$plot_file'" -e "ifile='$summary_file'" plot_overhead.gp
+    printf "${GREEN}Generated summary overhead data in $summary_file & plot in $plot_file\n${NC}"
+    cat $summary_file
   done
 }
 
@@ -197,6 +219,7 @@ process_perf_intv_diff_data() {
   done
 }
 
+mkdir -p $PLOTS_DIR
 benches="$splash2_benches $phoenix_benches $parsec_benches"
 
 # Usage:

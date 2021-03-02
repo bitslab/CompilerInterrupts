@@ -66,6 +66,13 @@ ifeq ($(shell uname -m),x86_64)
 ARCH = -D__x86_64__
 endif
 
+CC := clang-9
+OPT := opt-9
+LLVM_LINK := llvm-link-9
+#CC := /mnt/nilanjana/bin/clang
+#OPT := /mnt/nilanjana/bin/opt
+#LLVM_LINK := /mnt/nilanjana/bin/llvm-link
+
 CFLAGS += -Wall $(ARCH) -O3 -D_GNU_SOURCE
 
 # The $(OS) flag is included here to define the OS-specific constant so that
@@ -93,7 +100,7 @@ SRC_DIR = src
 LIB_DIR = lib
 INC_DIR = include
 TESTS_DIR = tests
-CI_LIB_HOME = $(shell pwd)/../../../../#w.r.t src directory
+CI_LIB_HOME = $(shell pwd)/../../../../../#w.r.t src directory
 CI_HOME = $(shell pwd)/../../../#w.r.t src directory
 
 # these variables may be exported from outside
@@ -107,14 +114,14 @@ FIBER_CONFIG ?= 0
 CONFIG ?= 2
 EXTRA_FLAGS ?= -DAVG_STATS
 #CFLAGS += -g $(EXTRA_FLAGS) -I$(CI_HOME) -I$(CI_LIB_HOME)
-CFLAGS += $(EXTRA_FLAGS) -I$(CI_LIB_HOME) -I$(CI_HOME) -I$(CI_LIB_HOME)/../
+CFLAGS += $(EXTRA_FLAGS) -I$(CI_LIB_HOME)/src -I$(CI_HOME) -I$(CI_LIB_HOME)/../src -I$(CI_HOME)/../
 
-LIBS +=  -Wl,-rpath=./$(LIB_DIR)/ -lci $(EXTRA_LD_FLAGS)
+LIBS +=  -Wl,-rpath=./$(LIB_DIR)/ -L$(CI_LIB_HOME)/../lib/ -Wl,-rpath=$(CI_LIB_HOME)/../lib/ -lci $(EXTRA_LD_FLAGS)
 #LDFLAGS := -lm -static -lpapi
 #disable-verify
-LC_FLAGS =  -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CI_HOME)/lc-config.txt
+LC_FLAGS =  -load $(CI_LIB_HOME)/../lib/CompilerInterrupt.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CI_HOME)/lc-config.txt
 
-SRC_LC_FLAGS = -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CI_HOME)/lc-config.txt
+SRC_LC_FLAGS = -load $(CI_LIB_HOME)/lib/CompilerInterrupt.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file $(CI_HOME)/lc-config.txt
 
 #OPT_FLAGS = -break-crit-edges -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution

@@ -1,4 +1,4 @@
-CI_LIB_HOME := $(shell pwd)/../../../../
+CI_LIB_HOME := $(shell pwd)/../../../../../
 CI_HOME := $(shell pwd)/../../../
 
 EXTRA_FLAGS ?= -DAVG_STATS
@@ -7,13 +7,15 @@ CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112 -integrated-as -msoft-float -D_G
 #-fno-omit-frame-pointer : use this if you need to see more detailed trace for profiling
 CFLAGS += -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
 CFLAGS += -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
-CFLAGS += $(EXTRA_FLAGS) 
-CFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME) -I$(CI_LIB_HOME)/../
-CFLAGS += -Wl,-rpath=../ -Wl,-rpath=../../ -Wl,-rpath=../../../
-LDFLAGS := -lm -lpapi -lpfm -L../ -L../../ -L../../../ -lci
+CFLAGS += $(EXTRA_FLAGS)
+CFLAGS += -I$(CI_LIB_HOME)/src -I$(CI_HOME)
+CFLAGS += -Wl,-rpath=$(CI_LIB_HOME)/lib
+LDFLAGS := -lm -lpapi -lpfm -L$(CI_LIB_HOME)/lib -lci
+
+CI_PASS = $(CI_LIB_HOME)/lib/CompilerInterrupt.so
+CI_LIB = $(CI_LIB_HOME)/lib/libci.so
 
 #************************************ Export variables **********************************#
-export LLVM_BUILD ?= /mnt/nilanjana
 export MACRO_NAME = c.m4.null
 export CC := clang 
 export M4 := m4 -s -Ulen -Uindex
@@ -32,7 +34,7 @@ export FIBER_CONFIG ?= 0
 export CYCLE_INTV ?= 5000
 
 #disable-verify
-export LC_FLAGS = -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file
+export LC_FLAGS = -load $(CI_PASS) -S -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file
 export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 
 # Turn off if error needs to be seen on screen
@@ -40,7 +42,7 @@ BUILD_LOG ?= make_log
 ERROR_LOG ?= make_error
 REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
 
-APPS :=  libci.so radix fft lu-c lu-nc cholesky
+APPS :=  radix fft lu-c lu-nc cholesky
 
 .PHONY: $(APPS) 
 
@@ -48,37 +50,28 @@ default: all
 
 all: $(APPS)
 
-ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
-	@gcc -c -fPIC $< -o $@
-
-libci.so: ci_lib.o
-	@gcc -shared $< -o $@
-
-radix fft cholesky: libci.so
+radix fft cholesky: $(CI_LIB)
 	@$(MAKE) -C $@ -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-lu-c: libci.so
+lu-c: $(CI_LIB)
 	@$(MAKE) -C lu/contiguous_blocks -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-lu-nc: libci.so
+lu-nc: $(CI_LIB)
 	@$(MAKE) -C lu/non_contiguous_blocks -f Makefile.int $@-$(SUFFIX) --no-print-directory $(REDIRECT)
 
-clean: libci-clean radix-clean fft-clean lu-c-clean lu-nc-clean cholesky-clean
+clean: radix-clean fft-clean lu-c-clean lu-nc-clean cholesky-clean
 
-libci-clean:
-	@rm -f ci_lib.o libci.so
-
-radix-clean: libci-clean
+radix-clean:
 	@$(MAKE) -C radix clean-radix-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
 
-fft-clean: libci-clean
+fft-clean:
 	@$(MAKE) -C fft clean-fft-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
 
-lu-c-clean: libci-clean
+lu-c-clean:
 	@$(MAKE) -C lu/contiguous_blocks clean-lu-c-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
 
-lu-nc-clean: libci-clean
+lu-nc-clean:
 	@$(MAKE) -C lu/non_contiguous_blocks clean-lu-nc-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)
 
-cholesky-clean: libci-clean
+cholesky-clean:
 	@$(MAKE) -C cholesky clean-cholesky-$(SUFFIX) -f Makefile.int --no-print-directory $(REDIRECT)

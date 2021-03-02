@@ -154,7 +154,6 @@ int main(int argc, char *argv[])
 
 #ifdef CI_PASS
 	init_stats(0);
-	intvActionHook(0);
 #endif
 	
     	struct timeval  rt_begin, rt_end;

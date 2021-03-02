@@ -32,7 +32,9 @@
 # Note: This Makefile requires GNU make.
 #------------------------------------------------------------------------------
 
-CC = clang-9
+CC := clang-9
+OPT := opt-9
+LLVM_LINK := llvm-link-9
 
 OSTYPE = $(shell uname)
 
@@ -71,7 +73,7 @@ ifeq ($(ARCH1),x86)
 CFLAGS += -m32 -march=i686 -DARCH_x86
 endif
 
-CI_LIB_HOME = $(shell pwd)/../../../../../#w.r.t src directory
+CI_LIB_HOME = $(shell pwd)/../../../../../../#w.r.t src directory
 CI_HOME = $(shell pwd)/../../../../ #w.r.t src directory
 
 LLVM_BUILD ?= /mnt/nilanjana
@@ -80,9 +82,9 @@ PATH_OUT = ./$(OSTYPE)/
 
 OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 
-CFLAGS += -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -I$(CI_LIB_HOME) -I$(CI_HOME)
+CFLAGS += -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -I$(CI_LIB_HOME)/src -I$(CI_HOME)
 #LIBS = -lm -lpthread -lrt -lcpc
-LIBS = -lm -lpthread -lrt -lpapi -L../../lib/ -Wl,-rpath=./lib/ -lci $(EXTRA_LD_FLAGS)
+LIBS = -lm -lpthread -lrt -lpapi -L../../lib/ -L$(CI_LIB_HOME)/lib -Wl,-rpath=$(CI_LIB_HOME)/lib -lci $(EXTRA_LD_FLAGS)
 
 REV_SEQ_OBJS = reverse_index-seq.o
 REV_PTHREAD_OBJS = reverse_index-pthread.o
@@ -106,16 +108,16 @@ reverse_index: reverse_index-opt.ll
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 reverse_index-opt.ll: reverse_index-all.ll
-	opt-9 -S $(OPT_FLAGS) $^ -o $@
+	$(OPT) -S $(OPT_FLAGS) $^ -o $@
 
 reverse_index-all.ll: $(COM_OBJS) $(REV_OBJS)
-	llvm-link-9 $^ -o $@
+	$(LLVM_LINK) $^ -o $@
 
 $(REV_OBJS): reverseindex.c
-	clang-9 -S -emit-llvm $(CFLAGS) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -o $@ $<
 
 $(COM_OBJS): MapReduceScheduler.c
-	clang-9 -S -emit-llvm $(CFLAGS) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -o $@ $<
 
 clean:
 	rm -f $(PROGS) *.o *.a *~ *.tmp *.bak *.log *.ll

@@ -32,7 +32,9 @@
 # Note: This Makefile requires GNU make.
 #------------------------------------------------------------------------------
 
-CC = clang-9
+CC := clang-9
+OPT := opt-9
+LLVM_LINK := llvm-link-9
 
 OSTYPE = $(shell uname)
 
@@ -85,17 +87,17 @@ CLOCK ?= 1
 FIBER_CONFIG ?= 5
 CONFIG ?= 2
 CYCLE_INTV ?= 0
-CI_LIB_HOME = $(shell pwd)/../../../../../#w.r.t src directory
+CI_LIB_HOME = $(shell pwd)/../../../../../../#w.r.t src directory
 CI_HOME = $(shell pwd)/../../../../#w.r.t src directory
 
 
 OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 
-LC_FLAGS = -load $(LLVM_BUILD)/lib/LLVMLogicalClock.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) 
+LC_FLAGS = -load $(CI_LIB_HOME)/lib/CompilerInterrupt.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) 
 
-CFLAGS += -g -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -I$(CI_HOME) -I$(CI_LIB_HOME)
+CFLAGS += -g -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -I$(CI_HOME) -I$(CI_LIB_HOME)/src
 #LIBS = -lm -lpthread -lrt -lcpc
-LIBS = -lm -lpthread -lrt -lpfm -L./ -lci $(EXTRA_LD_FLAGS) -Wl,-rpath=$(shell pwd)/
+LIBS = -lm -lpthread -lrt -lpfm -L$(CI_LIB_HOME)/lib -Wl,-rpath=$(CI_LIB_HOME)/lib -lci $(EXTRA_LD_FLAGS)
 
 REV_SEQ_OBJS = reverse_index-seq.o
 REV_PTHREAD_OBJS = reverse_index-pthread.o
@@ -103,17 +105,11 @@ REV_OBJS = reverse_index.ll
 COM_OBJS = MapReduceScheduler.ll
 
 #PROGS = reverseindex reverseindex-seq reverseindex-pthread
-PROGS = libci.so reverse_index
+PROGS = reverse_index
 
 .PHONY: default clean
 
-all: $(PROGS)
-
-ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
-	gcc -c -fPIC $(FLAGS_CI) $< -o $@
-
-libci.so: ci_lib.o
-	gcc -shared $< -o $@
+all: $(CI_LIB_HOME)/lib/libci.so $(PROGS)
 
 reverse_index-seq: $(REV_SEQ_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(REV_SEQ_OBJS) $(LIBS)
@@ -125,20 +121,20 @@ reverse_index: reverse_index-lc.ll
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 reverse_index-lc.ll: reverse_index-opt.ll
-	opt-9 $(LC_FLAGS) $^ -o $@
+	$(OPT) $(LC_FLAGS) $^ -o $@
 
 reverse_index-opt.ll: reverse_index-all.ll
-	opt-9 $(OPT_FLAGS) -S $^ -o $@
+	$(OPT) $(OPT_FLAGS) -S $^ -o $@
 
 reverse_index-all.ll: $(COM_OBJS) $(REV_OBJS)
-	llvm-link-9 $^ -o $@
+	$(LLVM_LINK) $^ -o $@
 
 
 $(REV_OBJS): reverseindex.c
-	clang-9 -S -emit-llvm $(CFLAGS) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -o $@ $<
 
 $(COM_OBJS): MapReduceScheduler.c
-	clang-9 -S -emit-llvm $(CFLAGS) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -o $@ $<
 
 clean:
 	rm -f $(PROGS) *.o *.a *~ *.tmp *.bak *.log *.ll

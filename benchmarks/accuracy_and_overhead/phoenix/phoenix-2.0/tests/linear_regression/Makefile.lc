@@ -85,10 +85,10 @@ $(L_REG_OBJS): linear_regression.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 linear_regression.ll: opt_linear_regression.ll
-	opt-9 $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
+	$(OPT) $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
 
 opt_linear_regression.ll: llvm_linear_regression.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
@@ -99,10 +99,10 @@ $(L_REG_SEQ_OBJS): linear_regression-seq.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 linear_regression-seq.ll: opt_linear_regression-seq.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_linear_regression-seq.ll: llvm_linear_regression-seq.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
@@ -113,13 +113,13 @@ $(L_REG_PTHREAD_OBJS): linear_regression-pthread.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 linear_regression-pthread.ll: opt_linear_regression-pthread.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_linear_regression-pthread.ll: llvm_linear_regression-pthread.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 $(INTERMEDIATE_FILES): llvm_%.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 
 
 

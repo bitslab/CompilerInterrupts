@@ -19,9 +19,9 @@ OUTLIER_LOG="${OUTLIER_LOG:-"$DIR/outlier.txt"}"
 OUT_FILE="${OUT_FILE:-"$DIR/out"}"
 LIBCALL_WRAPPER_PATH="$CUR_PATH/../libcall_wrapper.so"
 
-PHOENIX_INPUT_PATH="/local_home/nilanjana/phoenix/"
-PARSEC_INPUT_PATH="/local_home/nilanjana/parsec/"
-SPLASH2_INPUT_PATH="/local_home/nilanjana/splash2/"
+PHOENIX_INPUT_PATH="$CUR_PATH/inputs/phoenix"
+PARSEC_INPUT_PATH="$CUR_PATH/inputs/parsec"
+SPLASH2_INPUT_PATH="$CUR_PATH/inputs/splash2"
 
 OPT_TL=2
 NAIVE_TL=4
@@ -34,7 +34,8 @@ OPT_INTERMEDIATE=12
 NAIVE_INTERMEDIATE=13
 OPT_CYCLES=17
 
-splash2_benches="water-nsquared water-spatial ocean-cp ocean-ncp raytrace radix fft lu-c lu-nc radiosity barnes volrend fmm cholesky"
+#splash2_benches="water-nsquared water-spatial ocean-cp ocean-ncp raytrace radix fft lu-c lu-nc radiosity barnes volrend fmm cholesky"
+splash2_benches="water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity radix fft lu-c lu-nc cholesky"
 phoenix_benches="reverse_index histogram kmeans pca matrix_multiply string_match linear_regression word_count"
 parsec_benches="blackscholes fluidanimate swaptions canneal streamcluster dedup"
 
@@ -76,14 +77,13 @@ get_median_debug() {
 }
 
 get_avg() {
-  num_elem=0
-  for elem in $@; do
-    num_elem=`expr $num_elem + 1`
-    sum_str="$sum_str$elem + "
-  done
-  sum_str="${sum_str:0:${#sum_str}-2}"
-  avg=`echo "scale=2;(($sum_str)/$num_elem)" | bc`
-  echo "Average over $sum_str with $num_elem elements: $avg" >> $CMD_LOG
+  avg=`echo "$@" | awk '{ split($0,elems," "); 
+    len=length(elems)
+    for(i=1;i<=len;i++) {sum+=elems[i]}
+    if(len==0) {print ""}
+    else {printf "%.2f", sum/(i-1)}
+  }'`
+  echo "Average over $@: $avg" >> $CMD_LOG
   echo $avg
 }
 
@@ -525,9 +525,44 @@ build_ci() {
     CI=$5
   fi
 
+  cycle=$CYCLE
+
+  if [ $# -eq 6 ]; then
+    cycle=$6
+  fi
+
   AD=$(get_allowed_dev_setting $CI_SETTING)
 
-  BUILD_PREFIX="ALLOWED_DEVIATION=$AD CLOCK_TYPE=1 PUSH_INTV=$PI CMMT_INTV=$CI CYCLE_INTV=$CYCLE INST_LEVEL=$CI_SETTING EXTRA_FLAGS=\"$EXTRA_FLAGS\""
+  BUILD_PREFIX="ALLOWED_DEVIATION=$AD CLOCK_TYPE=1 PUSH_INTV=$PI CMMT_INTV=$CI CYCLE_INTV=$cycle INST_LEVEL=$CI_SETTING EXTRA_FLAGS=\"$EXTRA_FLAGS\""
+  echo -e "\nBuilding $BENCH for $THREAD thread(s) with $BUILD_PREFIX: " | tee -a $CMD_LOG $BUILD_LOG
+
+  if [ "$BENCH_SUITE" == "splash2" ]; then
+    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.lc $BENCH-clean;"
+    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.lc $BENCH"
+  elif [ "$BENCH_SUITE" == "phoenix" ]; then
+    cmd="make -f Makefile.lc clean >$BUILD_LOG 2>$ERROR_LOG;"
+    cmd=$cmd"$BUILD_PREFIX make -f Makefile.lc >$BUILD_LOG 2>$ERROR_LOG"
+  elif [ "$BENCH_SUITE" == "parsec" ]; then
+    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.ci clean;"
+    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.ci $BENCH"
+  fi
+  run_command $cmd
+
+  popd > /dev/null
+}
+
+build_hwc() {
+  #run periodic
+  BENCH=$1
+  THREAD=$2
+  PI=$3
+
+  set_benchmark_info $BENCH
+
+  pushd $BUILD_DIR > /dev/null
+
+  EXTRA_FLAGS="-DPAPI -DIC_THRESHOLD=$PI"
+  BUILD_PREFIX="EXTRA_FLAGS=\"$EXTRA_FLAGS\""
   echo -e "\nBuilding $BENCH for $THREAD thread(s) with $BUILD_PREFIX: " | tee -a $CMD_LOG $BUILD_LOG
 
   if [ "$BENCH_SUITE" == "splash2" ]; then

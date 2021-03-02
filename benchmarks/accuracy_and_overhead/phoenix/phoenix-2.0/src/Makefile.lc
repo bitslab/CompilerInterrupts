@@ -33,16 +33,7 @@ INTERMEDIATE_FILES := $(patsubst %.c, llvm_%.ll, $(SRCS))
 
 default: all
 
-all: $(HOME)/$(LIB_DIR)/libci.so $(HOME)/$(LIB_DIR)/$(TARGET)
-
-ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
-	gcc -c -fPIC $(FLAGS_CI) $< -o $@
-
-libci.so: ci_lib.o
-	gcc -shared $< -o $@
-
-$(HOME)/$(LIB_DIR)/libci.so: libci.so
-	cp $< $(HOME)/$(LIB_DIR)
+all: $(CI_LIB_HOME)/lib/libci.so $(HOME)/$(LIB_DIR)/$(TARGET)
 
 $(HOME)/$(LIB_DIR)/$(TARGET): $(TARGET)
 	cp $< $(HOME)/$(LIB_DIR)
@@ -59,16 +50,16 @@ lc_all.o: lc_all.ll
 
 lc_all.ll: opt_all.ll
 	echo "COST_FILE_PATH $(COST_FILE_PATH)"
-	opt-9 $(SRC_LC_FLAGS) -defclock=false -out-cost-file $(COST_FILE_PATH)/cost.txt < $< > $@
+	$(OPT) $(SRC_LC_FLAGS) -defclock=false -out-cost-file $(COST_FILE_PATH)/cost.txt < $< > $@
 
 opt_all.ll: llvm_all.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 llvm_all.ll: $(INTERMEDIATE_FILES)
-	llvm-link-9 $^ -o $@
+	$(LLVM_LINK) $^ -o $@
 
 $(INTERMEDIATE_FILES): llvm_%.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 
 clean:
 	rm -f $(HOME)/$(LIB_DIR)/$(TARGET) $(TARGET) $(INTERMEDIATE_FILES) *.a *.so *.o *.ll

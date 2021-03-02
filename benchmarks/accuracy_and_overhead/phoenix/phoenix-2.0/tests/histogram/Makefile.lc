@@ -55,10 +55,10 @@ $(HIST_OBJS): histogram.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 histogram.ll: opt_histogram.ll
-	opt-9 $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
+	$(OPT) $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
 
 opt_histogram.ll: llvm_histogram.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
@@ -69,10 +69,10 @@ $(HIST_SEQ_OBJS): histogram-seq.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 histogram-seq.ll: opt_histogram-seq.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_histogram-seq.ll: llvm_histogram-seq.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
@@ -83,15 +83,15 @@ $(HIST_PTHREAD_OBJS): histogram-pthread.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 histogram-pthread.ll: opt_histogram-pthread.ll
-	opt-9  $(LC_FLAGS) < $< > $@
+	$(OPT)  $(LC_FLAGS) < $< > $@
 
 opt_histogram-pthread.ll: llvm_histogram-pthread.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
 $(INTERMEDIATE_FILES): llvm_%.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 
 clean:
 	rm -f $(PROGS) $(HIST_OBJS) $(HIST_SEQ_OBJS) $(HIST_PTHREAD_OBJS) $(INTERMEDIATE_FILES) *.ll

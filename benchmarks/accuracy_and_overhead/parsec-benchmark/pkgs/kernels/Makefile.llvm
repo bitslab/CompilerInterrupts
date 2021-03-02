@@ -4,12 +4,10 @@
 #CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
 #CFLAGS := $(CFLAGS) $(EXTRA_FLAGS) -I../ -I../../
 #LDFLAGS := -lm -static -lpapi -lpfm
-CI_LIB_HOME := $(shell pwd)/../../../../
+CI_LIB_HOME := $(shell pwd)/../../../../../
 CI_HOME := $(shell pwd)/../../../
 
-CXXFLAGS := -I../../../apps/ -I../../ -Wl,-rpath=../../../apps/ -Wl,-rpath=../../
-CXXFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME)
-
+CXXFLAGS += -I$(CI_LIB_HOME)/src -I$(CI_HOME)
 LDFLAGS := -lm -lpapi -lpfm
 
 #************************************ Export variables **********************************#
@@ -35,32 +33,29 @@ REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
 
 default: all
 
-all: libci.so canneal dedup streamcluster
+all: canneal dedup streamcluster
 
-libci.so: 
-	@$(MAKE) -C ../apps -f Makefile.$(SUFFIX) $@ $(REDIRECT) 
-
-canneal: libci.so
+canneal:
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
-dedup: libci.so
+dedup:
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
-streamcluster: libci.so
+streamcluster:
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
 
-clean: libci-clean canneal-clean dedup-clean streamcluster-clean  
+clean: canneal-clean dedup-clean streamcluster-clean  
 
 libci-clean:
 	@$(MAKE) -C ../apps/ -f Makefile.$(SUFFIX) $@ $(REDIRECT)
 
-canneal-clean: libci-clean
+canneal-clean:
 	@$(MAKE) -C canneal/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 
-dedup-clean: libci-clean
+dedup-clean:
 	@$(MAKE) -C dedup/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 
-streamcluster-clean: libci-clean
+streamcluster-clean:
 	@$(MAKE) -C streamcluster/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 

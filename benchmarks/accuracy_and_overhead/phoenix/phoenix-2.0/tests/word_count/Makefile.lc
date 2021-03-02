@@ -84,13 +84,13 @@ word_count.o: word_count.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 word_count.ll: opt_word_count.ll
-	opt-9 $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
+	$(OPT) $(LC_FLAGS) -in-cost-file ../../src/cost.txt < $< > $@
 
 opt_word_count.ll: llvm_word_count_all.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 llvm_word_count_all.ll: llvm_word_count.ll llvm_sort.ll
-	llvm-link-9 $^ -o $@
+	$(LLVM_LINK) $^ -o $@
 
 
 
@@ -101,10 +101,10 @@ word_count-seq.o: word_count-seq.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 word_count-seq.ll: opt_word_count-seq.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_word_count-seq.ll: llvm_word_count-seq.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 
 
@@ -115,18 +115,18 @@ word_count-pthread.o: word_count-pthread.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj -o $@ $<
 
 word_count-pthread.ll: opt_word_count-pthread.ll
-	opt-9 $(LC_FLAGS) < $< > $@
+	$(OPT) $(LC_FLAGS) < $< > $@
 
 opt_word_count-pthread.ll: llvm_word_count-pthread_all.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 llvm_word_count-pthread_all.ll: llvm_word_count-pthread.ll llvm_sort-pthread.ll
-	llvm-link-9 $^ -o $@
+	$(LLVM_LINK) $^ -o $@
 
 
 
 $(INTERMEDIATE_FILES): llvm_%.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 
 
 

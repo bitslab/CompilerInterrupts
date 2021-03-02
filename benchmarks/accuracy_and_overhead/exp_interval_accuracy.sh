@@ -4,14 +4,15 @@ CUR_PATH=`pwd`
 SUB_DIR="${SUB_DIR:-"intv_accuracy"}"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
 WRITE_DIR=/local_home/nilanjana/temp/$SUB_DIR
+PLOTS_DIR="$CUR_PATH/plots"
 STAT_FILE="$DIR/interval_accuracy_statistics.txt"
 
 CYCLE="${CYCLE:-5000}"
 THREADS="${THREADS:-"1 32"}"
-CI_SETTINGS="2 12 4 6 10"
+CI_SETTINGS="12 2 6 10 4"
 EXTRA_FLAGS="-DINTV_SAMPLING"
 
-#CI_SETTINGS="12"
+#CI_SETTINGS="2 12"
 #THREADS="1"
 
 source $CUR_PATH/include.sh
@@ -37,7 +38,7 @@ emit_interval() {
 
   # Change default file names to meaningful names & move them to configured directory, create cdf & get statistics
   ci_str=$(get_ci_str_in_lower_case $ci_setting)
-  new_file_prefix="$WRITE_DIR/${bench}-th${thread}-${ci_str}-ir_ic_cycle"
+  new_file_prefix="$WRITE_DIR/${bench}-th${thread}-${ci_str}-intervals"
   # Remove old interval accuracy files
   rm -f ${new_file_prefix}*.*
 
@@ -79,6 +80,75 @@ emit_interval() {
   popd > /dev/null
 }
 
+process_data() {
+  thread=$1
+  pctiles_file="$DIR/pctiles-th$thread.txt"
+  accerr_file="$DIR/accerr-th$thread.txt"
+  plot_file="$PLOTS_DIR/accuracy-th$thread.pdf"
+
+  mkdir -p $PLOTS_DIR
+  rm -f $pctiles_file $accerr_file
+
+  # fetch the percentiles
+  for f in $WRITE_DIR/*th${thread}*-intervals.s100; do 
+    gawk -v name=`basename $f` -v cyc=$CYCLE '
+      BEGIN {
+        split("1 5 10 30 50 70 90 95 99",ptiles," "); 
+        p=1;
+        sub(/-th[0-9]*-/,"+",name);
+        sub(/-intervals.s100/,"",name);
+      } 
+      !val[p] && $1+0>=(ptiles[p]+0)/100.0 {val[p]=$2; p++} 
+      END { 
+        for(i=1;i<length(ptiles);i++) { 
+          split(name, tokens, "+");
+          if(ptiles[i]) {print tokens[2],tokens[1],ptiles[i],val[i]-cyc,val[i]}
+        }
+      }' $f >> $pctiles_file
+  done
+
+  # create summary file of percentiles
+  cat $pctiles_file | sort -k1,2 | \
+  gawk '\
+    BEGIN {
+      split("ci-cycles ci coredet cnb naive",colorder," ")
+      split("50 1 5 10 30 70 90 95 99",pctiles," ")
+    }
+    $1 {cols[$1"-"$3]=1}
+    $2 {rows[$2]=1}
+    {vals[$1"-"$3"-"$2]=$4}
+    END {
+      printf("Application\t");
+      for(p=1;p<=length(pctiles);p++) {
+        for(cn=1;cn<=length(colorder);cn++) {
+          printf "%s%s%s\t",colorder[cn], (p>1?"-":""), (p>1?pctiles[p]:"")
+        }
+      }
+      print "";
+      for(row in rows) {
+        printf "%s ",row;
+        for(p=1;p<=length(pctiles);p++) {
+          for(cn=1;cn<=length(colorder);cn++) {
+            val=vals[colorder[cn]"-"pctiles[p]"-"row];
+            if(!val) {val=1000000}
+            printf("%s\t", val);
+          }
+        }
+        print ""; 
+      }
+    }' cycles=$CYCLE \
+  > $accerr_file # first set is for 50th percentile
+
+  # put the benches in correct order
+  benches="$splash2_benches $phoenix_benches $parsec_benches"
+  awk -v apps="$benches" 'BEGIN {split(apps, names, " ");}
+    NR==1 {print} {line[$1]=$0} END {for(n in names){print line[names[n]];}}' $accerr_file > tmp;
+  mv tmp $accerr_file
+
+  gnuplot -e "ofile='$plot_file'" -e "ifile='$accerr_file'" plot_accuracy.gp
+  printf "${GREEN}Accuracy data plotted in $plot_file\n${NC}"
+}
+
 #1 - benchmark name (optional)
 interval_accuracy_test() {
 #THREADS="32"
@@ -94,10 +164,17 @@ interval_accuracy_test() {
         emit_interval $bench $ci_setting $thread
       done
     done
+    #process_data $thread
   done
 }
 
-mkdir -p $WRITE_DIR;
+process_accuracy_data() {
+  for thread in $THREADS; do
+    process_data $thread
+  done
+}
+
+mkdir -p $WRITE_DIR $PLOTS_DIR
 rm -f $STAT_FILE
 
 benches="$splash2_benches $phoenix_benches $parsec_benches"
@@ -125,4 +202,5 @@ fi
 
 interval_accuracy_test $benches
 print_end_notice
+process_accuracy_data
 printf "${GREEN}Interval accuracy files are written to $WRITE_DIR. Statistics are written in $STAT_FILE.\n${NC}"

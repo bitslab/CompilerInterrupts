@@ -2,16 +2,14 @@
 #CFLAGS := -O3 -pthread -D_POSIX_C_SOURCE=200112 -static -integrated-as -msoft-float -D_GNU_SOURCE
 #CFLAGS := $(CFLAGS) -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wdisabled-optimization
 #CFLAGS := $(CFLAGS) -Wpadded -Winline -Wpointer-arith -Wsign-compare -Wendif-labels
-CI_LIB_HOME := $(shell pwd)/../../../../
+CI_LIB_HOME := $(shell pwd)/../../../../../
 CI_HOME := $(shell pwd)/../../../
 
-CXXFLAGS := -I../ -I../../ -Wl,-rpath=../ -Wl,-rpath=../../
-CXXFLAGS += -I$(CI_LIB_HOME) -I$(CI_HOME)
-LDFLAGS := -lm -lpapi -lpfm -L../ -L../../ -lci
+CXXFLAGS += -I$(CI_LIB_HOME)/src -I$(CI_HOME)
+LDFLAGS := -lm -lpapi -lpfm
 
 #************************************ Export variables **********************************#
 export LLVM_SRC_PATH	?= /home/nbasu4/logicalclock/ci-llvm-v9/
-export LLVM_BUILD_PATH 	?= /mnt/nilanjana/
 export CONFIG_FILE 	= $(LLVM_SRC_PATH)/test-suite/lc-config.txt
 export MACRO_NAME = c.m4.null
 export MACROS = $(shell pwd)/../null_macros/$(MACRO_NAME)
@@ -34,35 +32,26 @@ REDIRECT ?= >> $(BUILD_LOG) 2>>$(ERROR_LOG)
 
 default: all
 
-all: libci.so blackscholes fluidanimate swaptions  
+all: blackscholes fluidanimate swaptions  
 
-ci_lib.o: $(CI_LIB_HOME)/ci_lib.c $(CI_LIB_HOME)/ci_lib.h
-	@g++ -c -fPIC $< -o $@ $(REDIRECT)
-
-libci.so: ci_lib.o
-	@g++ -shared $< -o $@ $(REDIRECT)
-
-blackscholes: libci.so
+blackscholes:
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
-fluidanimate: libci.so
+fluidanimate:
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
-swaptions: libci.so
+swaptions:
 	@$(MAKE) -C $@/src -f Makefile.$(SUFFIX) $@_$(SUFFIX) --no-print-directory $(REDIRECT)
 
 
-clean: libci-clean blackscholes-clean fluidanimate-clean swaptions-clean  
+clean: blackscholes-clean fluidanimate-clean swaptions-clean  
 
-libci-clean:
-	@rm -f ci_lib.o libci.so
-
-blackscholes-clean: libci-clean
+blackscholes-clean:
 	@$(MAKE) -C blackscholes/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 
-fluidanimate-clean: libci-clean
+fluidanimate-clean:
 	@$(MAKE) -C fluidanimate/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 
-swaptions-clean: libci-clean
+swaptions-clean:
 	@$(MAKE) -C swaptions/src clean -f Makefile.$(SUFFIX) --no-print-directory $(REDIRECT)
 

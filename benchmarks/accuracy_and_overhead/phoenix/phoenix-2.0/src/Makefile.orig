@@ -43,13 +43,13 @@ phoenix.o: opt_phoenix.ll
 	$(LLVM_BUILD)/bin/llc -relocation-model=pic -filetype=obj $< -o $@
 
 opt_phoenix.ll: llvm_phoenix.ll
-	opt-9 $(OPT_FLAGS) -S < $< > $@
+	$(OPT) $(OPT_FLAGS) -S < $< > $@
 
 llvm_phoenix.ll: $(INTERMEDIATE_FILES)
-	llvm-link-9 $^ -o $@
+	$(LLVM_LINK) $^ -o $@
 
 $(INTERMEDIATE_FILES): %.ll : %.c
-	clang-9 -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
+	$(CC) -S -emit-llvm $(CFLAGS) -I$(HOME)/$(INC_DIR) -o $@ $<
 
 clean:
 	rm -f $(HOME)/$(LIB_DIR)/$(TARGET) $(TARGET) $(OBJS) $(INTERMEDIATE_FILES) *.a *.so *.o *.ll

@@ -1,0 +1,291 @@
+CI version of app is running
+** cpuminer-multi 1.3.7 by tpruvot@github **
+BTC donation address: 1FhDPLPpw18X4srecguG3MxJYe4a1JsZnd (tpruvot)
+
+CI version of app is running
+CI version of app is running
+[2020-09-28 22:44:03] Starting Stratum on stratum+tcp://connect.pool.bitcoin.com:3333[0m
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+CI version of app is running
+[2020-09-28 22:44:03] 56 miner threads started, using 'sha256d' algorithm.[0m
+CI version of app is running
+[2020-09-28 22:44:07][33m Stratum difficulty set to 131072[0m
+[2020-09-28 22:44:07][36m sha256d block 650465, diff 19314656404097.000[0m
+[2020-09-28 22:44:07] CPU #0: 4861 kH/s (ci_count:529876)[0m
+[2020-09-28 22:44:07] CPU #1: 4842 kH/s (ci_count:533379)[0m
+[2020-09-28 22:44:07] CPU #2: 4847 kH/s (ci_count:534126)[0m
+[2020-09-28 22:44:07] CPU #3: 4838 kH/s (ci_count:536509)[0m
+[2020-09-28 22:44:07] CPU #4: 4822 kH/s (ci_count:539701)[0m
+[2020-09-28 22:44:07] CPU #5: 4823 kH/s (ci_count:540771)[0m
+[2020-09-28 22:44:07] CPU #6: 4814 kH/s (ci_count:543035)[0m
+[2020-09-28 22:44:07] CPU #7: 4815 kH/s (ci_count:544223)[0m
+[2020-09-28 22:44:07] CPU #9: 4804 kH/s (ci_count:548218)[0m
+[2020-09-28 22:44:07] CPU #10: 4794 kH/s (ci_count:550837)[0m
+[2020-09-28 22:44:07] CPU #11: 4791 kH/s (ci_count:552370)[0m
+[2020-09-28 22:44:07] CPU #12: 4779 kH/s (ci_count:555045)[0m
+[2020-09-28 22:44:07] CPU #13: 4780 kH/s (ci_count:556122)[0m
+[2020-09-28 22:44:07] CPU #14: 4774 kH/s (ci_count:557823)[0m
+[2020-09-28 22:44:07] CPU #15: 4782 kH/s (ci_count:558112)[0m
+[2020-09-28 22:44:07] CPU #16: 4765 kH/s (ci_count:561717)[0m
+[2020-09-28 22:44:07] CPU #17: 4768 kH/s (ci_count:562685)[0m
+[2020-09-28 22:44:07] CPU #8: 4750 kH/s (ci_count:564885)[0m
+[2020-09-28 22:44:07] CPU #18: 4750 kH/s (ci_count:566018)[0m
+[2020-09-28 22:44:07] CPU #19: 4746 kH/s (ci_count:567720)[0m
+[2020-09-28 22:44:07] CPU #21: 4749 kH/s (ci_count:569807)[0m
+[2020-09-28 22:44:07] CPU #20: 4738 kH/s (ci_count:569936)[0m
+[2020-09-28 22:44:07] CPU #22: 4748 kH/s (ci_count:571195)[0m
+[2020-09-28 22:44:07] CPU #23: 4745 kH/s (ci_count:572828)[0m
+[2020-09-28 22:44:07] CPU #24: 4730 kH/s (ci_count:575855)[0m
+[2020-09-28 22:44:07] CPU #25: 4737 kH/s (ci_count:576183)[0m
+[2020-09-28 22:44:07] CPU #26: 4730 kH/s (ci_count:578068)[0m
+[2020-09-28 22:44:07] CPU #27: 4743 kH/s (ci_count:578079)[0m
+[2020-09-28 22:44:07] CPU #28: 4569 kH/s (ci_count:600803)[0m
+[2020-09-28 22:44:08] CPU #30: 4567 kH/s (ci_count:603746)[0m
+[2020-09-28 22:44:08] CPU #29: 4556 kH/s (ci_count:603880)[0m
+[2020-09-28 22:44:08] CPU #31: 4563 kH/s (ci_count:605687)[0m
+[2020-09-28 22:44:08] CPU #32: 4558 kH/s (ci_count:607595)[0m
+[2020-09-28 22:44:08] CPU #33: 4562 kH/s (ci_count:608196)[0m
+[2020-09-28 22:44:08] CPU #34: 4561 kH/s (ci_count:609719)[0m
+[2020-09-28 22:44:08] CPU #35: 4565 kH/s (ci_count:610442)[0m
+[2020-09-28 22:44:08] CPU #37: 4565 kH/s (ci_count:612896)[0m
+[2020-09-28 22:44:08] CPU #38: 4559 kH/s (ci_count:615143)[0m
+[2020-09-28 22:44:08] CPU #39: 4563 kH/s (ci_count:615774)[0m
+[2020-09-28 22:44:08] CPU #36: 4571 kH/s (ci_count:616979)[0m
+[2020-09-28 22:44:08] CPU #40: 4557 kH/s (ci_count:617773)[0m
+[2020-09-28 22:44:08] CPU #41: 4560 kH/s (ci_count:618557)[0m
+[2020-09-28 22:44:08] CPU #43: 4553 kH/s (ci_count:621928)[0m
+[2020-09-28 22:44:08] CPU #42: 4542 kH/s (ci_count:622108)[0m
+[2020-09-28 22:44:08] CPU #44: 4540 kH/s (ci_count:625025)[0m
+[2020-09-28 22:44:08] CPU #45: 4547 kH/s (ci_count:625329)[0m
+[2020-09-28 22:44:08] CPU #46: 4534 kH/s (ci_count:628405)[0m
+[2020-09-28 22:44:08] CPU #47: 4535 kH/s (ci_count:629472)[0m
+[2020-09-28 22:44:08] CPU #48: 4535 kH/s (ci_count:630620)[0m
+[2020-09-28 22:44:08] CPU #49: 4542 kH/s (ci_count:631067)[0m
+[2020-09-28 22:44:08] CPU #50: 4547 kH/s (ci_count:631780)[0m
+[2020-09-28 22:44:08] CPU #51: 4543 kH/s (ci_count:633626)[0m
+[2020-09-28 22:44:08] CPU #52: 4532 kH/s (ci_count:636113)[0m
+[2020-09-28 22:44:08] CPU #53: 4537 kH/s (ci_count:636819)[0m
+[2020-09-28 22:44:08] CPU #54: 4526 kH/s (ci_count:639164)[0m
+[2020-09-28 22:44:08] CPU #55: 4538 kH/s (ci_count:639178)[0m
+[2020-09-28 22:44:24] CPU #2: 4569 kH/s (ci_count:21390906)[0m
+[2020-09-28 22:44:24] CPU #3: 4568 kH/s (ci_count:21396756)[0m
+[2020-09-28 22:44:24] CPU #4: 4565 kH/s (ci_count:21410235)[0m
+[2020-09-28 22:44:24] CPU #8: 4569 kH/s (ci_count:21419689)[0m
+[2020-09-28 22:44:24] CPU #10: 4563 kH/s (ci_count:21432137)[0m
+[2020-09-28 22:44:24] CPU #7: 4561 kH/s (ci_count:21434167)[0m
+[2020-09-28 22:44:24] CPU #6: 4561 kH/s (ci_count:21435275)[0m
+[2020-09-28 22:44:24] CPU #0: 4558 kH/s (ci_count:21436147)[0m
+[2020-09-28 22:44:24] CPU #1: 4556 kH/s (ci_count:21446018)[0m
+[2020-09-28 22:44:24] CPU #30: 4571 kH/s (ci_count:21449411)[0m
+[2020-09-28 22:44:24] CPU #13: 4560 kH/s (ci_count:21450498)[0m
+[2020-09-28 22:44:24] CPU #12: 4559 kH/s (ci_count:21455011)[0m
+[2020-09-28 22:44:24] CPU #9: 4557 kH/s (ci_count:21456451)[0m
+[2020-09-28 22:44:24] CPU #31: 4568 kH/s (ci_count:21466817)[0m
+[2020-09-28 22:44:24] CPU #11: 4555 kH/s (ci_count:21471219)[0m
+[2020-09-28 22:44:24] CPU #5: 4552 kH/s (ci_count:21474166)[0m
+[2020-09-28 22:44:24] CPU #28: 4565 kH/s (ci_count:21475093)[0m
+[2020-09-28 22:44:24] CPU #32: 4565 kH/s (ci_count:21479916)[0m
+[2020-09-28 22:44:24] CPU #36: 4565 kH/s (ci_count:21491518)[0m
+[2020-09-28 22:44:24] CPU #35: 4562 kH/s (ci_count:21494202)[0m
+[2020-09-28 22:44:24] CPU #38: 4563 kH/s (ci_count:21495143)[0m
+[2020-09-28 22:44:24] CPU #29: 4559 kH/s (ci_count:21501454)[0m
+[2020-09-28 22:44:24] CPU #34: 4561 kH/s (ci_count:21502432)[0m
+[2020-09-28 22:44:24] CPU #40: 4561 kH/s (ci_count:21509488)[0m
+[2020-09-28 22:44:24] CPU #37: 4559 kH/s (ci_count:21512546)[0m
+[2020-09-28 22:44:24] CPU #41: 4560 kH/s (ci_count:21513471)[0m
+[2020-09-28 22:44:24] CPU #15: 4545 kH/s (ci_count:21521902)[0m
+[2020-09-28 22:44:24] CPU #17: 4544 kH/s (ci_count:21533174)[0m
+[2020-09-28 22:44:24] CPU #33: 4553 kH/s (ci_count:21533270)[0m
+[2020-09-28 22:44:24] CPU #23: 4545 kH/s (ci_count:21534951)[0m
+[2020-09-28 22:44:24] CPU #22: 4545 kH/s (ci_count:21536852)[0m
+[2020-09-28 22:44:24] CPU #21: 4542 kH/s (ci_count:21548069)[0m
+[2020-09-28 22:44:24] CPU #18: 4539 kH/s (ci_count:21555334)[0m
+[2020-09-28 22:44:24] CPU #39: 4550 kH/s (ci_count:21557590)[0m
+[2020-09-28 22:44:24] CPU #24: 4539 kH/s (ci_count:21568841)[0m
+[2020-09-28 22:44:24] CPU #14: 4535 kH/s (ci_count:21568926)[0m
+[2020-09-28 22:44:24] CPU #20: 4536 kH/s (ci_count:21573725)[0m
+[2020-09-28 22:44:24] CPU #43: 4546 kH/s (ci_count:21582284)[0m
+[2020-09-28 22:44:24] CPU #16: 4531 kH/s (ci_count:21589637)[0m
+[2020-09-28 22:44:24] CPU #27: 4534 kH/s (ci_count:21594193)[0m
+[2020-09-28 22:44:24] CPU #51: 4545 kH/s (ci_count:21597771)[0m
+[2020-09-28 22:44:24] CPU #50: 4544 kH/s (ci_count:21600210)[0m
+[2020-09-28 22:44:24] CPU #45: 4542 kH/s (ci_count:21600692)[0m
+[2020-09-28 22:44:24] CPU #25: 4529 kH/s (ci_count:21611632)[0m
+[2020-09-28 22:44:24] CPU #26: 4530 kH/s (ci_count:21612454)[0m
+[2020-09-28 22:44:24] CPU #49: 4540 kH/s (ci_count:21616193)[0m
+[2020-09-28 22:44:24] CPU #46: 4539 kH/s (ci_count:21621172)[0m
+[2020-09-28 22:44:24] CPU #42: 4536 kH/s (ci_count:21626340)[0m
+[2020-09-28 22:44:24] CPU #52: 4538 kH/s (ci_count:21630863)[0m
+[2020-09-28 22:44:24] CPU #48: 4536 kH/s (ci_count:21636387)[0m
+[2020-09-28 22:44:24] CPU #44: 4533 kH/s (ci_count:21644715)[0m
+[2020-09-28 22:44:24] CPU #55: 4533 kH/s (ci_count:21657213)[0m
+[2020-09-28 22:44:24] CPU #53: 4531 kH/s (ci_count:21667418)[0m
+[2020-09-28 22:44:24] CPU #54: 4527 kH/s (ci_count:21685216)[0m
+[2020-09-28 22:44:24] CPU #19: 4495 kH/s (ci_count:21761813)[0m
+[2020-09-28 22:44:24] CPU #47: 4495 kH/s (ci_count:21827918)[0m
+[2020-09-28 22:44:41] CPU #2: 4570 kH/s (ci_count:42812994)[0m
+[2020-09-28 22:44:41] CPU #3: 4566 kH/s (ci_count:42837952)[0m
+[2020-09-28 22:44:41] CPU #4: 4564 kH/s (ci_count:42861859)[0m
+[2020-09-28 22:44:41] CPU #30: 4570 kH/s (ci_count:42873346)[0m
+[2020-09-28 22:44:41] CPU #8: 4562 kH/s (ci_count:42880681)[0m
+[2020-09-28 22:44:41] CPU #10: 4562 kH/s (ci_count:42895575)[0m
+[2020-09-28 22:44:41] CPU #6: 4561 kH/s (ci_count:42902650)[0m
+[2020-09-28 22:44:41] CPU #31: 4566 kH/s (ci_count:42910054)[0m
+[2020-09-28 22:44:41] CPU #7: 4559 kH/s (ci_count:42912403)[0m
+[2020-09-28 22:44:41] CPU #0: 4557 kH/s (ci_count:42922633)[0m
+[2020-09-28 22:44:41] CPU #12: 4561 kH/s (ci_count:42922874)[0m
+[2020-09-28 22:44:41] CPU #13: 4560 kH/s (ci_count:42923112)[0m
+[2020-09-28 22:44:41] CPU #1: 4557 kH/s (ci_count:42932948)[0m
+[2020-09-28 22:44:41] CPU #32: 4564 kH/s (ci_count:42934288)[0m
+[2020-09-28 22:44:41] CPU #28: 4562 kH/s (ci_count:42938754)[0m
+[2020-09-28 22:44:41] CPU #9: 4555 kH/s (ci_count:42950421)[0m
+[2020-09-28 22:44:41] CPU #38: 4563 kH/s (ci_count:42954690)[0m
+[2020-09-28 22:44:41] CPU #35: 4560 kH/s (ci_count:42964244)[0m
+[2020-09-28 22:44:41] CPU #11: 4555 kH/s (ci_count:42967443)[0m
+[2020-09-28 22:44:41] CPU #34: 4560 kH/s (ci_count:42972335)[0m
+[2020-09-28 22:44:41] CPU #40: 4560 kH/s (ci_count:42980301)[0m
+[2020-09-28 22:44:41] CPU #29: 4558 kH/s (ci_count:42982968)[0m
+[2020-09-28 22:44:41] CPU #36: 4556 kH/s (ci_count:42983983)[0m
+[2020-09-28 22:44:41] CPU #41: 4560 kH/s (ci_count:42987093)[0m
+[2020-09-28 22:44:41] CPU #5: 4551 kH/s (ci_count:42989762)[0m
+[2020-09-28 22:44:41] CPU #37: 4557 kH/s (ci_count:42999271)[0m
+[2020-09-28 22:44:41] CPU #33: 4552 kH/s (ci_count:43041609)[0m
+[2020-09-28 22:44:41] CPU #15: 4544 kH/s (ci_count:43067477)[0m
+[2020-09-28 22:44:41] CPU #39: 4550 kH/s (ci_count:43077847)[0m
+[2020-09-28 22:44:41] CPU #23: 4543 kH/s (ci_count:43084813)[0m
+[2020-09-28 22:44:41] CPU #22: 4544 kH/s (ci_count:43085785)[0m
+[2020-09-28 22:44:41] CPU #17: 4542 kH/s (ci_count:43090099)[0m
+[2020-09-28 22:44:41] CPU #18: 4542 kH/s (ci_count:43114578)[0m
+[2020-09-28 22:44:41] CPU #43: 4545 kH/s (ci_count:43123860)[0m
+[2020-09-28 22:44:41] CPU #21: 4536 kH/s (ci_count:43132186)[0m
+[2020-09-28 22:44:41] CPU #51: 4543 kH/s (ci_count:43148901)[0m
+[2020-09-28 22:44:41] CPU #50: 4544 kH/s (ci_count:43149036)[0m
+[2020-09-28 22:44:41] CPU #45: 4541 kH/s (ci_count:43163318)[0m
+[2020-09-28 22:44:41] CPU #20: 4535 kH/s (ci_count:43165330)[0m
+[2020-09-28 22:44:41] CPU #14: 4531 kH/s (ci_count:43177024)[0m
+[2020-09-28 22:44:41] CPU #46: 4541 kH/s (ci_count:43182402)[0m
+[2020-09-28 22:44:41] CPU #24: 4527 kH/s (ci_count:43198039)[0m
+[2020-09-28 22:44:41] CPU #16: 4529 kH/s (ci_count:43208527)[0m
+[2020-09-28 22:44:41] CPU #49: 4534 kH/s (ci_count:43211298)[0m
+[2020-09-28 22:44:41] CPU #27: 4527 kH/s (ci_count:43223704)[0m
+[2020-09-28 22:44:41] CPU #42: 4533 kH/s (ci_count:43228277)[0m
+[2020-09-28 22:44:41] CPU #48: 4534 kH/s (ci_count:43230728)[0m
+[2020-09-28 22:44:41] CPU #26: 4526 kH/s (ci_count:43246074)[0m
+[2020-09-28 22:44:41] CPU #52: 4529 kH/s (ci_count:43251606)[0m
+[2020-09-28 22:44:41] CPU #25: 4524 kH/s (ci_count:43252317)[0m
+[2020-09-28 22:44:41] CPU #44: 4531 kH/s (ci_count:43256212)[0m
+[2020-09-28 22:44:41] CPU #55: 4525 kH/s (ci_count:43293510)[0m
+[2020-09-28 22:44:41] CPU #53: 4526 kH/s (ci_count:43300931)[0m
+[2020-09-28 22:44:41] CPU #54: 4522 kH/s (ci_count:43336606)[0m
+[2020-09-28 22:44:41] CPU #19: 4488 kH/s (ci_count:43577505)[0m
+[2020-09-28 22:44:41] CPU #47: 4487 kH/s (ci_count:43646198)[0m
+[2020-09-28 22:44:57] CPU #2: 4568 kH/s (ci_count:64254710)[0m
+[2020-09-28 22:44:57] CPU #3: 4566 kH/s (ci_count:64290977)[0m
+[2020-09-28 22:44:57] CPU #30: 4567 kH/s (ci_count:64317961)[0m
+[2020-09-28 22:44:57] CPU #4: 4563 kH/s (ci_count:64327455)[0m
+[2020-09-28 22:44:57] CPU #8: 4560 kH/s (ci_count:64359896)[0m
+[2020-09-28 22:44:57] CPU #31: 4565 kH/s (ci_count:64363986)[0m
+[2020-09-28 22:44:57] CPU #10: 4561 kH/s (ci_count:64370409)[0m
+[2020-09-28 22:44:57] CPU #6: 4560 kH/s (ci_count:64382525)[0m
+[2020-09-28 22:44:57] CPU #32: 4564 kH/s (ci_count:64396685)[0m
+[2020-09-28 22:44:57] CPU #12: 4560 kH/s (ci_count:64400338)[0m
+[2020-09-28 22:44:57] CPU #13: 4560 kH/s (ci_count:64403527)[0m
+[2020-09-28 22:44:57] CPU #7: 4556 kH/s (ci_count:64407817)[0m
+[2020-09-28 22:44:57] CPU #28: 4562 kH/s (ci_count:64410125)[0m
+[2020-09-28 22:44:57] CPU #38: 4562 kH/s (ci_count:64421752)[0m
+[2020-09-28 22:44:57] CPU #0: 4555 kH/s (ci_count:64422552)[0m
+[2020-09-28 22:44:57] CPU #1: 4555 kH/s (ci_count:64437327)[0m
+[2020-09-28 22:44:58] CPU #35: 4558 kH/s (ci_count:64453902)[0m
+[2020-09-28 22:44:58] CPU #34: 4559 kH/s (ci_count:64454691)[0m
+[2020-09-28 22:44:58] CPU #40: 4560 kH/s (ci_count:64458568)[0m
+[2020-09-28 22:44:58] CPU #9: 4553 kH/s (ci_count:64461381)[0m
+[2020-09-28 22:44:58] CPU #41: 4560 kH/s (ci_count:64467329)[0m
+[2020-09-28 22:44:58] CPU #11: 4553 kH/s (ci_count:64481210)[0m
+[2020-09-28 22:44:58] CPU #29: 4555 kH/s (ci_count:64483477)[0m
+[2020-09-28 22:44:58] CPU #36: 4553 kH/s (ci_count:64494174)[0m
+[2020-09-28 22:44:58] CPU #37: 4555 kH/s (ci_count:64503579)[0m
+[2020-09-28 22:44:58] CPU #5: 4548 kH/s (ci_count:64523062)[0m
+[2020-09-28 22:44:58] CPU #33: 4551 kH/s (ci_count:64561816)[0m
+[2020-09-28 22:44:58] CPU #39: 4549 kH/s (ci_count:64607682)[0m
+[2020-09-28 22:44:58] CPU #15: 4543 kH/s (ci_count:64627867)[0m
+[2020-09-28 22:44:58] CPU #23: 4543 kH/s (ci_count:64641784)[0m
+[2020-09-28 22:44:58] CPU #22: 4543 kH/s (ci_count:64643076)[0m
+[2020-09-28 22:44:58] CPU #17: 4542 kH/s (ci_count:64652549)[0m
+[2020-09-28 22:44:58] CPU #43: 4543 kH/s (ci_count:64681008)[0m
+[2020-09-28 22:44:58] CPU #18: 4538 kH/s (ci_count:64699930)[0m
+[2020-09-28 22:44:58] CPU #50: 4543 kH/s (ci_count:64707034)[0m
+[2020-09-28 22:44:58] CPU #51: 4543 kH/s (ci_count:64707435)[0m
+[2020-09-28 22:44:58] CPU #45: 4542 kH/s (ci_count:64729604)[0m
+[2020-09-28 22:44:58] CPU #21: 4534 kH/s (ci_count:64733715)[0m
+[2020-09-28 22:44:58] CPU #46: 4537 kH/s (ci_count:64771303)[0m
+[2020-09-28 22:44:58] CPU #20: 4533 kH/s (ci_count:64772512)[0m
+[2020-09-28 22:44:58] CPU #14: 4530 kH/s (ci_count:64796573)[0m
+[2020-09-28 22:44:58] CPU #49: 4532 kH/s (ci_count:64824849)[0m
+[2020-09-28 22:44:58] CPU #16: 4529 kH/s (ci_count:64836466)[0m
+[2020-09-28 22:44:58] CPU #48: 4533 kH/s (ci_count:64840088)[0m
+[2020-09-28 22:44:58] CPU #42: 4532 kH/s (ci_count:64841612)[0m
+[2020-09-28 22:44:58] CPU #24: 4524 kH/s (ci_count:64847142)[0m
+[2020-09-28 22:44:58] CPU #44: 4530 kH/s (ci_count:64877674)[0m
+[2020-09-28 22:44:58] CPU #27: 4521 kH/s (ci_count:64887496)[0m
+[2020-09-28 22:44:58] CPU #52: 4525 kH/s (ci_count:64897324)[0m
+[2020-09-28 22:44:58] CPU #26: 4523 kH/s (ci_count:64901910)[0m
+[2020-09-28 22:44:58] CPU #25: 4523 kH/s (ci_count:64907941)[0m
+[2020-09-28 22:44:58] CPU #53: 4524 kH/s (ci_count:64949996)[0m
+[2020-09-28 22:44:58] CPU #55: 4519 kH/s (ci_count:64965989)[0m
+[2020-09-28 22:44:58] CPU #54: 4519 kH/s (ci_count:65008379)[0m
+[2020-09-28 22:44:58] CPU #19: 4486 kH/s (ci_count:65411009)[0m
+[2020-09-28 22:44:58] CPU #47: 4485 kH/s (ci_count:65483425)[0m

@@ -1,0 +1,148 @@
+diff --git a/Makefile.lc b/Makefile.lc
+index 0090400..79873a0 100644
+--- a/Makefile.lc
++++ b/Makefile.lc
+@@ -123,7 +123,7 @@ am__cpuminer_SOURCES_DIST = cpu-miner.c util.c api.c sysinfos.c \
+ 	sha3/sph_hamsi.c sha3/sph_haval.c sha3/sph_panama.c \
+ 	sha3/sph_radiogatun.c sha3/sph_ripemd.c sha3/sph_sha2.c \
+ 	sha3/sph_sha2big.c sha3/sph_shabal.c sha3/sph_whirlpool.c \
+-	sha3/sph_tiger.c sha3/gost_streebog.c crypto/blake2s.c \
++	sha3/sph_tiger.c crypto/blake2s.c \
+ 	crypto/blake2b.c crypto/oaes_lib.c crypto/c_keccak.c \
+ 	crypto/c_groestl.c crypto/c_blake256.c crypto/c_jh.c \
+ 	crypto/c_skein.c crypto/hash.c crypto/aesb.c lyra2/Lyra2.c \
+@@ -186,7 +186,6 @@ am_cpuminer_OBJECTS = cpuminer-cpu-miner.$(OBJEXT) \
+ 	sha3/cpuminer-sph_shabal.$(OBJEXT) \
+ 	sha3/cpuminer-sph_whirlpool.$(OBJEXT) \
+ 	sha3/cpuminer-sph_tiger.$(OBJEXT) \
+-	sha3/cpuminer-gost_streebog.$(OBJEXT) \
+ 	crypto/cpuminer-blake2s.$(OBJEXT) \
+ 	crypto/cpuminer-blake2b.$(OBJEXT) \
+ 	crypto/cpuminer-oaes_lib.$(OBJEXT) \
+@@ -433,7 +432,7 @@ CCASDEPMODE = depmode=gcc3
+ CCASFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg
+ CCDEPMODE = depmode=gcc3
+ #CFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include
+-CFLAGS = -O2 -DLC -Ofast -flto -fuse-linker-plugin -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include
++CFLAGS = -O3 -DCI -Ofast -flto -fuse-linker-plugin -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include -I./
+ CPP = gcc -E
+ CPPFLAGS =   -Iyes/include -Iyes/include
+ INST_LEVEL ?= 2
+@@ -470,7 +469,7 @@ LIBCURL = -lcurl -lz -lssl -lcrypto
+ LIBCURL_CFLAGS =  -Iyes/include -Iyes/include
+ LIBCURL_CPPFLAGS =  -Iyes/include -Iyes/include
+ LIBOBJS = 
+-LIBS = -lz 
++LIBS = -lz -L./ -lci -Wl,-rpath=./
+ LTLIBOBJS = 
+ MAINT = #
+ MAKEINFO = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing makeinfo
+@@ -563,7 +562,7 @@ cpuminer_SOURCES = cpu-miner.c util.c api.c sysinfos.c uint256.cpp \
+ 	sha3/sph_haval.c sha3/sph_panama.c sha3/sph_radiogatun.c \
+ 	sha3/sph_ripemd.c sha3/sph_sha2.c sha3/sph_sha2big.c \
+ 	sha3/sph_shabal.c sha3/sph_whirlpool.c sha3/sph_tiger.c \
+-	sha3/gost_streebog.c crypto/blake2s.c crypto/blake2b.c \
++	crypto/blake2s.c crypto/blake2b.c \
+ 	crypto/oaes_lib.c crypto/c_keccak.c crypto/c_groestl.c \
+ 	crypto/c_blake256.c crypto/c_jh.c crypto/c_skein.c \
+ 	crypto/hash.c crypto/aesb.c lyra2/Lyra2.c lyra2/Sponge.c \
+@@ -749,8 +748,6 @@ sha3/cpuminer-sph_whirlpool.$(OBJEXT): sha3/$(am__dirstamp) \
+ 	sha3/$(DEPDIR)/$(am__dirstamp)
+ sha3/cpuminer-sph_tiger.$(OBJEXT): sha3/$(am__dirstamp) \
+ 	sha3/$(DEPDIR)/$(am__dirstamp)
+-sha3/cpuminer-gost_streebog.$(OBJEXT): sha3/$(am__dirstamp) \
+-	sha3/$(DEPDIR)/$(am__dirstamp)
+ crypto/$(am__dirstamp):
+ 	@$(MKDIR_P) crypto
+ 	@: > crypto/$(am__dirstamp)
+@@ -973,6 +970,14 @@ mostlyclean-compile:
+ 	-rm -f lyra2/*.$(OBJEXT)
+ 	-rm -f sha3/*.$(OBJEXT)
+ 	-rm -f yescrypt/*.$(OBJEXT)
++	-rm -f *.ll
++	-rm -f algo/*.ll
++	-rm -f asm/*.ll
++	-rm -f compat/*.ll
++	-rm -f crypto/*.ll
++	-rm -f lyra2/*.ll
++	-rm -f sha3/*.ll
++	-rm -f yescrypt/*.ll
+ 
+ distclean-compile:
+ 	-rm -f *.tab.c
+@@ -1065,7 +1070,6 @@ include crypto/$(DEPDIR)/cpuminer-hash.Po
+ include crypto/$(DEPDIR)/cpuminer-oaes_lib.Po
+ include lyra2/$(DEPDIR)/cpuminer-Lyra2.Po
+ include lyra2/$(DEPDIR)/cpuminer-Sponge.Po
+-include sha3/$(DEPDIR)/cpuminer-gost_streebog.Po
+ include sha3/$(DEPDIR)/cpuminer-mod_blakecoin.Po
+ include sha3/$(DEPDIR)/cpuminer-sph_blake.Po
+ include sha3/$(DEPDIR)/cpuminer-sph_bmw.Po
+@@ -1094,6 +1098,12 @@ include yescrypt/$(DEPDIR)/cpuminer-sha256_Y.Po
+ include yescrypt/$(DEPDIR)/cpuminer-yescrypt-best.Po
+ include yescrypt/$(DEPDIR)/cpuminer-yescrypt-common.Po
+ 
++ci_lib.o: ci_lib.c ci_lib.h
++	gcc -c -fPIC $< -o $@
++
++libci.so: ci_lib.o
++	@gcc -shared $< -o $@
++
+ .S.o:
+ 	$(AM_V_CPPAS)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+ 	$(CPPASCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@@ -1236,7 +1246,7 @@ asm/cpuminer-scrypt-arm.obj: asm/scrypt-arm.S
+ #	DEPDIR=$(DEPDIR) $(CCASDEPMODE) $(depcomp) \
+ #	$(AM_V_CPPAS_no)$(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o asm/cpuminer-scrypt-arm.obj `if test -f 'asm/scrypt-arm.S'; then $(CYGPATH_W) 'asm/scrypt-arm.S'; else $(CYGPATH_W) '$(srcdir)/asm/scrypt-arm.S'; fi`
+ 
+-.c.o:
++.c.o: libci.so
+ 	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+ 	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+ 	$(am__mv) $$depbase.Tpo $$depbase.Po
+@@ -1252,7 +1262,7 @@ asm/cpuminer-scrypt-arm.obj: asm/scrypt-arm.S
+ #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+ #	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+ 
+-cpuminer-cpu-miner.o: cpu-miner.c
++cpuminer-cpu-miner.o: libci.so cpu-miner.c
+ 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-cpu-miner.ll -MD -MP -MF $(DEPDIR)/cpuminer-cpu-miner.Tpo -c -o llvm_cpuminer-cpu-miner.ll `test -f 'cpu-miner.c' || echo '$(srcdir)/'`cpu-miner.c
+ 	$(CC_OPT) $(OPTFLAGS) -S < llvm_cpuminer-cpu-miner.ll > opt_cpuminer-cpu-miner.ll
+ 	$(CC_OPT) $(LCFLAGS_MAIN) -S < opt_cpuminer-cpu-miner.ll > cpuminer-cpu-miner.ll
+@@ -1777,7 +1787,6 @@ sha3/cpuminer-sph_tiger.obj: sha3/sph_tiger.c
+ #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+ #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -c -o sha3/cpuminer-sph_tiger.obj `if test -f 'sha3/sph_tiger.c'; then $(CYGPATH_W) 'sha3/sph_tiger.c'; else $(CYGPATH_W) '$(srcdir)/sha3/sph_tiger.c'; fi`
+ 
+-sha3/cpuminer-gost_streebog.o: sha3/gost_streebog.c
+ sha3/cpuminer-gost_streebog.o: sha3/gost_streebog.c
+ 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-gost_streebog.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-gost_streebog.Tpo -c -o sha3/llvm_cpuminer-gost_streebog.ll `test -f 'sha3/gost_streebog.c' || echo '$(srcdir)/'`sha3/gost_streebog.c 
+ 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-gost_streebog.ll > sha3/opt_cpuminer-gost_streebog.ll
+@@ -2153,24 +2162,15 @@ algo/cpuminer-blake.obj: algo/blake.c
+ #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -c -o algo/cpuminer-blake.obj `if test -f 'algo/blake.c'; then $(CYGPATH_W) 'algo/blake.c'; else $(CYGPATH_W) '$(srcdir)/algo/blake.c'; fi`
+ 
+ algo/cpuminer-blakecoin.o: algo/blakecoin.c
+-algo/cpuminer-blakecoin.o: algo/blakecoin.c
+-algo/cpuminer-blakecoin.o: algo/blakecoin.c
+-algo/cpuminer-blakecoin.o: algo/blakecoin.c
+-	$(AM_V_CC)$(CC) -S -emit-llvm -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blake.llin.o -MD -MP -MF algo/$(DEPDIR)/llvm_cpuminer-blake.llin.Tpo -c -o algo/llvm_cpuminer-blake.llin.o `test -f 'algo/blakecoin.c' || echo '$(srcdir)/'`algo/blakecoin.c 
+-	$(CC_OPT) $(OPTFLAGS) -S <  > 
+-	$(CC_OPT) $(LCFLAGS) -S <  > 
+-	$(CC_LLC) -relocation-model=pic -filetype=obj -o  `test -f '' || echo '$(srcdir)/'`
+-	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blake.llin.o -MD -MP -MF algo/$(DEPDIR)/llvm_cpuminer-blake.llin.Tpo -c -o algo/llvm_cpuminer-blake.llin.o `test -f 'algo/blakecoin.c' || echo '$(srcdir)/'`algo/blakecoin.c 
+-	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-blake.llin.o > algo/opt_cpuminer-blake.llin.o
+-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-blake.llin.o > algo/cpuminer-blake.llin.o
+-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blakecoin.o `test -f 'algo/cpuminer-blake.llin.o' || echo '$(srcdir)/'`algo/cpuminer-blake.llin.o
+-	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/cpuminer-blakecoin.o -MD -MP -MF algo/$(DEPDIR)/cpuminer-blakecoin.Tpo -c -o algo/cpuminer-blakecoin.o `test -f 'algo/blakecoin.c' || echo '$(srcdir)/'`algo/blakecoin.c
++	$(AM_V_CC)$(CC) -S -emit-llvm -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blakecoin.ll -MD -MP -MF algo/$(DEPDIR)/llvm_cpuminer-blakecoin.Tpo -c -o algo/llvm_cpuminer-blakecoin.ll `test -f 'algo/blakecoin.c' || echo '$(srcdir)/'`algo/blakecoin.c 
++	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-blakecoin.ll > algo/opt_cpuminer-blakecoin.ll
++	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-blakecoin.ll > algo/cpuminer-blakecoin.ll
++	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blakecoin.o `test -f 'algo/cpuminer-blakecoin.ll' || echo '$(srcdir)/'`algo/cpuminer-blakecoin.ll
+ 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-blakecoin.Tpo algo/$(DEPDIR)/cpuminer-blakecoin.Po
+ #	$(AM_V_CC)source='algo/blakecoin.c' object='algo/cpuminer-blakecoin.o' libtool=no \
+ #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+ #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -c -o algo/cpuminer-blakecoin.o `test -f 'algo/blakecoin.c' || echo '$(srcdir)/'`algo/blakecoin.c
+ 
+-algo/cpuminer-blakecoin.obj: algo/blakecoin.c
+ algo/cpuminer-blakecoin.obj: algo/blakecoin.c
+ 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blake.llin.obj -MD -MP -MF algo/$(DEPDIR)/llvm_cpuminer-blake.llin.Tpo -c -o algo/llvm_cpuminer-blake.llin.obj `if test -f 'algo/blakecoin.c'; then $(CYGPATH_W) 'algo/blakecoin.c'; else $(CYGPATH_W) '$(srcdir)/algo/blakecoin.c'; fi` 
+ 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-blake.llin.obj > algo/opt_cpuminer-blake.llin.obj

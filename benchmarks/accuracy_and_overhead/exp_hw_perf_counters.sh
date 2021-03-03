@@ -7,7 +7,7 @@ PLOTS_DIR="$CUR_PATH/plots"
 TMP_FILE="$DIR/tmp"
 
 CYCLE="${CYCLE:-5000}"
-CI_SETTINGS="12 2"
+CI_SETTINGS="2"
 PREFIX=""
 RUNS="${RUNS:-10}"
 OUTLIER_THRESHOLD="5"
@@ -163,6 +163,7 @@ plot_data() {
 
   command="set terminal pdf;"
   command=$command"set key horizontal;"
+  command=$command"set output '$plot_file';"
   command=$command"set style function linespoints;"
   command=$command"set key center top;"
   command=$command"set key samplen 2;"
@@ -178,19 +179,20 @@ plot_data() {
   command=$command"set xlabel font \", 17\" offset -1,0,0;"
   command=$command"set ylabel font \", 17\" offset 1,0,0;"
   command=$command"set bmargin 5;"
-  command=$command"set output '$CI_FILE_NAME';"
-  command=$command"set logscale y 2;"
   command=$command"set yrange [0:500];"
+  #command=$command"set xrange [500:640000];"
   command=$command"plot "
 
   for bench in $*
   do
     CI_IN_FILE="$DIR/overhead-ci-${bench}"
-    CI_CYCLES_IN_FILE="$DIR/overhead-ci-cycles-${bench}"
+    #CI_CYCLES_IN_FILE="$DIR/overhead-ci-cycles-${bench}"
     PAPI_IN_FILE="$DIR/overhead-hwc-${bench}"
-    command=$command" '$CI_IN_FILE' using 1:\$2 with lines ls 1 notitle,"
-    command=$command" '$PAPI_IN_FILE' using 1:\$2 with lp ls 2 notitle,"
+    command=$command" '$CI_IN_FILE' using 1:2 with lines ls 1 notitle,"
+    command=$command" '$PAPI_IN_FILE' using 1:2 with lp ls 2 notitle,"
   done
+  command="${command:0:${#command}-1}"
+
   command=$command";"
 
   echo $command
@@ -206,16 +208,16 @@ process_perf_data() {
   for bench in $*; do
     pthread_file="$DIR/pthread-${bench}"
     ci_file="$DIR/ci-${bench}"
-    ci_cycles_file="$DIR/ci-cycles-${bench}"
+    #ci_cycles_file="$DIR/ci-cycles-${bench}"
     hwc_file="$DIR/hwc-${bench}"
 
     ci_ofile="$DIR/overhead-ci-${bench}"
-    ci_cycles_ofile="$DIR/overhead-ci-cycles-${bench}"
+    #ci_cycles_ofile="$DIR/overhead-ci-cycles-${bench}"
     hwc_ofile="$DIR/overhead-hwc-${bench}"
 
     pthread_runtime=`awk 'NR==2 {printf "%.2f", $0}' $pthread_file`
     awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $ci_file > $ci_ofile
-    awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $ci_cycles_file > $ci_cycles_ofile
+    #awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $ci_cycles_file > $ci_cycles_ofile
     awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $hwc_file > $hwc_ofile
   done
 

@@ -81,6 +81,7 @@ plot_client_latency_cdf(){
   mv client_latency_distribution_with_${CLIENTS}_th.pdf  $PLOT_DIR 
 }
 
+mkdir -p libfiber/bin/
 mkdir -p $EXP_DIR $PLOT_DIR
 
 run_standard_delegation_latency

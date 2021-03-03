@@ -1,5 +1,7 @@
 #!/bin/bash
 
+CUR_PATH=`pwd`
+
 run_command() {
   command=$@
   echo "Command: "$command
@@ -233,12 +235,12 @@ run_swaptions_iokernel_memcached()
   run_iokernel_preload $@
   sleep 10
 
-  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 -C 25-31,57-63 /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
+  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 -C 25-31,57-63 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
   run_command $cmd
   sleep 20
 
   swaptions_exec="swaptions"
-  swaptions_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/"
+  swaptions_path="${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/"
   if [ $1 -eq 0 ]; then
     swaptions_log="swaptions-iokerneld-memcached.out"
   else
@@ -297,7 +299,7 @@ run_swaptions_iokernel()
 {
   run_iokernel_preload $@
   swaptions_exec="swaptions"
-  swaptions_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/"
+  swaptions_path="${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/"
   if [ $1 -eq 0 ]; then
     swaptions_log="swaptions-iokerneld.out"
   else
@@ -331,7 +333,6 @@ run_swaptions_orig()
   fi
 
   # not used - for parsec from a different path
-  #swaptions_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/parsec-benchmark/pkgs/apps"
   #swaptions_exec="swaptions_llvm"
   #pushd $swaptions_path
   #make clean -f Makefile.shenango
@@ -343,7 +344,7 @@ run_swaptions_orig()
   fi
 
   swaptions_exec="swaptions"
-  swaptions_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/"
+  swaptions_path="${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/"
   pushd $swaptions_path
   curr=`pwd`
   if [ ! -f "$swaptions_exec" ]; then
@@ -402,8 +403,8 @@ run_swaptions_orig()
 cpuminer_orig_experiment()
 {
   kill_server
-  cpuminer_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/"
-  swaptions_exec="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions"
+  cpuminer_path="${CUR_PATH}/../../cpuminer-multi/"
+  swaptions_exec="${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions"
 
   # to make the environment similar to shenango
   CURR_DIR=`pwd`
@@ -414,7 +415,7 @@ cpuminer_orig_experiment()
   # To make the background similar to cpuminer-shenango experiment
   # (Disabling the power saving more seemed to have a negative impact on original cpuminer hash-rate)
   # Using 14 threads for swaptions, leaving the cpuminer-iokerneld core (24) & its hyperthread (56)
-  cmd="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//scripts/cstate 0 &"
+  cmd="${CUR_PATH}/../shenango//scripts/cstate 0 &"
   run_command $cmd
   sleep 10
 
@@ -491,14 +492,14 @@ run_iokernel_preload() {
   cmd=" mpstat 1 -N 0-3 -P 24-31,56-63 2>&1| ts %s > mpstat.frames.log &"; 
   run_command $cmd
   sleep 1
-  cmd="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//scripts/cstate 0 &"
+  cmd="${CUR_PATH}/../shenango/scripts/cstate 0 &"
   run_command $cmd
   sleep 1
   if [ $1 -eq 0 ]; then
-    cmd="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//iokerneld 2>&1 | ts %s > iokernel.frames.log &"
-#cmd="perf record --call-graph=dwarf -o perf_iokernel /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//iokerneld 2>&1 | ts %s > iokernel.frames.log &"
+    cmd="${CUR_PATH}/../shenango//iokerneld 2>&1 | ts %s > iokernel.frames.log &"
+#cmd="perf record --call-graph=dwarf -o perf_iokernel ${CUR_PATH}/../shenango//iokerneld 2>&1 | ts %s > iokernel.frames.log &"
 #perf probe -d probe_iokerneld:congestion
-#cmd="perf probe -x /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//iokerneld --add congestion=cores.c:753"
+#cmd="perf probe -x ${CUR_PATH}/../shenango//iokerneld --add congestion=cores.c:753"
 #run_command $cmd
     if [ $# -ne 2 ]; then
       run_command $cmd
@@ -506,12 +507,12 @@ run_iokernel_preload() {
     else
       run_command $cmd
       sleep 10
-#cmd="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//iokerneld 2>&1 | ts %s"
+#cmd="${CUR_PATH}/../shenango//iokerneld 2>&1 | ts %s"
 #echo $cmd
 #read -p "Started iokerneld? " ans
     fi
   else
-    pushd /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/
+    pushd ${CUR_PATH}/../../cpuminer-multi/
     # Names of the log files are used elsewhere. Do not change them without changing everywhere else.
     cmd="./cpuminer -t 1 -a sha256d -o stratum+tcp://connect.pool.bitcoin.com:3333 -u 15dFNAbSnC7MngwHjoM2gZSuCEg5mmAEKc -p c=BTC 2>&1 | ts %s > cpuminer-iokernel.frames.log &"
     if [ $# -ne 2 ]; then
@@ -526,7 +527,7 @@ run_iokernel_preload() {
 }
 
 run_shenango_swaptions() {
-  cmd="numactl -N 3 -m 3 /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-shenango/bin/swaptions swaptions.config -ns 16 -sm 40000 -nt 16 2>&1 | ts %s > swaptions.out 2> swaptions.err &"
+  cmd="numactl -N 3 -m 3 ${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-shenango/bin/swaptions swaptions.config -ns 16 -sm 40000 -nt 16 2>&1 | ts %s > swaptions.out 2> swaptions.err &"
   run_command $cmd
 }
 
@@ -539,11 +540,11 @@ run_shenango_memcached() {
     perf probe -d probe_memcached:yield_*
     perf probe -d probe_memcached:test_probe*
     perf probe -d probe_memcached:schedule
-    perf probe -x /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached --add force_preempt=sched.c:286
-    perf probe -x /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached --add yield_first=memcached.c:5499
-    perf probe -x /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached --add yield_second=memcached.c:5670
-    perf probe -x /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached --add schedule=schedule
-    perf probe -x /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached --add test_probe=memcached.c:7647
+    perf probe -x ${CUR_PATH}/../memcached/memcached --add force_preempt=sched.c:286
+    perf probe -x ${CUR_PATH}/../memcached/memcached --add yield_first=memcached.c:5499
+    perf probe -x ${CUR_PATH}/../memcached/memcached --add yield_second=memcached.c:5670
+    perf probe -x ${CUR_PATH}/../memcached/memcached --add schedule=schedule
+    perf probe -x ${CUR_PATH}/../memcached/memcached --add test_probe=memcached.c:7647
 
     perf record -e probe_memcached:yield_first -o first.data -aR sleep 5m &
     perf record -e probe_memcached:yield_second -o second.data -aR sleep 5m &
@@ -551,12 +552,12 @@ run_shenango_memcached() {
     perf record -e probe_memcached:schedule -o schedule.data -aR sleep 5m &
     perf record -e probe_memcached:test_probe -o test_probe.data -aR sleep 5m &
   fi
-  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
+  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
   echo $cmd
 #read -p "ran it?" ans
 #return
-# cmd="numactl -N 3 -m 3 perf record -e probe_memcached:schedule -e probe_memcached:test_probe -e probe_memcached:force_preempt -e probe_memcached:force_preempt_1 -e probe_memcached:yield_first -e probe_memcached:yield_second --call-graph=dwarf -o perf_memcached /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &"
-#cmd="numactl -N 3 -m 3 perf record --call-graph=dwarf -o perf_memcached_new /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &"
+# cmd="numactl -N 3 -m 3 perf record -e probe_memcached:schedule -e probe_memcached:test_probe -e probe_memcached:force_preempt -e probe_memcached:force_preempt_1 -e probe_memcached:yield_first -e probe_memcached:yield_second --call-graph=dwarf -o perf_memcached ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &"
+#cmd="numactl -N 3 -m 3 perf record --call-graph=dwarf -o perf_memcached_new ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &"
 #echo $cmd
 #read -p "Stalled." ans
   run_command $cmd
@@ -566,7 +567,7 @@ run_memcached_orig() {
   #sleep 5
   #read -p "Run memcached? " ans
   if [ $# -ne 0 ]; then
-    memcached_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/memcached-linux/memcached"
+    memcached_path="${CUR_PATH}/../memcached-linux/memcached"
   else
     memcached_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/memcached/memcached-1.5.6/memcached"
   fi
@@ -795,7 +796,7 @@ run_client_for_orig()
   # copying latest executables 
   cmd="cp ../shenango/apps/synthetic/target/release/synthetic ."
   run_command $cmd
-  cmd="sudo /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-${server_name}/shenango//iokerneld 2>&1 | ts %s > iokernel.$server_name.log &"
+  cmd="sudo ${CUR_PATH}/../../shenango-${server_name}/shenango//iokerneld 2>&1 | ts %s > iokernel.$server_name.log &"
   run_command $cmd
 
 #echo $cmd
@@ -882,7 +883,7 @@ run_client()
   # copying latest executables 
   cmd="cp ../shenango/apps/synthetic/target/release/synthetic ."
   run_command $cmd
-  cmd="sudo /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-${server_name}/shenango//iokerneld 2>&1 | ts %s > iokernel.$server_name.log &"
+  cmd="sudo ${CUR_PATH}/../../shenango-${server_name}/shenango//iokerneld 2>&1 | ts %s > iokernel.$server_name.log &"
   #echo $cmd
   #read -p "Started iokerneld? " ans
   run_command $cmd
@@ -956,22 +957,22 @@ run_remote_client_deprecated()
     exit
   fi
   CURR_DIR=`pwd`
-  parallel  "sshpass -e ssh nbasu4@{}.cs.uic.edu 'mkdir -p $CURR_DIR/run.shenango-memcached-tcp-swaptions-{}'" ::: lines frames
-  parallel  "sshpass -e scp experiment.py nbasu4@{}.cs.uic.edu:$CURR_DIR/run.shenango-memcached-tcp-swaptions-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/shenango/apps/synthetic/target/release/synthetic nbasu4@{}.cs.uic.edu:$CURR_DIR/run.shenango-memcached-tcp-swaptions-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/config.json nbasu4@{}.cs.uic.edu:$CURR_DIR/run.shenango-memcached-tcp-swaptions-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/shenango/scripts/rstat.go nbasu4@{}.cs.uic.edu:$CURR_DIR/run.shenango-memcached-tcp-swaptions-{}/" ::: lines frames
+  parallel  "sshpass -e ssh nbasu4@{}.cs.uic.edu 'mkdir -p $CURR_DIR/scripts-{}'" ::: lines frames
+  parallel  "sshpass -e scp experiment.py nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e scp $CURR_DIR/shenango/apps/synthetic/target/release/synthetic nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e scp $CURR_DIR/config.json nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e scp $CURR_DIR/shenango/scripts/rstat.go nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
 
   echo "Starting client on lines"
-  parallel --halt now,fail=1 "sshpass -e ssh nbasu4@{}.cs.uic.edu 'ulimit -S -c unlimited; python $CURR_DIR/run.shenango-memcached-tcp-swaptions-{}/experiment.py client $CURR_DIR/run.shenango-memcached-tcp-swaptions-{} > $CURR_DIR/run.shenango-memcached-tcp-swaptions-{}/py.{}.log 2>&1'" ::: lines
+  parallel --halt now,fail=1 "sshpass -e ssh nbasu4@{}.cs.uic.edu 'ulimit -S -c unlimited; python $CURR_DIR/scripts-{}/experiment.py client $CURR_DIR/scripts-{} > $CURR_DIR/scripts-{}/py.{}.log 2>&1'" ::: lines
 
   echo "Starting local observer"
-  python run.shenango-memcached-tcp-swaptions/experiment.py observer run.shenango-memcached-tcp-swaptions/ > ./py.frames.log 2>&1
+  python scripts/experiment.py observer scripts/ > ./py.frames.log 2>&1
 
-  cp $CURR_DIR/run.shenango-memcached-tcp-swaptions-lines/*.log $CURR_DIR/run.shenango-memcached-tcp-swaptions-frames/
-  cp $CURR_DIR/run.shenango-memcached-tcp-swaptions-lines/*.out $CURR_DIR/run.shenango-memcached-tcp-swaptions-frames/
-  cp $CURR_DIR/run.shenango-memcached-tcp-swaptions-lines/*.err $CURR_DIR/run.shenango-memcached-tcp-swaptions-frames/
-#rm -rf $CURR_DIR/run.shenango-memcached-tcp-swaptions-lines
+  cp $CURR_DIR/scripts-lines/*.log $CURR_DIR/scripts-frames/
+  cp $CURR_DIR/scripts-lines/*.out $CURR_DIR/scripts-frames/
+  cp $CURR_DIR/scripts-lines/*.err $CURR_DIR/scripts-frames/
+#rm -rf $CURR_DIR/scripts-lines
   #parallel "sshpass -e ssh nbasu4@{}.cs.uic.edu 'date +%s'" ::: lines frames
 }
 
@@ -997,27 +998,27 @@ run_remote_client()
     client="lines"
     #client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-${client}/run.shenango-memcached-tcp-swaptions; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
     sleep 5
   else
     # run multiple clients
     client="lines"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-${client}/run.shenango-memcached-tcp-swaptions; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
+    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
     sleep 5
 
     client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-${client}/run.shenango-memcached-tcp-swaptions; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
+    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
 
 #echo "Running remote client $client with start mpps: $start_mpps, target mpps: 0.5, samples: $samples"
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-${client}/run.shenango-memcached-tcp-swaptions; sudo ./debug.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
+#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
   fi
 
   echo "Done with clients"
 #send_usr_sig_local 0 # send user signal to cpuminer after all clients are done
 
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@lines "cd /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango-lines/run.shenango-memcached-tcp-swaptions; sudo ./debug.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./debug.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
 }
 
 copy_files() {
@@ -1037,17 +1038,17 @@ copy_files() {
   run_command_no_err $cmd
   cmd="mv memcached.out $DIR"
   run_command_no_err $cmd
-  cmd="mv ../../shenango-lines/run.shenango-memcached-tcp-swaptions/iokernel.lines.log $DIR"
+  cmd="mv ../../shenango-lines/scripts/iokernel.lines.log $DIR"
   run_command_no_err $cmd
-  cmd="mv ../../shenango-lines/run.shenango-memcached-tcp-swaptions/lines.memcached.out $DIR"
+  cmd="mv ../../shenango-lines/scripts/lines.memcached.out $DIR"
   run_command_no_err $cmd
-  cmd="mv ../../shenango-lines/run.shenango-memcached-tcp-swaptions/lines.memcached.err $DIR"
+  cmd="mv ../../shenango-lines/scripts/lines.memcached.err $DIR"
   run_command_no_err $cmd
-  cmd="mv ../../shenango-pages/run.shenango-memcached-tcp-swaptions/iokernel.pages.log $DIR"
+  cmd="mv ../../shenango-pages/scripts/iokernel.pages.log $DIR"
   run_command_no_err $cmd
-  cmd="mv ../../shenango-pages/run.shenango-memcached-tcp-swaptions/pages.memcached.out $DIR"
+  cmd="mv ../../shenango-pages/scripts/pages.memcached.out $DIR"
   run_command_no_err $cmd
-  cmd="mv ../../shenango-pages/run.shenango-memcached-tcp-swaptions/pages.memcached.err $DIR"
+  cmd="mv ../../shenango-pages/scripts/pages.memcached.err $DIR"
   run_command_no_err $cmd
   cmd="mv ../../cpuminer-multi/cpuminer-iokernel.frames.log $DIR"
   run_command_no_err $cmd
@@ -1056,9 +1057,9 @@ copy_files() {
 
   cmd="cp *stats.frames.* $DIR" # memcached runtime log
   run_command_no_err $cmd
-  cmd="cp ../../shenango-lines/run.shenango-memcached-tcp-swaptions/*stats.lines.* $DIR"
+  cmd="cp ../../shenango-lines/scripts/*stats.lines.* $DIR"
   run_command_no_err $cmd
-  cmd="cp ../../shenango-pages/run.shenango-memcached-tcp-swaptions/*stats.*pages.* $DIR"
+  cmd="cp ../../shenango-pages/scripts/*stats.*pages.* $DIR"
   run_command_no_err $cmd
   cmd="cp debug.sh $DIR" # memcached runtime log
   run_command $cmd
@@ -1124,7 +1125,7 @@ run_experiment_orig() {
   kill_server
   create_linux_server_env
 
-  cmd="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/shenango//scripts/cstate 0 &"
+  cmd="${CUR_PATH}/../shenango//scripts/cstate 0 &"
   run_command $cmd
 
   total_points=16
@@ -1155,7 +1156,7 @@ run_experiment_orig() {
     echo "Running experiment for client with pthread for directory $dir, start_mpps $start_point, target_mpps $target, samples: $samples"
 
     if [ $1 -eq 1 ]; then
-      swaptions_exec="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/shenango/parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions"
+      swaptions_exec="${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions"
       cmd="numactl -N 3 -m 3 $swaptions_exec -ns 16 -sm 40000 -nt 16 2>&1 | ts %s > swaptions.out &"
       run_command $cmd
       #cmd="chrt -i -p `pgrep swaptions`"

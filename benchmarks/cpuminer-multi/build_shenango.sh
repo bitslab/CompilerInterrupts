@@ -1,9 +1,5 @@
 #!/bin/bash
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
 
 cpuminer_shenango_build() {
   echo "Building experiment for CI Interval $1"
@@ -13,12 +9,6 @@ cpuminer_shenango_build() {
   cmt_intv=`expr $pi / 5`
   echo "PI: $pi, CI: $cmt_intv, CYC: $cyc"
   PUSH_INTV=$pi CMMT_INTV=$cmt_intv CYCLE_INTV=$cyc make -j 20 > make_log_$1 2>make_err_$1
-  error_status=$?
-  if [ $error_status -ne 0 ]; then
-    printf "${RED}Build failed with status $error_status.\n${NC}" | tee -a $CMD_LOG
-    cat make_err_$1
-    exit
-  fi
   mv cpuminer cpuminer-$cyc
 }
 

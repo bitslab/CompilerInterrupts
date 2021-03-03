@@ -8,7 +8,7 @@ PLOTS_DIR="$CUR_PATH/plots"
 STAT_FILE="$DIR/interval_accuracy_statistics.txt"
 
 CYCLE="${CYCLE:-5000}"
-THREADS="${THREADS:-"1"}"
+THREADS="${THREADS:-"1 32"}"
 CI_SETTINGS="12 2 6 10 4"
 EXTRA_FLAGS="-DINTV_SAMPLING"
 

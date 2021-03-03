@@ -9,7 +9,7 @@ TMP_FILE="$DIR/tmp"
 CYCLE="${CYCLE:-5000}"
 CI_SETTINGS="2"
 PREFIX=""
-RUNS="${RUNS:-2}"
+RUNS="${RUNS:-10}"
 OUTLIER_THRESHOLD="5"
 
 INTERVALS="${INTERVALS:-"2000 5000 10000 15000 20000 50000 75000 100000 150000 300000 500000 750000 1000000"}"
@@ -259,7 +259,7 @@ if [ $# -ne 0 ]; then
   fi
 fi
 
-#perf_orig_test $benches
+perf_orig_test $benches
 perf_overhead_ci_test $benches
 perf_overhead_hwc_test $benches
 process_perf_data $benches

@@ -12,6 +12,7 @@ echo "0" > /proc/sys/kernel/perf_event_paranoid
 
 mkdir -p /local_home/exp_results/interval_stats
 mkdir -p /local_home/exp_results/intv_accuracy
+mkdir -p /local_home/exp_results/outputs
 chmod -R 777 /local_home/exp_results/
 
 mkdir -p ../benchmarks/server_delegation/libfiber/bin

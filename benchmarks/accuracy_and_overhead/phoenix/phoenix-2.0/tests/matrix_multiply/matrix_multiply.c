@@ -236,8 +236,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    fname_A = "/local_home/nilanjana/phoenix/matrix_file_A.txt";
-    fname_B = "/local_home/nilanjana/phoenix/matrix_file_B.txt";
+    /* TODO: Make this configurable */
+    fname_A = "/local_home/exp_results/outputs/matrix_file_A.txt";
+    fname_B = "/local_home/exp_results/outputs/matrix_file_B.txt";
     //fname_A = "/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/phoenix/phoenix-2.0/tests/matrix_multiply/matrix_file_A.txt";
     //fname_B = "/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/phoenix/phoenix-2.0/tests/matrix_multiply/matrix_file_B.txt";
     //fname_A = "./matrix_file_A.txt";

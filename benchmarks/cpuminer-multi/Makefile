@@ -417,42 +417,45 @@ distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing aclocal-1.15
+ACLOCAL = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing aclocal-1.15
 ALLOCA = 
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing autoconf
-AUTOHEADER = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing autoheader
-AUTOMAKE = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing automake-1.15
+AUTOCONF = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing autoconf
+AUTOHEADER = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing autoheader
+AUTOMAKE = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing automake-1.15
 AWK = gawk
-CC = /mnt/nilanjana/bin/clang
-CC_OPT = /mnt/nilanjana/bin/opt
-CC_LLC = /mnt/nilanjana/bin/llc
+#CC = /mnt/nilanjana/bin/clang
+#CC_OPT = /mnt/nilanjana/bin/opt
+#CC_LLC = /mnt/nilanjana/bin/llc
+CC = clang-9
+CC_OPT = opt-9
+CC_LLC = llc-9
 CCAS = gcc
 CCASDEPMODE = depmode=gcc3
-CCASFLAGS = -g -O3  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg
+CCASFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg
 CCDEPMODE = depmode=gcc3
 #CFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include
 DPDK_PATH = ../shenango/shenango/dpdk
-CFLAGS = -g -O3 -DCI $(EXTRA_CFLAGS) -Ofast -flto -fuse-linker-plugin -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include -I./
+CFLAGS = -O3 -DCI -Ofast -flto -fuse-linker-plugin -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include -I./
 SHENANGO_CFLAGS = -g -Wall -std=gnu11 -D_GNU_SOURCE -I../shenango/shenango/ -I$(DPDK_PATH)/build/include -I../shenango/shenango/inc -mssse3 -DNDEBUG -O3 
-#SHENANGO_CFLAGS = -g -Wall -std=gnu11 -D_GNU_SOURCE -I../shenango/shenango/ -I$(DPDK_PATH)/build/include -I../shenango/shenango/inc -mssse3 -DDEBUG -O3 
 CPP = gcc -E
 CPPFLAGS =   -Iyes/include -Iyes/include
 INST_LEVEL ?= 12
-PUSH_INTV ?= 2000
-CMMT_INTV ?= 400
-CYCLE_INTV ?= 2000
+PUSH_INTV ?= 5000
+CMMT_INTV ?= 1000
+CYCLE_INTV ?= 5000
 ALLOWED_DEVIATION ?= 100
 FIBER_CONFIG ?= 0
 CLOCK_TYPE ?= 1
 CONFIG ?= 2
+CUR_PATH = `pwd`
 OPTFLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
-LCFLAGS_MAIN = -load /mnt/nilanjana/lib/LLVMLogicalClock.so -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
-LCFLAGS = -load /mnt/nilanjana/lib/LLVMLogicalClock.so -logicalclock -defclock=false -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
+LCFLAGS_MAIN = -load $(CUR_PATH)/../../lib/CompilerInterrupt.so -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
+LCFLAGS = -load $(CUR_PATH)/../../lib/CompilerInterrupt.so -logicalclock -defclock=false -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
 CXX = g++
 CXXDEPMODE = depmode=gcc3
-CXXFLAGS = -g -O3
+CXXFLAGS = -O3
 CYGPATH_W = echo
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
@@ -491,10 +494,10 @@ LIBCURL = -lcurl -lz -lssl -lcrypto
 LIBCURL_CFLAGS =  -Iyes/include -Iyes/include
 LIBCURL_CPPFLAGS =  -Iyes/include -Iyes/include
 LIBOBJS = 
-LIBS = -lz -lci -L./ -Wl,-rpath=./ -L../shenango/shenango libbase.a libnet.a -T base.ld -no-pie $(DPDK_LIBS) -ldl -lnuma
+LIBS = -lz -lci -L../../lib/ -Wl,-rpath=../../lib/ -L../shenango/shenango libbase.a libnet.a -T base.ld -no-pie $(DPDK_LIBS) -ldl -lnuma
 LTLIBOBJS = 
 MAINT = #
-MAKEINFO = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing makeinfo
+MAKEINFO = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing makeinfo
 MKDIR_P = /bin/mkdir -p
 OBJEXT = o
 PACKAGE = cpuminer-multi
@@ -513,10 +516,10 @@ SHELL = /bin/bash
 STRIP = 
 VERSION = 1.3.7
 WS2_LIBS = 
-abs_builddir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
-abs_srcdir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
-abs_top_builddir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
-abs_top_srcdir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
+abs_builddir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
+abs_srcdir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
+abs_top_builddir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
+abs_top_srcdir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
 ac_ct_CC = gcc
 ac_ct_CXX = g++
 am__include = include
@@ -544,7 +547,7 @@ host_vendor = pc
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/install-sh
+install_sh = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -983,7 +986,7 @@ compat/cpuminer-winansi.$(OBJEXT): compat/$(am__dirstamp) \
 
 cpuminer$(EXEEXT): $(cpuminer_OBJECTS) $(iokernel_obj) $(cpuminer_DEPENDENCIES) $(EXTRA_cpuminer_DEPENDENCIES) 
 	@rm -f cpuminer$(EXEEXT)
-	$(AM_V_CXXLD)$(cpuminer_LINK) $(iokernel_obj) $(cpuminer_OBJECTS) $(cpuminer_LDADD) $(LIBS)
+	$(AM_V_CXXLD)$(cpuminer_LINK) $(cpuminer_OBJECTS) $(iokernel_obj) $(cpuminer_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -996,7 +999,6 @@ mostlyclean-compile:
 	-rm -f yescrypt/*.$(OBJEXT)
 	-rm -f $(iokernel_obj)
 	-rm -f *.ll
-	-rm -f libci.so
 	-rm -f algo/*.ll
 	-rm -f asm/*.ll
 	-rm -f compat/*.ll
@@ -1158,12 +1160,6 @@ $(iokernel_obj): %.o: ../shenango/shenango/iokernel/%.c
 	echo gcc $(SHENANGO_CFLAGS) -c $< -o $@
 	gcc $(SHENANGO_CFLAGS) -c $< -o $@
 
-ci_lib.o: ci_lib.c ci_lib.h
-	gcc -g -c -fPIC $< -o $@
-
-libci.so: ci_lib.o
-	gcc -shared $< -o $@
-
 libbase.a:
 	make -C ../shenango/shenango/ $@
 	#make -C ../shenango/shenango/ $@
@@ -1315,7 +1311,7 @@ asm/cpuminer-scrypt-arm.obj: asm/scrypt-arm.S
 #	DEPDIR=$(DEPDIR) $(CCASDEPMODE) $(depcomp) \
 #	$(AM_V_CPPAS_no)$(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o asm/cpuminer-scrypt-arm.obj `if test -f 'asm/scrypt-arm.S'; then $(CYGPATH_W) 'asm/scrypt-arm.S'; else $(CYGPATH_W) '$(srcdir)/asm/scrypt-arm.S'; fi`
 
-.c.o: libci.so $(iokernel_obj) libbase.a libnet.a base.ld
+.c.o: ../../lib/libci.so $(iokernel_obj) libbase.a libnet.a base.ld
 	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
 	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
 	$(am__mv) $$depbase.Tpo $$depbase.Po
@@ -1331,7 +1327,7 @@ asm/cpuminer-scrypt-arm.obj: asm/scrypt-arm.S
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-cpuminer-cpu-miner.o: libci.so $(iokernel_obj) libbase.a libnet.a base.ld cpu-miner.c
+cpuminer-cpu-miner.o: ../../lib/libci.so $(iokernel_obj) libbase.a libnet.a base.ld cpu-miner.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-cpu-miner.ll -MD -MP -MF $(DEPDIR)/cpuminer-cpu-miner.Tpo -c -o llvm_cpuminer-cpu-miner.ll `test -f 'cpu-miner.c' || echo '$(srcdir)/'`cpu-miner.c
 	$(CC_OPT) $(OPTFLAGS) -S < llvm_cpuminer-cpu-miner.ll > opt_cpuminer-cpu-miner.ll
 	$(CC_OPT) $(LCFLAGS_MAIN) -S < opt_cpuminer-cpu-miner.ll > cpuminer-cpu-miner.ll

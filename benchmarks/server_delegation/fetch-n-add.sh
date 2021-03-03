@@ -145,9 +145,9 @@ plot_mops(){
 
 mkdir -p $EXP_DIR $PLOT_DIR
 
-run_locks
-run_delegation_CI_variant
-run_delegation_mops
-run_standard_delegation_mops
+#run_locks
+#run_delegation_CI_variant
+#run_delegation_mops
+#run_standard_delegation_mops
 plot_mops
 

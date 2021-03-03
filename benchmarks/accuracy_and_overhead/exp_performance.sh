@@ -2,6 +2,7 @@
 # this script is used for finding performance impact of CI, for a configuration to reach the target interval in cycles
 CUR_PATH=`pwd`
 SUB_DIR="${SUB_DIR:-"overhead"}"
+SUB_DIR="test_perf"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
 PLOTS_DIR="$CUR_PATH/plots"
 
@@ -10,14 +11,14 @@ THREADS="${THREADS:-"1 32"}"
 CI_SETTINGS="12 2 6 10 4"
 EXTRA_FLAGS="-DAVG_STATS"
 PREFIX=""
-RUNS="${RUNS:-10}"
+RUNS="${RUNS:-2}"
 OUTLIER_THRESHOLD="5"
 
 CI_SETTINGS_FOR_INTV_COMP="2 12"
 LARGE_INTV="1000000"
 
-#CI_SETTINGS="2 12"
-#THREADS="1"
+CI_SETTINGS="2"
+THREADS="1"
 
 source $CUR_PATH/include.sh
 
@@ -85,7 +86,15 @@ perf_overhead() {
 
   avg_duration=$(summarize_overhead_runs $bench $thread $run_type)
 
-  echo -e "$bench\t$avg_duration" >> $EXP_FILE
+  # for modifying existing benchmark results file
+  if [ -f $EXP_FILE ]; then
+    awk -v b="$bench" -v dur="$avg_duration" '$0~b {matched=1; print $1,"\t",dur} $0!~b {print} END {if(!matched) print b,"\t",dur}' $EXP_FILE > tmp; mv tmp $EXP_FILE
+  else
+    echo -e "$bench\t$avg_duration" >> $EXP_FILE
+  fi
+
+  # for creating new benchmark results file
+  #echo -e "$bench\t$avg_duration" >> $EXP_FILE
 }
 
 perf_overhead_of_ci_calls() {
@@ -94,7 +103,7 @@ perf_overhead_of_ci_calls() {
     # Compare with very high push & cycle interval
     for ci_setting in $CI_SETTINGS_FOR_INTV_COMP; do
       ci_str=$(get_ci_str_in_lower_case $ci_setting)
-      rm -f $DIR/no-interrupts-no-probes-${ci_str}-th$thread
+      #rm -f $DIR/no-interrupts-no-probes-${ci_str}-th$thread
 
       for bench in $*; do
         ci_str=$(get_ci_str $ci_setting)
@@ -119,7 +128,7 @@ perf_overhead_of_ci_calls() {
 perf_orig_test() {
   echo "Running original pthread program for $CYCLE cycles, CI Settings $CI_SETTINGS, $THREADS threads, app list: $*"
   for thread in $THREADS; do
-    rm -f $DIR/pthread-th$thread
+    #rm -f $DIR/pthread-th$thread
     for bench in $*; do
       echo "Running performance experiment for $bench with $thread threads & orig type" | tee -a $CMD_LOG
       set_benchmark_info $bench
@@ -138,7 +147,7 @@ perf_overhead_test() {
     # Run with compiler interrupts
     for ci_setting in $CI_SETTINGS; do
       ci_str=$(get_ci_str_in_lower_case $ci_setting)
-      rm -f $DIR/${ci_str}-th$thread
+      #rm -f $DIR/${ci_str}-th$thread
 
       for bench in $*; do
         ci_str=$(get_ci_str $ci_setting)
@@ -245,8 +254,8 @@ if [ $# -ne 0 ]; then
 fi
 
 perf_orig_test $benches
-perf_overhead_test $benches
-process_perf_data
+#perf_overhead_test $benches
+#process_perf_data
 
 #perf_overhead_of_ci_calls $benches
 #process_perf_intv_diff_data

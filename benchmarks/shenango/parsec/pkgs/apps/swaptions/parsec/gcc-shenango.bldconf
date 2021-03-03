@@ -13,7 +13,8 @@
 # global configuration. All variables set in the global configuration files can
 # be referenced here.
 
-LDFLAGS="${SHEN_LDFLAGS} ${LDFLAGS}"
+#LDFLAGS="${SHEN_LDFLAGS} ${LDFLAGS}"
+LDFLAGS="${SHEN_LDFLAGS}"
 LIBS="${SHEN_LIBS} ${LIBS}"
 CFLAGS="${SHEN_CFLAGS} ${CFLAGS}"
 CXXFLAGS="${SHEN_CXXFLAGS} ${CXXFLAGS}"

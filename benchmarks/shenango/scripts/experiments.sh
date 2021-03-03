@@ -505,11 +505,11 @@ run_iokernel_preload() {
       run_command $cmd
       sleep 10
     else
+      cmd="${CUR_PATH}/../shenango//iokerneld 2>&1 | ts %s"
       run_command $cmd
-      sleep 10
-#cmd="${CUR_PATH}/../shenango//iokerneld 2>&1 | ts %s"
-#echo $cmd
-#read -p "Started iokerneld? " ans
+      #sleep 10
+      #echo $cmd
+      read -p "Started iokerneld? " ans
     fi
   else
     pushd ${CUR_PATH}/../../cpuminer-multi/
@@ -784,7 +784,8 @@ run_client_for_orig()
     SSHPASS="$4"
   fi
   if [ -z "$SSHPASS" ]; then 
-    echo "SSHPASS needs to be set. Aborting."
+    name=`hostname`
+    echo "SSHPASS needs to be set on $name. Aborting."
     exit
   fi
 
@@ -861,7 +862,8 @@ run_client()
     SSHPASS="$4"
   fi
   if [ -z "$SSHPASS" ]; then 
-    echo "SSHPASS needs to be set. Aborting."
+    name=`hostname`
+    echo "SSHPASS needs to be set on $name. Aborting."
     exit
   fi
 
@@ -953,7 +955,8 @@ run_remote_client_deprecated()
 {
   echo "Running remote client"
   if [ -z "$SSHPASS" ]; then
-    echo "SSHPASS needs to be set. Aborting."
+    name=`hostname`
+    echo "SSHPASS needs to be set on $name. Aborting."
     exit
   fi
   CURR_DIR=`pwd`
@@ -987,7 +990,8 @@ run_remote_client()
   samples=$3
   client_opt=$4
   if [ -z "$SSHPASS" ]; then
-    echo "SSHPASS needs to be set. Aborting."
+    name=`hostname`
+    echo "SSHPASS needs to be set on $name. Aborting."
     exit
   fi
 
@@ -998,27 +1002,27 @@ run_remote_client()
     client="lines"
     #client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
     sleep 5
   else
     # run multiple clients
     client="lines"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
+    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
     sleep 5
 
     client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
+    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
 
 #echo "Running remote client $client with start mpps: $start_mpps, target mpps: 0.5, samples: $samples"
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
+#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
   fi
 
   echo "Done with clients"
 #send_usr_sig_local 0 # send user signal to cpuminer after all clients are done
 
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./debug.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./experiments.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
 }
 
 copy_files() {
@@ -1061,7 +1065,7 @@ copy_files() {
   run_command_no_err $cmd
   cmd="cp ../../shenango-pages/scripts/*stats.*pages.* $DIR"
   run_command_no_err $cmd
-  cmd="cp debug.sh $DIR" # memcached runtime log
+  cmd="cp experiments.sh $DIR" # memcached runtime log
   run_command $cmd
   cmd="cp config.json $DIR" # memcached runtime log
   run_command $cmd
@@ -1378,9 +1382,11 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 if [ $# -lt 1 ]; then
- echo "Usage: ./debug.sh <option: 0-kill the server, 1-run server, 2-run server with cpuminer, 3-run client, 4-create client env, 5-create server env, 6-copy stats files 7-create linux server env>"
+ echo "Usage: ./experiments.sh <option: 0-kill the server, 1-run server, 2-run server with cpuminer, 3-run client, 4-create client env, 5-create server env, 6-copy stats files 7-create linux server env>"
  exit
 fi
+
+#$CUR_PATH/../shenango/scripts/unbind_n_setup_huge_pages.sh
 
 #top -b -n 1 -i -u '!nbasu4'
 #top -b -n 1 -i
@@ -1396,7 +1402,7 @@ case $1 in
 4) unbind_dpdk_ports;;
 5) create_shenango_env;;
 6) if [ $# -ne 2 ]; then
-    echo "Usage: ./debug.sh 6 <name of directory (e.g. 1mpps)>"
+    echo "Usage: ./experiments.sh 6 <name of directory (e.g. 1mpps)>"
     exit
    fi
   copy_files $2

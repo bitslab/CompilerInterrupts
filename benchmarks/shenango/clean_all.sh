@@ -22,6 +22,18 @@ popd
 make -C $ROOTDIR/memcached clean
 
 # parsec (shenango and linux)
+rm -rf $ROOTDIR/parsec/pkgs/apps/swaptions/inst
+rm -rf $ROOTDIR/parsec/pkgs/apps/swaptions/obj
+SHENANGODIR=$ROOTDIR/shenango $ROOTDIR/parsec/bin/parsecmgmt -a clean -p swaptions -c gcc-shenango
+SHENANGODIR=$ROOTDIR/shenango $ROOTDIR/parsec/bin/parsecmgmt -a build -p swaptions -c gcc-shenango
+
+# linux
+pushd $ROOTDIR/memcached-linux
+./autogen.sh
+./configure
+make
+popd
+$ROOTDIR/parsec/bin/parsecmgmt -a build -p swaptions -c gcc-pthreads
 $ROOTDIR/parsec/bin/parsecmgmt -a fulluninstall
 $ROOTDIR/parsec/bin/parsecmgmt -a fullclean
 

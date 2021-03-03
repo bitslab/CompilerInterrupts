@@ -1,6 +1,7 @@
 #!/bin/bash
 CUR_PATH=`pwd`
 PLOT_RELATIVE_PATH="exp_results/plots"
+RUNS=10 # configure this
 
 run_server_delegation_fetch_n_add() {
   pushd server_delegation

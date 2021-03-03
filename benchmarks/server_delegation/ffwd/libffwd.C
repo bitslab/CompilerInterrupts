@@ -622,6 +622,7 @@ fiber_t* ffwd_thread_create(void *(* func) (void *), void* value){
 	thread = fiber_create(4096, &ffwd_client_start, context);
 #endif
 
+  printf("Client id: %ld - Client core: %ld \n", thread->my_id, ((fiber_manager_t*)thread->my_manager)->core_id);
 	return thread;
 }
 
@@ -835,7 +836,11 @@ void launch_servers(int num_of_servers){
 	for (s = 0; s < num_of_servers; s++){
 		// start pinning servers on the first hyperthreads on each chip, then move to second hyperthreads
 		server_core = all_threads[(s*MAX_THREADS_PER_SOCK) % TOTAL_NUM_OF_THREADS + ((s/MAX_SOCK)*2) % MAX_THREADS_PER_SOCK + (s/(TOTAL_NUM_OF_THREADS/2))];
-		launch_server_and_pin(server_core);
+		//launch_server_and_pin(server_core);
+    fiber_t* server_fiber = launch_server_and_pin(server_core);
+
+		//print server core and server id
+		printf("Server id: %ld - Server core: %ld \n", server_fiber->my_id, ((fiber_manager_t*)server_fiber->my_manager)->core_id);
 	}
 
 	

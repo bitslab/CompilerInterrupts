@@ -3,7 +3,7 @@
 CUR_PATH=`pwd`
 SUB_DIR="${SUB_DIR:-"intv_accuracy"}"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
-WRITE_DIR=/local_home/nilanjana/temp/$SUB_DIR
+WRITE_DIR=/local_home/exp_results/$SUB_DIR
 PLOTS_DIR="$CUR_PATH/plots"
 STAT_FILE="$DIR/interval_accuracy_statistics.txt"
 
@@ -27,7 +27,7 @@ emit_interval() {
   #prefix="timeout 5m taskset 0x00000001 "
   # The benchmarks export interval stats in this directory
   # TODO: Make the path configurable using environment variable
-  OUT_DIR="/local_home/nilanjana/temp/interval_stats/"
+  OUT_DIR="/local_home/exp_results/interval_stats"
 
   dry_run_exp $bench $suffix_conf
 

@@ -8,6 +8,10 @@
 //#ifdef LIBFIBER /* for user level preemptive multitasking mode */
 //#ifdef AVG_STATS /* compute avg over each sample on-the-go */
 
+#ifndef OUTPUT_DIRECTORY
+#define OUTPUT_DIRECTORY "/local_home/exp_results/interval_stats"
+#endif
+
 #ifdef LIBFIBER
 #undef INTV_SAMPLING
 #undef PERF_CNTR
@@ -174,7 +178,7 @@ void heapSort(long arr[], int n)
     /* Delete all previous interval stats files */
     char command[500];
 #ifdef SYS_gettid
-    sprintf(command, "exec rm -f /local_home/nilanjana/temp/interval_stats/interval_stats_thread%ld.txt", syscall(SYS_gettid));
+    sprintf(command, "exec rm -f %s/interval_stats_thread%ld.txt", OUTPUT_DIRECTORY, syscall(SYS_gettid));
     system(command);
 #else
     #error "SYS_gettid unavailable on this system"
@@ -269,7 +273,7 @@ void heapSort(long arr[], int n)
     /* Print every interval */
     char name[500];
 #ifdef SYS_gettid
-    sprintf(name, "/local_home/nilanjana/temp/interval_stats/interval_stats_thread%ld.txt", syscall(SYS_gettid));
+    sprintf(name, "%s/interval_stats_thread%ld.txt", OUTPUT_DIRECTORY, syscall(SYS_gettid));
 #else
     #error "SYS_gettid unavailable on this system"
 #endif

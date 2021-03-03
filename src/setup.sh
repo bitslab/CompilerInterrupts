@@ -19,8 +19,8 @@ mkdir -p ../benchmarks/server_delegation/libfiber/bin
 chmod -R 777 ../benchmarks/server_delegation/libfiber/bin
 
 #echo "Copying program inputs from home directory to experiment directory"
-#cp -R ~/inputs.tgz ../benchmarks/accuracy_and_overhead/
+#cp -R ../../inputs.tgz ../benchmarks/accuracy_and_overhead/
 #pushd ../benchmarks/accuracy_and_overhead/
-#tar -xvf ../../inputs.tgz
+#tar -xvf inputs.tgz
 #chmod -R 777 inputs
 #popd

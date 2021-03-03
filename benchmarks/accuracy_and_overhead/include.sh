@@ -337,9 +337,7 @@ get_program_cmd() {
       command="$prefix ./$executable_name < ${SPLASH2_INPUT_PATH}/$program/input.$th > $OUT_FILE"
     ;;
     volrend)
-      # TODO: volrend show weird problems while accessing absolute path of the file in the guess account. Fix this.
-      #command="$prefix ./$executable_name $th ${SPLASH2_INPUT_PATH}/$program/inputs/head > $OUT_FILE"
-      command="$prefix ./$executable_name $th ../../../../inputs/splash2/volrend/inputs/head > $OUT_FILE"
+      command="$prefix ./$executable_name $th ${SPLASH2_INPUT_PATH}/$program/inputs/head > $OUT_FILE"
     ;;
     fmm)
       command="$prefix ./$executable_name < ${SPLASH2_INPUT_PATH}/$program/inputs/input.65535.$th > $OUT_FILE"

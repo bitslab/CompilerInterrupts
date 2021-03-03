@@ -89,7 +89,11 @@ perf_overhead() {
   pi=$3
   ci_setting=$4
 
-  avg=$(summarize_overhead_runs $bench $thread $run_type)
+  if [ $run_type -eq 0 ] || [ $run_type -eq 2 ]; then
+    avg=$(summarize_overhead_runs $bench $thread 0)
+  else
+    avg=$(summarize_overhead_runs $bench $thread 1)
+  fi
 
   if [ $run_type -eq 0 ]; then
     EXP_FILE="$DIR/pthread-${bench}"
@@ -231,7 +235,7 @@ process_perf_data() {
 }
 
 mkdir -p $PLOTS_DIR
-benches="$splash2_benches $phoenix_benches $parsec_benches"
+benches="$splash2_benches $phoenix_benches"
 
 # Usage:
 #   No argument : run for all benchmark suites

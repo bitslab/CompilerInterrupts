@@ -313,9 +313,6 @@ void heapSort(long arr[], int n)
 
 #elif defined(PERF_CNTR)
   void init_stats(int index) {
-    /* if the thread local variable has been initialized, it means this is a duplicate call for the same thread */
-    if(buffer_tsc)
-      return;
 
     /* This setting is done per thread (using pid parameter of perf_event_open)*/
     struct perf_event_attr attr;

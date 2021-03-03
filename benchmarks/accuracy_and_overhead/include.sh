@@ -566,14 +566,14 @@ build_hwc() {
   echo -e "\nBuilding $BENCH for $THREAD thread(s) with $BUILD_PREFIX: " | tee -a $CMD_LOG $BUILD_LOG
 
   if [ "$BENCH_SUITE" == "splash2" ]; then
-    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.lc $BENCH-clean;"
-    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.lc $BENCH"
+    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.orig $BENCH-clean;"
+    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.orig $BENCH"
   elif [ "$BENCH_SUITE" == "phoenix" ]; then
-    cmd="make -f Makefile.lc clean >$BUILD_LOG 2>$ERROR_LOG;"
-    cmd=$cmd"$BUILD_PREFIX make -f Makefile.lc >$BUILD_LOG 2>$ERROR_LOG"
+    cmd="make -f Makefile.orig clean >$BUILD_LOG 2>$ERROR_LOG;"
+    cmd=$cmd"$BUILD_PREFIX make -f Makefile.orig >$BUILD_LOG 2>$ERROR_LOG"
   elif [ "$BENCH_SUITE" == "parsec" ]; then
-    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.ci clean;"
-    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.ci $BENCH"
+    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.llvm clean;"
+    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.llvm $BENCH"
   fi
   run_command $cmd
 

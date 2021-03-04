@@ -28,7 +28,7 @@ run_interval_accuracy_test() {
 
 run_performance_overhead_test() {
   pushd accuracy_and_overhead
-    ./exp_performance.sh
+    RUNS=5 ./exp_performance.sh
     echo "Plot results are expected to be in $CUR_PATH/accuracy_and_overhead/$PLOT_RELATIVE_PATH"
     echo "overhead-th1.pdf should correspond to Figure 9 in PLDI submission!"
     echo "overhead-th32.pdf should correspond to Figure 11 in PLDI submission!"
@@ -37,7 +37,7 @@ run_performance_overhead_test() {
 
 run_hw_counters_test() {
   pushd accuracy_and_overhead
-    ./exp_hw_perf_counters.sh
+    RUNS=2 ./exp_hw_perf_counters.sh
     echo "Plot results are expected to be in $CUR_PATH/accuracy_and_overhead/$PLOT_RELATIVE_PATH"
     echo "perf-hwc.pdf should correspond to Figure 12 in PLDI submission!"
   popd

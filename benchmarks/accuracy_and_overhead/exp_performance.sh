@@ -219,6 +219,30 @@ process_perf_intv_diff_data() {
   done
 }
 
+create_absolute_runtime_table() {
+  out_file="$PLOTS_DIR/runtime.txt"
+  sep="\t"
+  echo -e "Benchmark $sep PThread(1Th) $sep CI(1Th) $sep Naive(1Th) $sep PThread(32Th) $sep CI(32Th) $sep Naive(32Th)" > $out_file
+
+  prefix="pthread ci naive"
+  threads="1 32"
+
+  for bench in $*
+  do
+    echo -ne "$bench" >> $out_file
+    for th in $threads
+    do
+      for p in $prefix
+      do
+        ifile="$DIR/${p}-th${th}"
+        rt=`grep $bench $ifile | awk '{print $2}'`
+        echo -ne " $sep $rt" >> $out_file
+      done
+    done
+    echo "" >> $out_file
+  done
+}
+
 mkdir -p $PLOTS_DIR
 benches="$splash2_benches $phoenix_benches $parsec_benches"
 
@@ -247,6 +271,7 @@ fi
 perf_orig_test $benches
 perf_overhead_test $benches
 process_perf_data
+create_absolute_runtime_table $benches
 
 #perf_overhead_of_ci_calls $benches
 #process_perf_intv_diff_data

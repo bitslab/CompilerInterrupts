@@ -9,9 +9,6 @@ b. For creating experiment related setup:
   cd src; ./setup.sh; cd ../
 
 # Benchmarks
-For running all experiments, run ./benchmarks/experiments.sh. It will take many hours. One can run each experiment individually from the script too.
-
-1. Accuracy & overhead Benchmarks
-
-2. Application in Server Delegation
+For running all experiments, run ./benchmarks/experiments.sh. One can run each experiment individually from the script too.
+For collecting all the plots, run ./benchmarks/collect_plots.sh. The plots will be placed in ./benchmarks/plots/ directory.
 

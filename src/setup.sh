@@ -18,6 +18,9 @@ chmod -R 777 /local_home/exp_results/
 mkdir -p ../benchmarks/server_delegation/libfiber/bin
 chmod -R 777 ../benchmarks/server_delegation/libfiber/bin
 
+mkdir -p ../benchmarks/plots/
+chmod -R 777 ../benchmarks/plots/
+
 #echo "Copying program inputs from home directory to experiment directory"
 #cp -R ../../inputs.tgz ../benchmarks/accuracy_and_overhead/
 #pushd ../benchmarks/accuracy_and_overhead/

@@ -1,0 +1,162 @@
+# TODO: Make this Makefile.in pretty
+
+TARGETS = epserver epwget
+CC_OPT=-g -O3 -Wall -Werror -fgnu89-inline -DCI -DUNMOD
+#CC=gcc -g -O3 -Wall -Werror -fgnu89-inline -DCI
+DPDK=1
+PS=0
+NETMAP=0
+ONVM=0
+CCP=
+#CFLAGS=-g -O2
+
+# For CI
+export ROOT ?= ${PWD}
+export INST_LEVEL ?= 2
+export PUSH_INTV ?= 1000
+export CMMT_INTV ?= 200
+export ALLOWED_DEVIATION ?= 0
+export CLOCK_TYPE ?= 1
+export CONFIG = 2
+export FIBER_CONFIG ?= 0
+export CYCLE_INTV ?= 5000
+
+CI_LIB_PATH=$(ROOT)/../../../../../lib
+
+export LC_FLAGS = -load $(CI_LIB_PATH)/CompilerInterrupt.so -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ${ROOT}../../../lc-config.txt
+export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
+
+CC=clang-9 ${CC_OPT}
+OPT=opt-9
+LLVM_LINK=llvm-link-9
+#CC=$(LLVM_BUILD)/bin/clang ${CC_OPT}
+#OPT=$(LLVM_BUILD)/bin/opt
+#LLVM_LINK=$(LLVM_BUILD)/bin/llvm-link
+
+# Add arch-specific optimization
+ifeq ($(shell uname -m),x86_64)
+LIBS += -m64
+endif
+
+# mtcp library and header 
+MTCP_FLD    =../../mtcp/
+MTCP_INC    =-I${MTCP_FLD}/include
+MTCP_LIB    =-L${MTCP_FLD}/lib
+MTCP_TARGET = ${MTCP_LIB}/libmtcp.a
+
+UTIL_FLD = ../../util
+UTIL_INC = -I${UTIL_FLD}/include
+#UTIL_OBJ = ${UTIL_FLD}/http_parsing.o ${UTIL_FLD}/tdate_parse.o ${UTIL_FLD}/netlib.o
+UTIL_OBJ = ${UTIL_FLD}/opt_http_parsing.ll ${UTIL_FLD}/opt_tdate_parse.ll ${UTIL_FLD}/opt_netlib.ll
+
+# util library and header
+INC = -I./include/ ${UTIL_INC} ${MTCP_INC} -I${UTIL_FLD}/include
+INC += -I$(CI_LIB_PATH)
+LIBS = ${MTCP_LIB}
+
+# psio-specific variables
+ifeq ($(PS),1)
+PS_DIR = ../../io_engine/
+PS_INC = ${PS_DIR}/include
+INC += -I{PS_INC}
+LIBS += -lmtcp -L${PS_DIR}/lib -lps -lpthread -lnuma -lrt
+endif
+
+# netmap-specific variables
+ifeq ($(NETMAP),1)
+LIBS += -lmtcp -lpthread -lnuma -lrt
+endif
+
+# dpdk-specific variables
+ifeq ($(DPDK),1)
+DPDK_MACHINE_LINKER_FLAGS=$${RTE_SDK}/$${RTE_TARGET}/lib/ldflags.txt
+DPDK_MACHINE_LDFLAGS=$(shell cat ${DPDK_MACHINE_LINKER_FLAGS})
+LIBS += -g -O3 -pthread -lrt -march=native ${MTCP_FLD}/lib/libmtcp.a -lnuma -lmtcp -lpthread -lrt -ldl -lgmp -L${RTE_SDK}/${RTE_TARGET}/lib ${DPDK_MACHINE_LDFLAGS}
+endif
+
+# onvm-specific variables
+ifeq ($(ONVM),1)
+ifeq ($(RTE_TARGET),)
+$(error "Please define RTE_TARGET environment variable")
+endif
+
+INC += -I/onvm_nflib
+INC += -I/lib
+INC += -DENABLE_ONVM
+LIBS += /onvm_nflib/$(RTE_TARGET)/libonvm.a
+LIBS += /lib/$(RTE_TARGET)/lib/libonvmhelper.a -lm
+endif
+
+ifeq ($V,) # no echo
+	export MSG=@echo
+	export HIDE=
+else
+	export MSG=@\#
+	export HIDE=
+endif
+
+ifeq ($(CCP), 1)
+# LIBCCP
+LIBCCP = $(MTCP_FLD)/src/libccp
+LIBS += -L$(LIBCCP) -lccp -lstartccp
+INC += -I$(LIBCCP)
+endif 
+
+# for libci
+LIBS += -L$(CI_LIB_PATH) -lci -Wl,-rpath=$(CI_LIB_PATH)
+
+#all: libci.so epserver epwget
+all: $(CI_LIB_PATH)/libci.so epserver epwget
+
+llvm_epserver.ll: epserver.c
+	$(HIDE) $(CC) $(CFLAGS) ${INC} -S -emit-llvm -o $@ $< > /dev/null
+
+opt_epserver.ll: llvm_epserver.ll
+	$(HIDE) $(OPT) $(OPT_FLAGS) -S < $< > $@
+
+opt_server_all.ll: opt_epserver.ll ${UTIL_OBJ}
+	$(HIDE) $(LLVM_LINK) $^ -o $@
+
+epserver.ll: opt_server_all.ll
+	$(HIDE) $(OPT) $(LC_FLAGS) -S < $< > $@
+
+epserver: epserver.ll ${MTCP_FLD}/lib/libmtcp.a
+	$(HIDE) ${CC} $< ${LIBS} ${INC} -o $@
+
+#epserver.o: epserver.c
+#	$(MSG) "   CC $<"
+#	$(HIDE) ${CC} -c $< ${CFLAGS} ${INC}
+#
+#epserver: epserver.o ${MTCP_FLD}/lib/libmtcp.a
+#	$(MSG) "   LD $<"
+#	$(HIDE) ${CC} $< ${LIBS} ${UTIL_OBJ} -o $@
+
+llvm_epwget.ll: epwget.c
+	$(HIDE) $(CC) ${CFLAGS} ${INC} -S -emit-llvm -o $@ $< #> /dev/null 2>&1
+
+opt_epwget.ll: llvm_epwget.ll
+	$(HIDE) $(OPT) $(OPT_FLAGS) -S < $< > $@
+
+opt_client_all.ll: opt_epwget.ll ${UTIL_OBJ}
+	$(HIDE) $(LLVM_LINK) $^ -o $@
+
+epwget.ll: opt_client_all.ll
+	$(HIDE) $(OPT) $(LC_FLAGS) -S < $< > $@
+
+epwget: epwget.ll ${MTCP_FLD}/lib/libmtcp.a
+	$(HIDE) ${CC} $< ${LIBS} ${INC} -o $@
+
+#epwget.o: epwget.c
+#	$(MSG) "   CC $<"
+#	$(HIDE) ${CC} -c $< ${CFLAGS} ${INC}
+#
+#epwget: epwget.o ${MTCP_FLD}/lib/libmtcp.a
+#	$(MSG) "   LD $<"
+#	$(HIDE) ${CC} $< ${LIBS} ${UTIL_OBJ} -o $@
+
+clean:
+	$(MSG) "   CLEAN $(TARGETS)"
+	$(HIDE) rm -f *~ *.o *.ll ${TARGETS} log_*
+
+distclean: clean
+	rm -rf Makefile

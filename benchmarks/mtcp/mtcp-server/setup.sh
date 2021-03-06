@@ -16,6 +16,7 @@ unbind_frames() {
   ifconfig dpdk0 down
   ./dpdk/usertools/dpdk-devbind.py -b ixgbe $FRAMES_PCI
   ifconfig $FRAMES_IFACE $FRAMES_IP netmask $NETMASK up
+  rmmod dpdk_iface
 }
 
 bind_dpdk_frames() {
@@ -28,6 +29,7 @@ unbind_lines() {
   ifconfig dpdk0 down
   ./dpdk/usertools/dpdk-devbind.py -b ixgbe $LINES_PCI
   ifconfig $LINES_IFACE $LINES_IP netmask $NETMASK up
+  rmmod dpdk_iface
 }
 
 bind_dpdk_lines() {
@@ -36,14 +38,9 @@ bind_dpdk_lines() {
   ifconfig dpdk0 $LINES_IP netmask $NETMASK up
 }
 
-if [ $# -ne 1 ]; then
-  echo "Option not specified"
-  exit
-fi
-
 CUR_PATH=`pwd`
 server=`hostname`
-export RTE_TARGET="x86_64-native-linuxapp-gcc-$server"
+export RTE_TARGET="x86_64-native-linuxapp-gcc"
 export RTE_SDK=$CUR_PATH"/dpdk"
 
 echo "RTE_TARGET:"$RTE_TARGET
@@ -54,24 +51,22 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-rmmod igb_uio
-insmod $RTE_SDK/$RTE_TARGET/kmod/igb_uio.ko
-lsmod | grep igb_uio
+#rmmod igb_uio
+#insmod $RTE_SDK/$RTE_TARGET/kmod/igb_uio.ko
+#lsmod | grep igb_uio
 
-if [ $# -eq 1 ]; then
-  if [ $1 -eq 1 ]; then
-    echo "Binding ports to dpdk"
-    if [ "$server" == "frames" ]; then
-      bind_dpdk_frames
-    elif [ "$server" == "lines" ]; then
-      bind_dpdk_lines
-    fi
-  else
-    echo "Unbinding ports to dpdk"
-    if [ "$server" == "frames" ]; then
-      unbind_frames
-    elif [ "$server" == "lines" ]; then
-      unbind_lines
-    fi
+if [ $# -eq 1 ] && [ $1 -eq 1 ] ; then
+  echo "Binding ports to dpdk"
+  if [ "$server" == "frames" ]; then
+    bind_dpdk_frames
+  elif [ "$server" == "lines" ]; then
+    bind_dpdk_lines
+  fi
+elif [ $# -eq 1 ] && [ $1 -eq 0 ] ; then
+  echo "Unbinding ports to dpdk"
+  if [ "$server" == "frames" ]; then
+    unbind_frames
+  elif [ "$server" == "lines" ]; then
+    unbind_lines
   fi
 fi

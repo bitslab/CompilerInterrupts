@@ -1,5 +1,6 @@
 #!/bin/bash
-RUNS=2
+RUNS=10
+EXP_DIR="${PWD}/../exp_results/"
 
 print_avg() {
   #conc
@@ -24,9 +25,9 @@ print_avg() {
 
 kill_existing_server() {
   # For precaution, kill any existing running process
-  sshpass -e ssh nbasu4@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
-  #sshpass -e ssh nbasu4@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
-  pid_present=`sshpass -e ssh nbasu4@$server.cs.uic.edu "pgrep -x epserver"`
+  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
+  #sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
+  pid_present=`sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver"`
   if [ ! -z $pid_present ]; then
     echo "Could not kill epserver. Exiting."
     exit
@@ -51,7 +52,7 @@ run_server() {
   echo "Running server for mode $1"
   run_str="cd $server_app_path; sudo nohup ./run_server.sh $THREADS"
   echo $run_str
-  sshpass -e ssh nbasu4@$server.cs.uic.edu "$run_str" &
+  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$run_str" &
   sleep_time=15
   echo "Will sleep for $sleep_time sec for server to start running"
   sleep $sleep_time
@@ -61,7 +62,7 @@ build_server() {
   echo "Building server for mode $1"
   build_str="cd $server_app_path; sudo nohup ./build.sh $1"
   echo $build_str
-  sshpass -e ssh nbasu4@$server.cs.uic.edu "$build_str"
+  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$build_str"
 }
 
 build_client() {
@@ -70,9 +71,14 @@ build_client() {
   make epwget
 }
 
-# start
+USERNAME=`logname`
+if [ -z "$USERNAME" ]; then 
+  echo "User name of sudo user is not found. Aborting."
+  exit
+fi
+
 if [ -z "$SSHPASS" ]; then 
-  echo "SSHPASS needs to be set. Aborting."
+  echo "User $USERNAME's password is not set in SSHPASS variable. E.g. export SSHPASS=\"password\". Aborting."
   exit
 fi
 
@@ -85,7 +91,16 @@ elif [ "$client" == "quads2" ]; then
   server_ip="192.168.1.1"
 else
   echo "$client is not configured as an mtcp client!"
+  exit
 fi
+
+sshpass -e ssh ${USERNAME}@${server}.cs.uic.edu "pwd" > /dev/null
+cmd_status=`echo $?`
+if [ $cmd_status -ne 0 ]; then
+  echo "Remote access to server $server is not setup for user $USERNAME. Aborting."
+  exit
+fi
+
 #server_app_path="~/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp-native/"
 # since they are on NFS
 server_app_path=`pwd`
@@ -148,4 +163,5 @@ do
     run_client $conc $mode_str # $3 - conc, $2 - mode string
   done
   kill_existing_server
+  cp $STAT_LOG $EXP_DIR
 done

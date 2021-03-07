@@ -1,5 +1,7 @@
 #!/bin/bash
 
+EXP_DIR="${PWD}/../../../exp_results/"
+
 print_avg() {
   out_file="out_log_${CONCURRENCY}_m$mode"
   echo -n "Average latency over $RUNS runs ($REQUESTS requests, $THREADS threads, $CONCURRENCY concurrency): "
@@ -112,13 +114,19 @@ run_experiment() {
   kill_existing_server
 }
 
-# start
-if [ -z "$SSHPASS" ]; then 
-  echo "SSHPASS needs to be set. Aborting."
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root"
+   exit 1
+fi
+
+USERNAME=`logname`
+if [ -z "$USERNAME" ]; then 
+  echo "User name of sudo user is not found. Aborting."
   exit
 fi
-if [ -z "$USERNAME" ]; then 
-  echo "USERNAME needs to be set. Aborting."
+
+if [ -z "$SSHPASS" ]; then 
+  echo "User $USERNAME's password is not set in SSHPASS variable. E.g. export SSHPASS=\"password\". Aborting."
   exit
 fi
 
@@ -140,7 +148,16 @@ elif [ "$client" == "quads2" ]; then
   server_path="$cur_path/../../../mtcp-mellanox-server/"
 else
   echo "$client is not configured as an mtcp client!"
+  exit
 fi
+
+sshpass -e ssh ${USERNAME}@${server}.cs.uic.edu "pwd" > /dev/null
+cmd_status=`echo $?`
+if [ $cmd_status -ne 0 ]; then
+  echo "Remote access to server $server is not setup for user $USERNAME. Aborting."
+  exit
+fi
+
 server_app_path="$server_path/apps/example"
 
 # debug code
@@ -178,11 +195,11 @@ for mode in $MODES; do
     case $mode in
     0)
       REQUESTS=100000
-      type_str="orig"
+      type_str="orig_mod"
     ;;
     1)
       REQUESTS=100000
-      type_str="ci"
+      type_str="ci_mod"
     ;;
     2)
       REQUESTS=5000000
@@ -198,11 +215,11 @@ for mode in $MODES; do
     case $mode in
     0)
       REQUESTS=100000
-      type_str="orig"
+      type_str="orig_mod"
     ;;
     1)
       REQUESTS=100000
-      type_str="ci"
+      type_str="ci_mod"
     ;;
     2)
       REQUESTS=50000000
@@ -236,4 +253,5 @@ for mode in $MODES; do
     type=1
   fi
   run_experiment
+  cp $STAT_LOG $EXP_DIR
 done

@@ -425,9 +425,12 @@ AUTOCONF = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/mi
 AUTOHEADER = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing autoheader
 AUTOMAKE = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing automake-1.15
 AWK = gawk
-CC = /mnt/nilanjana/bin/clang
-CC_OPT = /mnt/nilanjana/bin/opt
-CC_LLC = /mnt/nilanjana/bin/llc
+#CC = /mnt/nilanjana/bin/clang
+#CC_OPT = /mnt/nilanjana/bin/opt
+#CC_LLC = /mnt/nilanjana/bin/llc
+CC = clang-9
+CC_OPT = opt-9
+CC_LLC = llc-9
 CCAS = gcc
 CCASDEPMODE = depmode=gcc3
 CCASFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg

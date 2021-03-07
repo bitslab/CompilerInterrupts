@@ -63,26 +63,41 @@ set_numa_pages()
 	echo "  enter '64' to reserve 64 * 2MB pages on each node"
 
 	echo > .echo_tmp
+
+  server=`hostname`
+  case $server in
+    "frames") node_name="node3" ;;
+    *) node_name="node0" ;;
+  esac
+
 	Pages=8192
-  	echo -n "Number of pages for each node: " $Pages
+
+  echo -n "Number of pages for each node: " $Pages
 	for d in /sys/devices/system/node/node? ; do
 		node=$(basename $d)
 #echo -n "Number of pages for $node: "
 #read Pages
 		echo "Setting hugepages for node $d"
-		echo "echo $Pages > $d/hugepages/hugepages-${HUGEPGSZ}/nr_hugepages" >> .echo_tmp
+    if [ "$node_name" == "$node" ]; then
+		  echo "echo $Pages > $d/hugepages/hugepages-${HUGEPGSZ}/nr_hugepages" >> .echo_tmp
+    else
+		  echo "echo 0 > $d/hugepages/hugepages-${HUGEPGSZ}/nr_hugepages" >> .echo_tmp
+    fi
 	done
 	echo "Reserving hugepages"
+  cat .echo_tmp
 	sudo sh .echo_tmp
 	#cat .echo_tmp
 	rm -f .echo_tmp
 
 	for d in /sys/devices/system/node/node? ; do
+		node=$(basename $d)
 		set_pages=`cat $d/hugepages/hugepages-${HUGEPGSZ}/nr_hugepages`
-		if [ $Pages -ne $set_pages ]; then
-			echo "Hugepage setting failed for $d. Expected pages: $Pages, Set pages: $set_pages"
-			exit
-		fi
+    if [ "$node_name" == "$node" ]; then
+		  if [ $Pages -ne $set_pages ]; then
+			  echo "Hugepage setting failed for $d. Expected pages: $Pages, Set pages: $set_pages"
+		  fi
+    fi
 	done
 
 	create_mnt_huge

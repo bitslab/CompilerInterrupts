@@ -188,16 +188,21 @@ void *mem_map_shm(mem_key_t key, void *base, size_t len, size_t pgsize,
 		return MAP_FAILED;
 	}
 
+  log_debug("mem_map_shm (%s:%d)\n", __FILE__, __LINE__);
 	if (exclusive)
 		flags |= IPC_EXCL;
 
 	shmid = shmget(key, len, flags);
-	if (shmid == -1)
+	if (shmid == -1) {
+    log_debug("mem_map_shm (%s:%d) failed. error: %s\n", __FILE__, __LINE__, strerror(errno));
 		return MAP_FAILED;
+  }
 
 	addr = shmat(shmid, base, 0);
-	if (addr == MAP_FAILED)
+	if (addr == MAP_FAILED) {
+    log_debug("mem_map_shm (%s:%d) failed. error: %s\n", __FILE__, __LINE__, strerror(errno));
 		return MAP_FAILED;
+  }
 
 	touch_mapping(addr, len, pgsize);
 	return addr;

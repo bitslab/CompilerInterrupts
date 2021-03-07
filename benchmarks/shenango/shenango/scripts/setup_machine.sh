@@ -25,3 +25,7 @@ set_count=`cat $hugepage_file`
 if [ $hugepage_count -ne $set_count ]; then
   echo "Huge pages settings may have partially failed for $hugepage_file. Expected count: $hugepage_count, Set count: $set_count."
 fi
+
+cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+echo 32768 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages # for lines, with 8 sockets
+cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages

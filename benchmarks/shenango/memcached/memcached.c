@@ -49,7 +49,7 @@
 #include <getopt.h>
 #endif
 
-//#define DISABLE_PRIVILEGE_CHECK
+#define DISABLE_PRIVILEGE_CHECK
 
 #ifdef DBG
 int th_yield1 = 0;

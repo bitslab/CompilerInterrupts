@@ -14,6 +14,7 @@
 
 
 
+CUR_PATH = `pwd`
 
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -258,7 +259,7 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I.
+DEFAULT_INCLUDES = -I. -I$(CUR_PATH)/../../src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -417,39 +418,29 @@ distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing aclocal-1.15
+ACLOCAL = ${SHELL} ${CUR_PATH}/missing aclocal-1.15
 ALLOCA = 
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing autoconf
-AUTOHEADER = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing autoheader
-AUTOMAKE = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing automake-1.15
+AUTOCONF = ${SHELL} ${CUR_PATH}/missing autoconf
+AUTOHEADER = ${SHELL} ${CUR_PATH}/missing autoheader
+AUTOMAKE = ${SHELL} ${CUR_PATH}/missing automake-1.15
 AWK = gawk
-CC = /mnt/nilanjana/bin/clang
-CC_OPT = /mnt/nilanjana/bin/opt
-CC_LLC = /mnt/nilanjana/bin/llc
+#CC = /mnt/nilanjana/bin/clang
+#CC_OPT = /mnt/nilanjana/bin/opt
+#CC_LLC = /mnt/nilanjana/bin/llc
+CC = clang-9
+CC_OPT = opt-9
+CC_LLC = llc-9
 CCAS = gcc
 CCASDEPMODE = depmode=gcc3
-CCASFLAGS = -g -O3  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg
+CCASFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg
 CCDEPMODE = depmode=gcc3
 #CFLAGS = -O2  -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include
-DPDK_PATH = ../shenango/shenango/dpdk
-CFLAGS = -g -O3 -DCI $(EXTRA_CFLAGS) -Ofast -flto -fuse-linker-plugin -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include -I./
-SHENANGO_CFLAGS = -g -Wall -std=gnu11 -D_GNU_SOURCE -I../shenango/shenango/ -I$(DPDK_PATH)/build/include -I../shenango/shenango/inc -mssse3 -DNDEBUG -O3 
-#SHENANGO_CFLAGS = -g -Wall -std=gnu11 -D_GNU_SOURCE -I../shenango/shenango/ -I$(DPDK_PATH)/build/include -I../shenango/shenango/inc -mssse3 -DDEBUG -O3 
+CFLAGS = -O3 -Ofast -flto -fuse-linker-plugin -march=native -DUSE_ASM -pg  -Iyes/include -Iyes/include -I./
+OPTFLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 CPP = gcc -E
 CPPFLAGS =   -Iyes/include -Iyes/include
-INST_LEVEL ?= 12
-PUSH_INTV ?= 2000
-CMMT_INTV ?= 400
-CYCLE_INTV ?= 2000
-ALLOWED_DEVIATION ?= 100
-FIBER_CONFIG ?= 0
-CLOCK_TYPE ?= 1
-CONFIG ?= 2
-OPTFLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
-LCFLAGS_MAIN = -load /mnt/nilanjana/lib/LLVMLogicalClock.so -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
-LCFLAGS = -load /mnt/nilanjana/lib/LLVMLogicalClock.so -logicalclock -defclock=false -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
 CXX = g++
 CXXDEPMODE = depmode=gcc3
 CXXFLAGS = -g -O3
@@ -469,32 +460,14 @@ INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
 JANSSON_LIBS = -ljansson
 LDFLAGS =   -Lyes/lib -Lyes/lib 
-# dpdk libs
-DPDK_LIBS= -L$(DPDK_PATH)/build/lib
-DPDK_LIBS += -Wl,-whole-archive -lrte_pmd_e1000 -Wl,-no-whole-archive
-DPDK_LIBS += -Wl,-whole-archive -lrte_pmd_ixgbe -Wl,-no-whole-archive
-DPDK_LIBS += -Wl,-whole-archive -lrte_mempool_ring -Wl,-no-whole-archive
-DPDK_LIBS += -ldpdk
-DPDK_LIBS += -lrte_eal
-DPDK_LIBS += -lrte_ethdev
-DPDK_LIBS += -lrte_hash
-DPDK_LIBS += -lrte_mbuf
-DPDK_LIBS += -lrte_mempool
-DPDK_LIBS += -lrte_mempool
-DPDK_LIBS += -lrte_mempool_stack
-DPDK_LIBS += -lrte_ring
-# additional libs for running with Mellanox NICs
-ifneq ($(MLX),)
-DPDK_LIBS += -lrte_pmd_mlx4 -libverbs -lmlx4
-endif
 LIBCURL = -lcurl -lz -lssl -lcrypto
 LIBCURL_CFLAGS =  -Iyes/include -Iyes/include
 LIBCURL_CPPFLAGS =  -Iyes/include -Iyes/include
 LIBOBJS = 
-LIBS = -lz -lci -L./ -Wl,-rpath=./ -L../shenango/shenango libbase.a libnet.a -T base.ld -no-pie $(DPDK_LIBS) -ldl -lnuma
+LIBS = -lz 
 LTLIBOBJS = 
 MAINT = #
-MAKEINFO = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/missing makeinfo
+MAKEINFO = ${SHELL} ${CUR_PATH}/missing makeinfo
 MKDIR_P = /bin/mkdir -p
 OBJEXT = o
 PACKAGE = cpuminer-multi
@@ -513,10 +486,10 @@ SHELL = /bin/bash
 STRIP = 
 VERSION = 1.3.7
 WS2_LIBS = 
-abs_builddir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
-abs_srcdir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
-abs_top_builddir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
-abs_top_srcdir = /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi
+abs_builddir = ${CUR_PATH}
+abs_srcdir = ${CUR_PATH}
+abs_top_builddir = ${CUR_PATH}
+abs_top_srcdir = ${CUR_PATH}
 ac_ct_CC = gcc
 ac_ct_CXX = g++
 am__include = include
@@ -544,7 +517,7 @@ host_vendor = pc
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi/install-sh
+install_sh = ${SHELL} ${CUR_PATH}/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -607,10 +580,10 @@ cpuminer_SOURCES = cpu-miner.c util.c api.c sysinfos.c uint256.cpp \
 	$(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_4) $(am__append_6)
 disable_flags = $(am__append_5)
-cpuminer_LDFLAGS =   -Lyes/lib -Lyes/lib
+cpuminer_LDFLAGS =   -Lyes/lib -Lyes/lib 
 cpuminer_LDADD = -lcurl -lz -lssl -lcrypto -ljansson -lpthread  \
 	$(am__append_8)
-cpuminer_CPPFLAGS =  -Iyes/include -Iyes/include -I../shenango/shenango/iokernel -I../shenango/shenango/inc -I../shenango/shenango/dpdk/build/include $(ALL_INCLUDES)
+cpuminer_CPPFLAGS =  -Iyes/include -Iyes/include $(ALL_INCLUDES)
 cpuminer_CFLAGS = -Wno-pointer-sign -Wno-pointer-to-int-cast \
 	$(disable_flags) $(am__append_7) $(am__append_9)
 
@@ -981,9 +954,9 @@ compat/$(DEPDIR)/$(am__dirstamp):
 compat/cpuminer-winansi.$(OBJEXT): compat/$(am__dirstamp) \
 	compat/$(DEPDIR)/$(am__dirstamp)
 
-cpuminer$(EXEEXT): $(cpuminer_OBJECTS) $(iokernel_obj) $(cpuminer_DEPENDENCIES) $(EXTRA_cpuminer_DEPENDENCIES) 
+cpuminer$(EXEEXT): $(cpuminer_OBJECTS) $(cpuminer_DEPENDENCIES) $(EXTRA_cpuminer_DEPENDENCIES) 
 	@rm -f cpuminer$(EXEEXT)
-	$(AM_V_CXXLD)$(cpuminer_LINK) $(iokernel_obj) $(cpuminer_OBJECTS) $(cpuminer_LDADD) $(LIBS)
+	$(AM_V_CXXLD)$(cpuminer_LINK) $(cpuminer_OBJECTS) $(cpuminer_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -994,9 +967,7 @@ mostlyclean-compile:
 	-rm -f lyra2/*.$(OBJEXT)
 	-rm -f sha3/*.$(OBJEXT)
 	-rm -f yescrypt/*.$(OBJEXT)
-	-rm -f $(iokernel_obj)
 	-rm -f *.ll
-	-rm -f libci.so
 	-rm -f algo/*.ll
 	-rm -f asm/*.ll
 	-rm -f compat/*.ll
@@ -1004,11 +975,6 @@ mostlyclean-compile:
 	-rm -f lyra2/*.ll
 	-rm -f sha3/*.ll
 	-rm -f yescrypt/*.ll
-	-rm -f libbase.a
-	-rm -f libnet.a
-	-rm -f yescrypt/*.ll
-	-rm -f yescrypt/*.ll
-	-make clean -C ../shenango/shenango
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -1129,49 +1095,6 @@ include sha3/$(DEPDIR)/cpuminer-sph_whirlpool.Po
 include yescrypt/$(DEPDIR)/cpuminer-sha256_Y.Po
 include yescrypt/$(DEPDIR)/cpuminer-yescrypt-best.Po
 include yescrypt/$(DEPDIR)/cpuminer-yescrypt-common.Po
-
-#iokernel_src = $(filter-out ../shenango/shenango/iokernel/main.c, $(wildcard ../shenango/shenango/iokernel/*.c))
-#iokernel_src = ../shenango/shenango/iokernel/mempool_completion.c
-#iokernel_src = \
-  ../shenango/shenango/iokernel/mempool_completion.c \
-  ../shenango/shenango/iokernel/stat.c \
-  ../shenango/shenango/iokernel/cores.c \
-  ../shenango/shenango/iokernel/tx.c \
-  ../shenango/shenango/iokernel/dp_clients.c \
-  ../shenango/shenango/iokernel/dpdk.c \
-  ../shenango/shenango/iokernel/commands.c \
-  ../shenango/shenango/iokernel/rx.c \
-  ../shenango/shenango/iokernel/control.c
-
-iokernel_obj = \
-  mempool_completion.o \
-  stat.o \
-  cores.o \
-  tx.o \
-  dp_clients.o \
-  dpdk.o \
-  commands.o \
-  rx.o \
-  control.o
-
-$(iokernel_obj): %.o: ../shenango/shenango/iokernel/%.c
-	echo gcc $(SHENANGO_CFLAGS) -c $< -o $@
-	gcc $(SHENANGO_CFLAGS) -c $< -o $@
-
-ci_lib.o: ci_lib.c ci_lib.h
-	gcc -g -c -fPIC $< -o $@
-
-libci.so: ci_lib.o
-	gcc -shared $< -o $@
-
-libbase.a:
-	make -C ../shenango/shenango/ $@
-	#make -C ../shenango/shenango/ $@
-	cp ../shenango/shenango/$@ .
-
-libnet.a:
-	make -C ../shenango/shenango/ $@
-	cp ../shenango/shenango/$@ .
 
 .S.o:
 	$(AM_V_CPPAS)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -1315,7 +1238,7 @@ asm/cpuminer-scrypt-arm.obj: asm/scrypt-arm.S
 #	DEPDIR=$(DEPDIR) $(CCASDEPMODE) $(depcomp) \
 #	$(AM_V_CPPAS_no)$(CCAS) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS) -c -o asm/cpuminer-scrypt-arm.obj `if test -f 'asm/scrypt-arm.S'; then $(CYGPATH_W) 'asm/scrypt-arm.S'; else $(CYGPATH_W) '$(srcdir)/asm/scrypt-arm.S'; fi`
 
-.c.o: libci.so $(iokernel_obj) libbase.a libnet.a base.ld
+.c.o:
 	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
 	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
 	$(am__mv) $$depbase.Tpo $$depbase.Po
@@ -1331,12 +1254,10 @@ asm/cpuminer-scrypt-arm.obj: asm/scrypt-arm.S
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-cpuminer-cpu-miner.o: libci.so $(iokernel_obj) libbase.a libnet.a base.ld cpu-miner.c
-	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-cpu-miner.ll -MD -MP -MF $(DEPDIR)/cpuminer-cpu-miner.Tpo -c -o llvm_cpuminer-cpu-miner.ll `test -f 'cpu-miner.c' || echo '$(srcdir)/'`cpu-miner.c
+cpuminer-cpu-miner.o: cpu-miner.c
+	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-cpu-miner.ll -MD -MP -MF $(DEPDIR)/cpuminer-cpu-miner.Tpo -c -o llvm_cpuminer-cpu-miner.ll `test -f 'cpu-miner.c' || echo '$(srcdir)/'`cpu-miner.c 
 	$(CC_OPT) $(OPTFLAGS) -S < llvm_cpuminer-cpu-miner.ll > opt_cpuminer-cpu-miner.ll
-	$(CC_OPT) $(LCFLAGS_MAIN) -S < opt_cpuminer-cpu-miner.ll > cpuminer-cpu-miner.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-cpu-miner.o `test -f 'cpuminer-cpu-miner.ll' || echo '$(srcdir)/'`cpuminer-cpu-miner.ll
-#$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT cpuminer-cpu-miner.o -MD -MP -MF $(DEPDIR)/cpuminer-cpu-miner.Tpo -c -o cpuminer-cpu-miner.o `test -f 'cpu-miner.c' || echo '$(srcdir)/'`cpu-miner.c
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-cpu-miner.o `test -f 'opt_cpuminer-cpu-miner.ll' || echo '$(srcdir)/'`opt_cpuminer-cpu-miner.ll
 	$(AM_V_at)$(am__mv) $(DEPDIR)/cpuminer-cpu-miner.Tpo $(DEPDIR)/cpuminer-cpu-miner.Po
 #	$(AM_V_CC)source='cpu-miner.c' object='cpuminer-cpu-miner.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1350,11 +1271,9 @@ cpuminer-cpu-miner.obj: cpu-miner.c
 #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -c -o cpuminer-cpu-miner.obj `if test -f 'cpu-miner.c'; then $(CYGPATH_W) 'cpu-miner.c'; else $(CYGPATH_W) '$(srcdir)/cpu-miner.c'; fi`
 
 cpuminer-util.o: util.c
-	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-util.ll -MD -MP -MF $(DEPDIR)/cpuminer-util.Tpo -c -o llvm_cpuminer-util.ll `test -f 'util.c' || echo '$(srcdir)/'`util.c
+	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-util.ll -MD -MP -MF $(DEPDIR)/cpuminer-util.Tpo -c -o llvm_cpuminer-util.ll `test -f 'util.c' || echo '$(srcdir)/'`util.c 
 	$(CC_OPT) $(OPTFLAGS) -S < llvm_cpuminer-util.ll > opt_cpuminer-util.ll
-	$(CC_OPT) $(LCFLAGS) -S < opt_cpuminer-util.ll > cpuminer-util.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-util.o `test -f 'cpuminer-util.ll' || echo '$(srcdir)/'`cpuminer-util.ll
-#$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT cpuminer-util.o -MD -MP -MF $(DEPDIR)/cpuminer-util.Tpo -c -o cpuminer-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-util.o `test -f 'opt_cpuminer-util.ll' || echo '$(srcdir)/'`opt_cpuminer-util.ll
 	$(AM_V_at)$(am__mv) $(DEPDIR)/cpuminer-util.Tpo $(DEPDIR)/cpuminer-util.Po
 #	$(AM_V_CC)source='util.c' object='cpuminer-util.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1370,8 +1289,7 @@ cpuminer-util.obj: util.c
 cpuminer-api.o: api.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-api.ll -MD -MP -MF $(DEPDIR)/cpuminer-api.Tpo -c -o llvm_cpuminer-api.ll `test -f 'api.c' || echo '$(srcdir)/'`api.c 
 	$(CC_OPT) $(OPTFLAGS) -S < llvm_cpuminer-api.ll > opt_cpuminer-api.ll
-	$(CC_OPT) $(LCFLAGS) -S < opt_cpuminer-api.ll > cpuminer-api.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-api.o `test -f 'cpuminer-api.ll' || echo '$(srcdir)/'`cpuminer-api.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-api.o `test -f 'opt_cpuminer-api.ll' || echo '$(srcdir)/'`opt_cpuminer-api.ll
 	$(AM_V_at)$(am__mv) $(DEPDIR)/cpuminer-api.Tpo $(DEPDIR)/cpuminer-api.Po
 #	$(AM_V_CC)source='api.c' object='cpuminer-api.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1387,8 +1305,7 @@ cpuminer-api.obj: api.c
 cpuminer-sysinfos.o: sysinfos.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT llvm_cpuminer-sysinfos.ll -MD -MP -MF $(DEPDIR)/cpuminer-sysinfos.Tpo -c -o llvm_cpuminer-sysinfos.ll `test -f 'sysinfos.c' || echo '$(srcdir)/'`sysinfos.c 
 	$(CC_OPT) $(OPTFLAGS) -S < llvm_cpuminer-sysinfos.ll > opt_cpuminer-sysinfos.ll
-	$(CC_OPT) $(LCFLAGS) -S < opt_cpuminer-sysinfos.ll > cpuminer-sysinfos.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-sysinfos.o `test -f 'cpuminer-sysinfos.ll' || echo '$(srcdir)/'`cpuminer-sysinfos.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o cpuminer-sysinfos.o `test -f 'opt_cpuminer-sysinfos.ll' || echo '$(srcdir)/'`opt_cpuminer-sysinfos.ll
 	$(AM_V_at)$(am__mv) $(DEPDIR)/cpuminer-sysinfos.Tpo $(DEPDIR)/cpuminer-sysinfos.Po
 #	$(AM_V_CC)source='sysinfos.c' object='cpuminer-sysinfos.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1404,8 +1321,7 @@ cpuminer-sysinfos.obj: sysinfos.c
 sha3/cpuminer-sph_keccak.o: sha3/sph_keccak.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_keccak.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_keccak.Tpo -c -o sha3/llvm_cpuminer-sph_keccak.ll `test -f 'sha3/sph_keccak.c' || echo '$(srcdir)/'`sha3/sph_keccak.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_keccak.ll > sha3/opt_cpuminer-sph_keccak.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_keccak.ll > sha3/cpuminer-sph_keccak.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_keccak.o `test -f 'sha3/cpuminer-sph_keccak.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_keccak.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_keccak.o `test -f 'sha3/opt_cpuminer-sph_keccak.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_keccak.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_keccak.Tpo sha3/$(DEPDIR)/cpuminer-sph_keccak.Po
 #	$(AM_V_CC)source='sha3/sph_keccak.c' object='sha3/cpuminer-sph_keccak.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1421,8 +1337,7 @@ sha3/cpuminer-sph_keccak.obj: sha3/sph_keccak.c
 sha3/cpuminer-sph_hefty1.o: sha3/sph_hefty1.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_hefty1.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_hefty1.Tpo -c -o sha3/llvm_cpuminer-sph_hefty1.ll `test -f 'sha3/sph_hefty1.c' || echo '$(srcdir)/'`sha3/sph_hefty1.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_hefty1.ll > sha3/opt_cpuminer-sph_hefty1.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_hefty1.ll > sha3/cpuminer-sph_hefty1.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_hefty1.o `test -f 'sha3/cpuminer-sph_hefty1.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_hefty1.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_hefty1.o `test -f 'sha3/opt_cpuminer-sph_hefty1.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_hefty1.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_hefty1.Tpo sha3/$(DEPDIR)/cpuminer-sph_hefty1.Po
 #	$(AM_V_CC)source='sha3/sph_hefty1.c' object='sha3/cpuminer-sph_hefty1.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1438,8 +1353,7 @@ sha3/cpuminer-sph_hefty1.obj: sha3/sph_hefty1.c
 sha3/cpuminer-sph_groestl.o: sha3/sph_groestl.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_groestl.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_groestl.Tpo -c -o sha3/llvm_cpuminer-sph_groestl.ll `test -f 'sha3/sph_groestl.c' || echo '$(srcdir)/'`sha3/sph_groestl.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_groestl.ll > sha3/opt_cpuminer-sph_groestl.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_groestl.ll > sha3/cpuminer-sph_groestl.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_groestl.o `test -f 'sha3/cpuminer-sph_groestl.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_groestl.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_groestl.o `test -f 'sha3/opt_cpuminer-sph_groestl.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_groestl.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_groestl.Tpo sha3/$(DEPDIR)/cpuminer-sph_groestl.Po
 #	$(AM_V_CC)source='sha3/sph_groestl.c' object='sha3/cpuminer-sph_groestl.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1455,8 +1369,7 @@ sha3/cpuminer-sph_groestl.obj: sha3/sph_groestl.c
 sha3/cpuminer-sph_skein.o: sha3/sph_skein.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_skein.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_skein.Tpo -c -o sha3/llvm_cpuminer-sph_skein.ll `test -f 'sha3/sph_skein.c' || echo '$(srcdir)/'`sha3/sph_skein.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_skein.ll > sha3/opt_cpuminer-sph_skein.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_skein.ll > sha3/cpuminer-sph_skein.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_skein.o `test -f 'sha3/cpuminer-sph_skein.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_skein.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_skein.o `test -f 'sha3/opt_cpuminer-sph_skein.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_skein.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_skein.Tpo sha3/$(DEPDIR)/cpuminer-sph_skein.Po
 #	$(AM_V_CC)source='sha3/sph_skein.c' object='sha3/cpuminer-sph_skein.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1472,8 +1385,7 @@ sha3/cpuminer-sph_skein.obj: sha3/sph_skein.c
 sha3/cpuminer-sph_bmw.o: sha3/sph_bmw.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_bmw.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_bmw.Tpo -c -o sha3/llvm_cpuminer-sph_bmw.ll `test -f 'sha3/sph_bmw.c' || echo '$(srcdir)/'`sha3/sph_bmw.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_bmw.ll > sha3/opt_cpuminer-sph_bmw.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_bmw.ll > sha3/cpuminer-sph_bmw.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_bmw.o `test -f 'sha3/cpuminer-sph_bmw.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_bmw.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_bmw.o `test -f 'sha3/opt_cpuminer-sph_bmw.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_bmw.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_bmw.Tpo sha3/$(DEPDIR)/cpuminer-sph_bmw.Po
 #	$(AM_V_CC)source='sha3/sph_bmw.c' object='sha3/cpuminer-sph_bmw.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1489,8 +1401,7 @@ sha3/cpuminer-sph_bmw.obj: sha3/sph_bmw.c
 sha3/cpuminer-sph_jh.o: sha3/sph_jh.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_jh.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_jh.Tpo -c -o sha3/llvm_cpuminer-sph_jh.ll `test -f 'sha3/sph_jh.c' || echo '$(srcdir)/'`sha3/sph_jh.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_jh.ll > sha3/opt_cpuminer-sph_jh.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_jh.ll > sha3/cpuminer-sph_jh.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_jh.o `test -f 'sha3/cpuminer-sph_jh.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_jh.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_jh.o `test -f 'sha3/opt_cpuminer-sph_jh.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_jh.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_jh.Tpo sha3/$(DEPDIR)/cpuminer-sph_jh.Po
 #	$(AM_V_CC)source='sha3/sph_jh.c' object='sha3/cpuminer-sph_jh.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1506,8 +1417,7 @@ sha3/cpuminer-sph_jh.obj: sha3/sph_jh.c
 sha3/cpuminer-sph_shavite.o: sha3/sph_shavite.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_shavite.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_shavite.Tpo -c -o sha3/llvm_cpuminer-sph_shavite.ll `test -f 'sha3/sph_shavite.c' || echo '$(srcdir)/'`sha3/sph_shavite.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_shavite.ll > sha3/opt_cpuminer-sph_shavite.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_shavite.ll > sha3/cpuminer-sph_shavite.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_shavite.o `test -f 'sha3/cpuminer-sph_shavite.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_shavite.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_shavite.o `test -f 'sha3/opt_cpuminer-sph_shavite.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_shavite.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_shavite.Tpo sha3/$(DEPDIR)/cpuminer-sph_shavite.Po
 #	$(AM_V_CC)source='sha3/sph_shavite.c' object='sha3/cpuminer-sph_shavite.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1523,8 +1433,7 @@ sha3/cpuminer-sph_shavite.obj: sha3/sph_shavite.c
 sha3/cpuminer-sph_blake.o: sha3/sph_blake.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_blake.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_blake.Tpo -c -o sha3/llvm_cpuminer-sph_blake.ll `test -f 'sha3/sph_blake.c' || echo '$(srcdir)/'`sha3/sph_blake.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_blake.ll > sha3/opt_cpuminer-sph_blake.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_blake.ll > sha3/cpuminer-sph_blake.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_blake.o `test -f 'sha3/cpuminer-sph_blake.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_blake.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_blake.o `test -f 'sha3/opt_cpuminer-sph_blake.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_blake.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_blake.Tpo sha3/$(DEPDIR)/cpuminer-sph_blake.Po
 #	$(AM_V_CC)source='sha3/sph_blake.c' object='sha3/cpuminer-sph_blake.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1540,8 +1449,7 @@ sha3/cpuminer-sph_blake.obj: sha3/sph_blake.c
 sha3/cpuminer-mod_blakecoin.o: sha3/mod_blakecoin.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-mod_blakecoin.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-mod_blakecoin.Tpo -c -o sha3/llvm_cpuminer-mod_blakecoin.ll `test -f 'sha3/mod_blakecoin.c' || echo '$(srcdir)/'`sha3/mod_blakecoin.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-mod_blakecoin.ll > sha3/opt_cpuminer-mod_blakecoin.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-mod_blakecoin.ll > sha3/cpuminer-mod_blakecoin.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-mod_blakecoin.o `test -f 'sha3/cpuminer-mod_blakecoin.ll' || echo '$(srcdir)/'`sha3/cpuminer-mod_blakecoin.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-mod_blakecoin.o `test -f 'sha3/opt_cpuminer-mod_blakecoin.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-mod_blakecoin.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-mod_blakecoin.Tpo sha3/$(DEPDIR)/cpuminer-mod_blakecoin.Po
 #	$(AM_V_CC)source='sha3/mod_blakecoin.c' object='sha3/cpuminer-mod_blakecoin.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1557,8 +1465,7 @@ sha3/cpuminer-mod_blakecoin.obj: sha3/mod_blakecoin.c
 sha3/cpuminer-sph_luffa.o: sha3/sph_luffa.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_luffa.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_luffa.Tpo -c -o sha3/llvm_cpuminer-sph_luffa.ll `test -f 'sha3/sph_luffa.c' || echo '$(srcdir)/'`sha3/sph_luffa.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_luffa.ll > sha3/opt_cpuminer-sph_luffa.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_luffa.ll > sha3/cpuminer-sph_luffa.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_luffa.o `test -f 'sha3/cpuminer-sph_luffa.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_luffa.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_luffa.o `test -f 'sha3/opt_cpuminer-sph_luffa.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_luffa.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_luffa.Tpo sha3/$(DEPDIR)/cpuminer-sph_luffa.Po
 #	$(AM_V_CC)source='sha3/sph_luffa.c' object='sha3/cpuminer-sph_luffa.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1574,8 +1481,7 @@ sha3/cpuminer-sph_luffa.obj: sha3/sph_luffa.c
 sha3/cpuminer-sph_cubehash.o: sha3/sph_cubehash.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_cubehash.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_cubehash.Tpo -c -o sha3/llvm_cpuminer-sph_cubehash.ll `test -f 'sha3/sph_cubehash.c' || echo '$(srcdir)/'`sha3/sph_cubehash.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_cubehash.ll > sha3/opt_cpuminer-sph_cubehash.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_cubehash.ll > sha3/cpuminer-sph_cubehash.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_cubehash.o `test -f 'sha3/cpuminer-sph_cubehash.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_cubehash.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_cubehash.o `test -f 'sha3/opt_cpuminer-sph_cubehash.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_cubehash.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_cubehash.Tpo sha3/$(DEPDIR)/cpuminer-sph_cubehash.Po
 #	$(AM_V_CC)source='sha3/sph_cubehash.c' object='sha3/cpuminer-sph_cubehash.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1591,8 +1497,7 @@ sha3/cpuminer-sph_cubehash.obj: sha3/sph_cubehash.c
 sha3/cpuminer-sph_simd.o: sha3/sph_simd.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_simd.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_simd.Tpo -c -o sha3/llvm_cpuminer-sph_simd.ll `test -f 'sha3/sph_simd.c' || echo '$(srcdir)/'`sha3/sph_simd.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_simd.ll > sha3/opt_cpuminer-sph_simd.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_simd.ll > sha3/cpuminer-sph_simd.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_simd.o `test -f 'sha3/cpuminer-sph_simd.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_simd.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_simd.o `test -f 'sha3/opt_cpuminer-sph_simd.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_simd.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_simd.Tpo sha3/$(DEPDIR)/cpuminer-sph_simd.Po
 #	$(AM_V_CC)source='sha3/sph_simd.c' object='sha3/cpuminer-sph_simd.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1608,8 +1513,7 @@ sha3/cpuminer-sph_simd.obj: sha3/sph_simd.c
 sha3/cpuminer-sph_echo.o: sha3/sph_echo.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_echo.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_echo.Tpo -c -o sha3/llvm_cpuminer-sph_echo.ll `test -f 'sha3/sph_echo.c' || echo '$(srcdir)/'`sha3/sph_echo.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_echo.ll > sha3/opt_cpuminer-sph_echo.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_echo.ll > sha3/cpuminer-sph_echo.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_echo.o `test -f 'sha3/cpuminer-sph_echo.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_echo.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_echo.o `test -f 'sha3/opt_cpuminer-sph_echo.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_echo.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_echo.Tpo sha3/$(DEPDIR)/cpuminer-sph_echo.Po
 #	$(AM_V_CC)source='sha3/sph_echo.c' object='sha3/cpuminer-sph_echo.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1625,8 +1529,7 @@ sha3/cpuminer-sph_echo.obj: sha3/sph_echo.c
 sha3/cpuminer-sph_fugue.o: sha3/sph_fugue.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_fugue.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_fugue.Tpo -c -o sha3/llvm_cpuminer-sph_fugue.ll `test -f 'sha3/sph_fugue.c' || echo '$(srcdir)/'`sha3/sph_fugue.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_fugue.ll > sha3/opt_cpuminer-sph_fugue.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_fugue.ll > sha3/cpuminer-sph_fugue.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_fugue.o `test -f 'sha3/cpuminer-sph_fugue.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_fugue.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_fugue.o `test -f 'sha3/opt_cpuminer-sph_fugue.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_fugue.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_fugue.Tpo sha3/$(DEPDIR)/cpuminer-sph_fugue.Po
 #	$(AM_V_CC)source='sha3/sph_fugue.c' object='sha3/cpuminer-sph_fugue.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1642,8 +1545,7 @@ sha3/cpuminer-sph_fugue.obj: sha3/sph_fugue.c
 sha3/cpuminer-sph_hamsi.o: sha3/sph_hamsi.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_hamsi.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_hamsi.Tpo -c -o sha3/llvm_cpuminer-sph_hamsi.ll `test -f 'sha3/sph_hamsi.c' || echo '$(srcdir)/'`sha3/sph_hamsi.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_hamsi.ll > sha3/opt_cpuminer-sph_hamsi.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_hamsi.ll > sha3/cpuminer-sph_hamsi.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_hamsi.o `test -f 'sha3/cpuminer-sph_hamsi.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_hamsi.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_hamsi.o `test -f 'sha3/opt_cpuminer-sph_hamsi.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_hamsi.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_hamsi.Tpo sha3/$(DEPDIR)/cpuminer-sph_hamsi.Po
 #	$(AM_V_CC)source='sha3/sph_hamsi.c' object='sha3/cpuminer-sph_hamsi.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1659,8 +1561,7 @@ sha3/cpuminer-sph_hamsi.obj: sha3/sph_hamsi.c
 sha3/cpuminer-sph_haval.o: sha3/sph_haval.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_haval.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_haval.Tpo -c -o sha3/llvm_cpuminer-sph_haval.ll `test -f 'sha3/sph_haval.c' || echo '$(srcdir)/'`sha3/sph_haval.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_haval.ll > sha3/opt_cpuminer-sph_haval.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_haval.ll > sha3/cpuminer-sph_haval.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_haval.o `test -f 'sha3/cpuminer-sph_haval.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_haval.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_haval.o `test -f 'sha3/opt_cpuminer-sph_haval.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_haval.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_haval.Tpo sha3/$(DEPDIR)/cpuminer-sph_haval.Po
 #	$(AM_V_CC)source='sha3/sph_haval.c' object='sha3/cpuminer-sph_haval.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1676,8 +1577,7 @@ sha3/cpuminer-sph_haval.obj: sha3/sph_haval.c
 sha3/cpuminer-sph_panama.o: sha3/sph_panama.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_panama.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_panama.Tpo -c -o sha3/llvm_cpuminer-sph_panama.ll `test -f 'sha3/sph_panama.c' || echo '$(srcdir)/'`sha3/sph_panama.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_panama.ll > sha3/opt_cpuminer-sph_panama.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_panama.ll > sha3/cpuminer-sph_panama.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_panama.o `test -f 'sha3/cpuminer-sph_panama.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_panama.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_panama.o `test -f 'sha3/opt_cpuminer-sph_panama.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_panama.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_panama.Tpo sha3/$(DEPDIR)/cpuminer-sph_panama.Po
 #	$(AM_V_CC)source='sha3/sph_panama.c' object='sha3/cpuminer-sph_panama.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1693,8 +1593,7 @@ sha3/cpuminer-sph_panama.obj: sha3/sph_panama.c
 sha3/cpuminer-sph_radiogatun.o: sha3/sph_radiogatun.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_radiogatun.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_radiogatun.Tpo -c -o sha3/llvm_cpuminer-sph_radiogatun.ll `test -f 'sha3/sph_radiogatun.c' || echo '$(srcdir)/'`sha3/sph_radiogatun.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_radiogatun.ll > sha3/opt_cpuminer-sph_radiogatun.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_radiogatun.ll > sha3/cpuminer-sph_radiogatun.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_radiogatun.o `test -f 'sha3/cpuminer-sph_radiogatun.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_radiogatun.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_radiogatun.o `test -f 'sha3/opt_cpuminer-sph_radiogatun.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_radiogatun.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_radiogatun.Tpo sha3/$(DEPDIR)/cpuminer-sph_radiogatun.Po
 #	$(AM_V_CC)source='sha3/sph_radiogatun.c' object='sha3/cpuminer-sph_radiogatun.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1710,8 +1609,7 @@ sha3/cpuminer-sph_radiogatun.obj: sha3/sph_radiogatun.c
 sha3/cpuminer-sph_ripemd.o: sha3/sph_ripemd.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_ripemd.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_ripemd.Tpo -c -o sha3/llvm_cpuminer-sph_ripemd.ll `test -f 'sha3/sph_ripemd.c' || echo '$(srcdir)/'`sha3/sph_ripemd.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_ripemd.ll > sha3/opt_cpuminer-sph_ripemd.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_ripemd.ll > sha3/cpuminer-sph_ripemd.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_ripemd.o `test -f 'sha3/cpuminer-sph_ripemd.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_ripemd.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_ripemd.o `test -f 'sha3/opt_cpuminer-sph_ripemd.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_ripemd.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_ripemd.Tpo sha3/$(DEPDIR)/cpuminer-sph_ripemd.Po
 #	$(AM_V_CC)source='sha3/sph_ripemd.c' object='sha3/cpuminer-sph_ripemd.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1727,8 +1625,7 @@ sha3/cpuminer-sph_ripemd.obj: sha3/sph_ripemd.c
 sha3/cpuminer-sph_sha2.o: sha3/sph_sha2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_sha2.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_sha2.Tpo -c -o sha3/llvm_cpuminer-sph_sha2.ll `test -f 'sha3/sph_sha2.c' || echo '$(srcdir)/'`sha3/sph_sha2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_sha2.ll > sha3/opt_cpuminer-sph_sha2.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_sha2.ll > sha3/cpuminer-sph_sha2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_sha2.o `test -f 'sha3/cpuminer-sph_sha2.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_sha2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_sha2.o `test -f 'sha3/opt_cpuminer-sph_sha2.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_sha2.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_sha2.Tpo sha3/$(DEPDIR)/cpuminer-sph_sha2.Po
 #	$(AM_V_CC)source='sha3/sph_sha2.c' object='sha3/cpuminer-sph_sha2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1744,8 +1641,7 @@ sha3/cpuminer-sph_sha2.obj: sha3/sph_sha2.c
 sha3/cpuminer-sph_sha2big.o: sha3/sph_sha2big.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_sha2big.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_sha2big.Tpo -c -o sha3/llvm_cpuminer-sph_sha2big.ll `test -f 'sha3/sph_sha2big.c' || echo '$(srcdir)/'`sha3/sph_sha2big.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_sha2big.ll > sha3/opt_cpuminer-sph_sha2big.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_sha2big.ll > sha3/cpuminer-sph_sha2big.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_sha2big.o `test -f 'sha3/cpuminer-sph_sha2big.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_sha2big.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_sha2big.o `test -f 'sha3/opt_cpuminer-sph_sha2big.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_sha2big.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_sha2big.Tpo sha3/$(DEPDIR)/cpuminer-sph_sha2big.Po
 #	$(AM_V_CC)source='sha3/sph_sha2big.c' object='sha3/cpuminer-sph_sha2big.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1761,8 +1657,7 @@ sha3/cpuminer-sph_sha2big.obj: sha3/sph_sha2big.c
 sha3/cpuminer-sph_shabal.o: sha3/sph_shabal.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_shabal.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_shabal.Tpo -c -o sha3/llvm_cpuminer-sph_shabal.ll `test -f 'sha3/sph_shabal.c' || echo '$(srcdir)/'`sha3/sph_shabal.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_shabal.ll > sha3/opt_cpuminer-sph_shabal.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_shabal.ll > sha3/cpuminer-sph_shabal.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_shabal.o `test -f 'sha3/cpuminer-sph_shabal.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_shabal.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_shabal.o `test -f 'sha3/opt_cpuminer-sph_shabal.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_shabal.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_shabal.Tpo sha3/$(DEPDIR)/cpuminer-sph_shabal.Po
 #	$(AM_V_CC)source='sha3/sph_shabal.c' object='sha3/cpuminer-sph_shabal.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1778,8 +1673,7 @@ sha3/cpuminer-sph_shabal.obj: sha3/sph_shabal.c
 sha3/cpuminer-sph_whirlpool.o: sha3/sph_whirlpool.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_whirlpool.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_whirlpool.Tpo -c -o sha3/llvm_cpuminer-sph_whirlpool.ll `test -f 'sha3/sph_whirlpool.c' || echo '$(srcdir)/'`sha3/sph_whirlpool.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_whirlpool.ll > sha3/opt_cpuminer-sph_whirlpool.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_whirlpool.ll > sha3/cpuminer-sph_whirlpool.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_whirlpool.o `test -f 'sha3/cpuminer-sph_whirlpool.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_whirlpool.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_whirlpool.o `test -f 'sha3/opt_cpuminer-sph_whirlpool.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_whirlpool.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_whirlpool.Tpo sha3/$(DEPDIR)/cpuminer-sph_whirlpool.Po
 #	$(AM_V_CC)source='sha3/sph_whirlpool.c' object='sha3/cpuminer-sph_whirlpool.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1795,8 +1689,7 @@ sha3/cpuminer-sph_whirlpool.obj: sha3/sph_whirlpool.c
 sha3/cpuminer-sph_tiger.o: sha3/sph_tiger.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-sph_tiger.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-sph_tiger.Tpo -c -o sha3/llvm_cpuminer-sph_tiger.ll `test -f 'sha3/sph_tiger.c' || echo '$(srcdir)/'`sha3/sph_tiger.c 
 	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-sph_tiger.ll > sha3/opt_cpuminer-sph_tiger.ll
-	$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-sph_tiger.ll > sha3/cpuminer-sph_tiger.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_tiger.o `test -f 'sha3/cpuminer-sph_tiger.ll' || echo '$(srcdir)/'`sha3/cpuminer-sph_tiger.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-sph_tiger.o `test -f 'sha3/opt_cpuminer-sph_tiger.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-sph_tiger.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-sph_tiger.Tpo sha3/$(DEPDIR)/cpuminer-sph_tiger.Po
 #	$(AM_V_CC)source='sha3/sph_tiger.c' object='sha3/cpuminer-sph_tiger.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1811,9 +1704,8 @@ sha3/cpuminer-sph_tiger.obj: sha3/sph_tiger.c
 
 sha3/cpuminer-gost_streebog.o: sha3/gost_streebog.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT sha3/llvm_cpuminer-gost_streebog.ll -MD -MP -MF sha3/$(DEPDIR)/cpuminer-gost_streebog.Tpo -c -o sha3/llvm_cpuminer-gost_streebog.ll `test -f 'sha3/gost_streebog.c' || echo '$(srcdir)/'`sha3/gost_streebog.c 
-	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-gost_streebog.ll > sha3/cpuminer-gost_streebog.ll
-	#$(CC_OPT) $(LCFLAGS) -S < sha3/opt_cpuminer-gost_streebog.ll > sha3/cpuminer-gost_streebog.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-gost_streebog.o `test -f 'sha3/cpuminer-gost_streebog.ll' || echo '$(srcdir)/'`sha3/cpuminer-gost_streebog.ll
+	$(CC_OPT) $(OPTFLAGS) -S < sha3/llvm_cpuminer-gost_streebog.ll > sha3/opt_cpuminer-gost_streebog.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o sha3/cpuminer-gost_streebog.o `test -f 'sha3/opt_cpuminer-gost_streebog.ll' || echo '$(srcdir)/'`sha3/opt_cpuminer-gost_streebog.ll
 	$(AM_V_at)$(am__mv) sha3/$(DEPDIR)/cpuminer-gost_streebog.Tpo sha3/$(DEPDIR)/cpuminer-gost_streebog.Po
 #	$(AM_V_CC)source='sha3/gost_streebog.c' object='sha3/cpuminer-gost_streebog.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1829,8 +1721,7 @@ sha3/cpuminer-gost_streebog.obj: sha3/gost_streebog.c
 crypto/cpuminer-blake2s.o: crypto/blake2s.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-blake2s.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-blake2s.Tpo -c -o crypto/llvm_cpuminer-blake2s.ll `test -f 'crypto/blake2s.c' || echo '$(srcdir)/'`crypto/blake2s.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-blake2s.ll > crypto/opt_cpuminer-blake2s.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-blake2s.ll > crypto/cpuminer-blake2s.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-blake2s.o `test -f 'crypto/cpuminer-blake2s.ll' || echo '$(srcdir)/'`crypto/cpuminer-blake2s.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-blake2s.o `test -f 'crypto/opt_cpuminer-blake2s.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-blake2s.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-blake2s.Tpo crypto/$(DEPDIR)/cpuminer-blake2s.Po
 #	$(AM_V_CC)source='crypto/blake2s.c' object='crypto/cpuminer-blake2s.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1846,8 +1737,7 @@ crypto/cpuminer-blake2s.obj: crypto/blake2s.c
 crypto/cpuminer-blake2b.o: crypto/blake2b.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-blake2b.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-blake2b.Tpo -c -o crypto/llvm_cpuminer-blake2b.ll `test -f 'crypto/blake2b.c' || echo '$(srcdir)/'`crypto/blake2b.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-blake2b.ll > crypto/opt_cpuminer-blake2b.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-blake2b.ll > crypto/cpuminer-blake2b.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-blake2b.o `test -f 'crypto/cpuminer-blake2b.ll' || echo '$(srcdir)/'`crypto/cpuminer-blake2b.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-blake2b.o `test -f 'crypto/opt_cpuminer-blake2b.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-blake2b.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-blake2b.Tpo crypto/$(DEPDIR)/cpuminer-blake2b.Po
 #	$(AM_V_CC)source='crypto/blake2b.c' object='crypto/cpuminer-blake2b.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1863,8 +1753,7 @@ crypto/cpuminer-blake2b.obj: crypto/blake2b.c
 crypto/cpuminer-oaes_lib.o: crypto/oaes_lib.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-oaes_lib.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-oaes_lib.Tpo -c -o crypto/llvm_cpuminer-oaes_lib.ll `test -f 'crypto/oaes_lib.c' || echo '$(srcdir)/'`crypto/oaes_lib.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-oaes_lib.ll > crypto/opt_cpuminer-oaes_lib.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-oaes_lib.ll > crypto/cpuminer-oaes_lib.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-oaes_lib.o `test -f 'crypto/cpuminer-oaes_lib.ll' || echo '$(srcdir)/'`crypto/cpuminer-oaes_lib.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-oaes_lib.o `test -f 'crypto/opt_cpuminer-oaes_lib.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-oaes_lib.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-oaes_lib.Tpo crypto/$(DEPDIR)/cpuminer-oaes_lib.Po
 #	$(AM_V_CC)source='crypto/oaes_lib.c' object='crypto/cpuminer-oaes_lib.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1880,8 +1769,7 @@ crypto/cpuminer-oaes_lib.obj: crypto/oaes_lib.c
 crypto/cpuminer-c_keccak.o: crypto/c_keccak.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-c_keccak.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-c_keccak.Tpo -c -o crypto/llvm_cpuminer-c_keccak.ll `test -f 'crypto/c_keccak.c' || echo '$(srcdir)/'`crypto/c_keccak.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-c_keccak.ll > crypto/opt_cpuminer-c_keccak.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-c_keccak.ll > crypto/cpuminer-c_keccak.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_keccak.o `test -f 'crypto/cpuminer-c_keccak.ll' || echo '$(srcdir)/'`crypto/cpuminer-c_keccak.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_keccak.o `test -f 'crypto/opt_cpuminer-c_keccak.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-c_keccak.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-c_keccak.Tpo crypto/$(DEPDIR)/cpuminer-c_keccak.Po
 #	$(AM_V_CC)source='crypto/c_keccak.c' object='crypto/cpuminer-c_keccak.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1897,8 +1785,7 @@ crypto/cpuminer-c_keccak.obj: crypto/c_keccak.c
 crypto/cpuminer-c_groestl.o: crypto/c_groestl.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-c_groestl.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-c_groestl.Tpo -c -o crypto/llvm_cpuminer-c_groestl.ll `test -f 'crypto/c_groestl.c' || echo '$(srcdir)/'`crypto/c_groestl.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-c_groestl.ll > crypto/opt_cpuminer-c_groestl.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-c_groestl.ll > crypto/cpuminer-c_groestl.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_groestl.o `test -f 'crypto/cpuminer-c_groestl.ll' || echo '$(srcdir)/'`crypto/cpuminer-c_groestl.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_groestl.o `test -f 'crypto/opt_cpuminer-c_groestl.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-c_groestl.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-c_groestl.Tpo crypto/$(DEPDIR)/cpuminer-c_groestl.Po
 #	$(AM_V_CC)source='crypto/c_groestl.c' object='crypto/cpuminer-c_groestl.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1914,8 +1801,7 @@ crypto/cpuminer-c_groestl.obj: crypto/c_groestl.c
 crypto/cpuminer-c_blake256.o: crypto/c_blake256.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-c_blake256.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-c_blake256.Tpo -c -o crypto/llvm_cpuminer-c_blake256.ll `test -f 'crypto/c_blake256.c' || echo '$(srcdir)/'`crypto/c_blake256.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-c_blake256.ll > crypto/opt_cpuminer-c_blake256.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-c_blake256.ll > crypto/cpuminer-c_blake256.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_blake256.o `test -f 'crypto/cpuminer-c_blake256.ll' || echo '$(srcdir)/'`crypto/cpuminer-c_blake256.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_blake256.o `test -f 'crypto/opt_cpuminer-c_blake256.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-c_blake256.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-c_blake256.Tpo crypto/$(DEPDIR)/cpuminer-c_blake256.Po
 #	$(AM_V_CC)source='crypto/c_blake256.c' object='crypto/cpuminer-c_blake256.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1931,8 +1817,7 @@ crypto/cpuminer-c_blake256.obj: crypto/c_blake256.c
 crypto/cpuminer-c_jh.o: crypto/c_jh.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-c_jh.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-c_jh.Tpo -c -o crypto/llvm_cpuminer-c_jh.ll `test -f 'crypto/c_jh.c' || echo '$(srcdir)/'`crypto/c_jh.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-c_jh.ll > crypto/opt_cpuminer-c_jh.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-c_jh.ll > crypto/cpuminer-c_jh.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_jh.o `test -f 'crypto/cpuminer-c_jh.ll' || echo '$(srcdir)/'`crypto/cpuminer-c_jh.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_jh.o `test -f 'crypto/opt_cpuminer-c_jh.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-c_jh.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-c_jh.Tpo crypto/$(DEPDIR)/cpuminer-c_jh.Po
 #	$(AM_V_CC)source='crypto/c_jh.c' object='crypto/cpuminer-c_jh.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1948,8 +1833,7 @@ crypto/cpuminer-c_jh.obj: crypto/c_jh.c
 crypto/cpuminer-c_skein.o: crypto/c_skein.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-c_skein.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-c_skein.Tpo -c -o crypto/llvm_cpuminer-c_skein.ll `test -f 'crypto/c_skein.c' || echo '$(srcdir)/'`crypto/c_skein.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-c_skein.ll > crypto/opt_cpuminer-c_skein.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-c_skein.ll > crypto/cpuminer-c_skein.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_skein.o `test -f 'crypto/cpuminer-c_skein.ll' || echo '$(srcdir)/'`crypto/cpuminer-c_skein.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-c_skein.o `test -f 'crypto/opt_cpuminer-c_skein.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-c_skein.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-c_skein.Tpo crypto/$(DEPDIR)/cpuminer-c_skein.Po
 #	$(AM_V_CC)source='crypto/c_skein.c' object='crypto/cpuminer-c_skein.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1965,8 +1849,7 @@ crypto/cpuminer-c_skein.obj: crypto/c_skein.c
 crypto/cpuminer-hash.o: crypto/hash.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-hash.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-hash.Tpo -c -o crypto/llvm_cpuminer-hash.ll `test -f 'crypto/hash.c' || echo '$(srcdir)/'`crypto/hash.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-hash.ll > crypto/opt_cpuminer-hash.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-hash.ll > crypto/cpuminer-hash.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-hash.o `test -f 'crypto/cpuminer-hash.ll' || echo '$(srcdir)/'`crypto/cpuminer-hash.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-hash.o `test -f 'crypto/opt_cpuminer-hash.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-hash.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-hash.Tpo crypto/$(DEPDIR)/cpuminer-hash.Po
 #	$(AM_V_CC)source='crypto/hash.c' object='crypto/cpuminer-hash.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1982,8 +1865,7 @@ crypto/cpuminer-hash.obj: crypto/hash.c
 crypto/cpuminer-aesb.o: crypto/aesb.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT crypto/llvm_cpuminer-aesb.ll -MD -MP -MF crypto/$(DEPDIR)/cpuminer-aesb.Tpo -c -o crypto/llvm_cpuminer-aesb.ll `test -f 'crypto/aesb.c' || echo '$(srcdir)/'`crypto/aesb.c 
 	$(CC_OPT) $(OPTFLAGS) -S < crypto/llvm_cpuminer-aesb.ll > crypto/opt_cpuminer-aesb.ll
-	$(CC_OPT) $(LCFLAGS) -S < crypto/opt_cpuminer-aesb.ll > crypto/cpuminer-aesb.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-aesb.o `test -f 'crypto/cpuminer-aesb.ll' || echo '$(srcdir)/'`crypto/cpuminer-aesb.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o crypto/cpuminer-aesb.o `test -f 'crypto/opt_cpuminer-aesb.ll' || echo '$(srcdir)/'`crypto/opt_cpuminer-aesb.ll
 	$(AM_V_at)$(am__mv) crypto/$(DEPDIR)/cpuminer-aesb.Tpo crypto/$(DEPDIR)/cpuminer-aesb.Po
 #	$(AM_V_CC)source='crypto/aesb.c' object='crypto/cpuminer-aesb.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -1999,8 +1881,7 @@ crypto/cpuminer-aesb.obj: crypto/aesb.c
 lyra2/cpuminer-Lyra2.o: lyra2/Lyra2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT lyra2/llvm_cpuminer-Lyra2.ll -MD -MP -MF lyra2/$(DEPDIR)/cpuminer-Lyra2.Tpo -c -o lyra2/llvm_cpuminer-Lyra2.ll `test -f 'lyra2/Lyra2.c' || echo '$(srcdir)/'`lyra2/Lyra2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < lyra2/llvm_cpuminer-Lyra2.ll > lyra2/opt_cpuminer-Lyra2.ll
-	$(CC_OPT) $(LCFLAGS) -S < lyra2/opt_cpuminer-Lyra2.ll > lyra2/cpuminer-Lyra2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o lyra2/cpuminer-Lyra2.o `test -f 'lyra2/cpuminer-Lyra2.ll' || echo '$(srcdir)/'`lyra2/cpuminer-Lyra2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o lyra2/cpuminer-Lyra2.o `test -f 'lyra2/opt_cpuminer-Lyra2.ll' || echo '$(srcdir)/'`lyra2/opt_cpuminer-Lyra2.ll
 	$(AM_V_at)$(am__mv) lyra2/$(DEPDIR)/cpuminer-Lyra2.Tpo lyra2/$(DEPDIR)/cpuminer-Lyra2.Po
 #	$(AM_V_CC)source='lyra2/Lyra2.c' object='lyra2/cpuminer-Lyra2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2016,8 +1897,7 @@ lyra2/cpuminer-Lyra2.obj: lyra2/Lyra2.c
 lyra2/cpuminer-Sponge.o: lyra2/Sponge.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT lyra2/llvm_cpuminer-Sponge.ll -MD -MP -MF lyra2/$(DEPDIR)/cpuminer-Sponge.Tpo -c -o lyra2/llvm_cpuminer-Sponge.ll `test -f 'lyra2/Sponge.c' || echo '$(srcdir)/'`lyra2/Sponge.c 
 	$(CC_OPT) $(OPTFLAGS) -S < lyra2/llvm_cpuminer-Sponge.ll > lyra2/opt_cpuminer-Sponge.ll
-	$(CC_OPT) $(LCFLAGS) -S < lyra2/opt_cpuminer-Sponge.ll > lyra2/cpuminer-Sponge.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o lyra2/cpuminer-Sponge.o `test -f 'lyra2/cpuminer-Sponge.ll' || echo '$(srcdir)/'`lyra2/cpuminer-Sponge.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o lyra2/cpuminer-Sponge.o `test -f 'lyra2/opt_cpuminer-Sponge.ll' || echo '$(srcdir)/'`lyra2/opt_cpuminer-Sponge.ll
 	$(AM_V_at)$(am__mv) lyra2/$(DEPDIR)/cpuminer-Sponge.Tpo lyra2/$(DEPDIR)/cpuminer-Sponge.Po
 #	$(AM_V_CC)source='lyra2/Sponge.c' object='lyra2/cpuminer-Sponge.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2033,8 +1913,7 @@ lyra2/cpuminer-Sponge.obj: lyra2/Sponge.c
 yescrypt/cpuminer-yescrypt-common.o: yescrypt/yescrypt-common.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT yescrypt/llvm_cpuminer-yescrypt-common.ll -MD -MP -MF yescrypt/$(DEPDIR)/cpuminer-yescrypt-common.Tpo -c -o yescrypt/llvm_cpuminer-yescrypt-common.ll `test -f 'yescrypt/yescrypt-common.c' || echo '$(srcdir)/'`yescrypt/yescrypt-common.c 
 	$(CC_OPT) $(OPTFLAGS) -S < yescrypt/llvm_cpuminer-yescrypt-common.ll > yescrypt/opt_cpuminer-yescrypt-common.ll
-	$(CC_OPT) $(LCFLAGS) -S < yescrypt/opt_cpuminer-yescrypt-common.ll > yescrypt/cpuminer-yescrypt-common.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o yescrypt/cpuminer-yescrypt-common.o `test -f 'yescrypt/cpuminer-yescrypt-common.ll' || echo '$(srcdir)/'`yescrypt/cpuminer-yescrypt-common.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o yescrypt/cpuminer-yescrypt-common.o `test -f 'yescrypt/opt_cpuminer-yescrypt-common.ll' || echo '$(srcdir)/'`yescrypt/opt_cpuminer-yescrypt-common.ll
 	$(AM_V_at)$(am__mv) yescrypt/$(DEPDIR)/cpuminer-yescrypt-common.Tpo yescrypt/$(DEPDIR)/cpuminer-yescrypt-common.Po
 #	$(AM_V_CC)source='yescrypt/yescrypt-common.c' object='yescrypt/cpuminer-yescrypt-common.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2050,8 +1929,7 @@ yescrypt/cpuminer-yescrypt-common.obj: yescrypt/yescrypt-common.c
 yescrypt/cpuminer-yescrypt-best.o: yescrypt/yescrypt-best.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT yescrypt/llvm_cpuminer-yescrypt-best.ll -MD -MP -MF yescrypt/$(DEPDIR)/cpuminer-yescrypt-best.Tpo -c -o yescrypt/llvm_cpuminer-yescrypt-best.ll `test -f 'yescrypt/yescrypt-best.c' || echo '$(srcdir)/'`yescrypt/yescrypt-best.c 
 	$(CC_OPT) $(OPTFLAGS) -S < yescrypt/llvm_cpuminer-yescrypt-best.ll > yescrypt/opt_cpuminer-yescrypt-best.ll
-	$(CC_OPT) $(LCFLAGS) -S < yescrypt/opt_cpuminer-yescrypt-best.ll > yescrypt/cpuminer-yescrypt-best.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o yescrypt/cpuminer-yescrypt-best.o `test -f 'yescrypt/cpuminer-yescrypt-best.ll' || echo '$(srcdir)/'`yescrypt/cpuminer-yescrypt-best.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o yescrypt/cpuminer-yescrypt-best.o `test -f 'yescrypt/opt_cpuminer-yescrypt-best.ll' || echo '$(srcdir)/'`yescrypt/opt_cpuminer-yescrypt-best.ll
 	$(AM_V_at)$(am__mv) yescrypt/$(DEPDIR)/cpuminer-yescrypt-best.Tpo yescrypt/$(DEPDIR)/cpuminer-yescrypt-best.Po
 #	$(AM_V_CC)source='yescrypt/yescrypt-best.c' object='yescrypt/cpuminer-yescrypt-best.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2067,8 +1945,7 @@ yescrypt/cpuminer-yescrypt-best.obj: yescrypt/yescrypt-best.c
 yescrypt/cpuminer-sha256_Y.o: yescrypt/sha256_Y.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT yescrypt/llvm_cpuminer-sha256_Y.ll -MD -MP -MF yescrypt/$(DEPDIR)/cpuminer-sha256_Y.Tpo -c -o yescrypt/llvm_cpuminer-sha256_Y.ll `test -f 'yescrypt/sha256_Y.c' || echo '$(srcdir)/'`yescrypt/sha256_Y.c 
 	$(CC_OPT) $(OPTFLAGS) -S < yescrypt/llvm_cpuminer-sha256_Y.ll > yescrypt/opt_cpuminer-sha256_Y.ll
-	$(CC_OPT) $(LCFLAGS) -S < yescrypt/opt_cpuminer-sha256_Y.ll > yescrypt/cpuminer-sha256_Y.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o yescrypt/cpuminer-sha256_Y.o `test -f 'yescrypt/cpuminer-sha256_Y.ll' || echo '$(srcdir)/'`yescrypt/cpuminer-sha256_Y.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o yescrypt/cpuminer-sha256_Y.o `test -f 'yescrypt/opt_cpuminer-sha256_Y.ll' || echo '$(srcdir)/'`yescrypt/opt_cpuminer-sha256_Y.ll
 	$(AM_V_at)$(am__mv) yescrypt/$(DEPDIR)/cpuminer-sha256_Y.Tpo yescrypt/$(DEPDIR)/cpuminer-sha256_Y.Po
 #	$(AM_V_CC)source='yescrypt/sha256_Y.c' object='yescrypt/cpuminer-sha256_Y.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2084,8 +1961,7 @@ yescrypt/cpuminer-sha256_Y.obj: yescrypt/sha256_Y.c
 algo/cpuminer-allium.o: algo/allium.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-allium.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-allium.Tpo -c -o algo/llvm_cpuminer-allium.ll `test -f 'algo/allium.c' || echo '$(srcdir)/'`algo/allium.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-allium.ll > algo/opt_cpuminer-allium.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-allium.ll > algo/cpuminer-allium.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-allium.o `test -f 'algo/cpuminer-allium.ll' || echo '$(srcdir)/'`algo/cpuminer-allium.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-allium.o `test -f 'algo/opt_cpuminer-allium.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-allium.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-allium.Tpo algo/$(DEPDIR)/cpuminer-allium.Po
 #	$(AM_V_CC)source='algo/allium.c' object='algo/cpuminer-allium.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2101,8 +1977,7 @@ algo/cpuminer-allium.obj: algo/allium.c
 algo/cpuminer-axiom.o: algo/axiom.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-axiom.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-axiom.Tpo -c -o algo/llvm_cpuminer-axiom.ll `test -f 'algo/axiom.c' || echo '$(srcdir)/'`algo/axiom.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-axiom.ll > algo/opt_cpuminer-axiom.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-axiom.ll > algo/cpuminer-axiom.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-axiom.o `test -f 'algo/cpuminer-axiom.ll' || echo '$(srcdir)/'`algo/cpuminer-axiom.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-axiom.o `test -f 'algo/opt_cpuminer-axiom.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-axiom.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-axiom.Tpo algo/$(DEPDIR)/cpuminer-axiom.Po
 #	$(AM_V_CC)source='algo/axiom.c' object='algo/cpuminer-axiom.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2118,8 +1993,7 @@ algo/cpuminer-axiom.obj: algo/axiom.c
 algo/cpuminer-bastion.o: algo/bastion.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-bastion.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-bastion.Tpo -c -o algo/llvm_cpuminer-bastion.ll `test -f 'algo/bastion.c' || echo '$(srcdir)/'`algo/bastion.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-bastion.ll > algo/opt_cpuminer-bastion.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-bastion.ll > algo/cpuminer-bastion.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-bastion.o `test -f 'algo/cpuminer-bastion.ll' || echo '$(srcdir)/'`algo/cpuminer-bastion.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-bastion.o `test -f 'algo/opt_cpuminer-bastion.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-bastion.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-bastion.Tpo algo/$(DEPDIR)/cpuminer-bastion.Po
 #	$(AM_V_CC)source='algo/bastion.c' object='algo/cpuminer-bastion.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2135,8 +2009,7 @@ algo/cpuminer-bastion.obj: algo/bastion.c
 algo/cpuminer-blake.o: algo/blake.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blake.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-blake.Tpo -c -o algo/llvm_cpuminer-blake.ll `test -f 'algo/blake.c' || echo '$(srcdir)/'`algo/blake.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-blake.ll > algo/opt_cpuminer-blake.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-blake.ll > algo/cpuminer-blake.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blake.o `test -f 'algo/cpuminer-blake.ll' || echo '$(srcdir)/'`algo/cpuminer-blake.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blake.o `test -f 'algo/opt_cpuminer-blake.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-blake.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-blake.Tpo algo/$(DEPDIR)/cpuminer-blake.Po
 #	$(AM_V_CC)source='algo/blake.c' object='algo/cpuminer-blake.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2152,8 +2025,7 @@ algo/cpuminer-blake.obj: algo/blake.c
 algo/cpuminer-blakecoin.o: algo/blakecoin.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blakecoin.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-blakecoin.Tpo -c -o algo/llvm_cpuminer-blakecoin.ll `test -f 'algo/blakecoin.c' || echo '$(srcdir)/'`algo/blakecoin.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-blakecoin.ll > algo/opt_cpuminer-blakecoin.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-blakecoin.ll > algo/cpuminer-blakecoin.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blakecoin.o `test -f 'algo/cpuminer-blakecoin.ll' || echo '$(srcdir)/'`algo/cpuminer-blakecoin.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blakecoin.o `test -f 'algo/opt_cpuminer-blakecoin.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-blakecoin.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-blakecoin.Tpo algo/$(DEPDIR)/cpuminer-blakecoin.Po
 #	$(AM_V_CC)source='algo/blakecoin.c' object='algo/cpuminer-blakecoin.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2169,8 +2041,7 @@ algo/cpuminer-blakecoin.obj: algo/blakecoin.c
 algo/cpuminer-blake2.o: algo/blake2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-blake2.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-blake2.Tpo -c -o algo/llvm_cpuminer-blake2.ll `test -f 'algo/blake2.c' || echo '$(srcdir)/'`algo/blake2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-blake2.ll > algo/opt_cpuminer-blake2.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-blake2.ll > algo/cpuminer-blake2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blake2.o `test -f 'algo/cpuminer-blake2.ll' || echo '$(srcdir)/'`algo/cpuminer-blake2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-blake2.o `test -f 'algo/opt_cpuminer-blake2.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-blake2.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-blake2.Tpo algo/$(DEPDIR)/cpuminer-blake2.Po
 #	$(AM_V_CC)source='algo/blake2.c' object='algo/cpuminer-blake2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2186,8 +2057,7 @@ algo/cpuminer-blake2.obj: algo/blake2.c
 algo/cpuminer-bmw256.o: algo/bmw256.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-bmw256.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-bmw256.Tpo -c -o algo/llvm_cpuminer-bmw256.ll `test -f 'algo/bmw256.c' || echo '$(srcdir)/'`algo/bmw256.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-bmw256.ll > algo/opt_cpuminer-bmw256.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-bmw256.ll > algo/cpuminer-bmw256.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-bmw256.o `test -f 'algo/cpuminer-bmw256.ll' || echo '$(srcdir)/'`algo/cpuminer-bmw256.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-bmw256.o `test -f 'algo/opt_cpuminer-bmw256.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-bmw256.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-bmw256.Tpo algo/$(DEPDIR)/cpuminer-bmw256.Po
 #	$(AM_V_CC)source='algo/bmw256.c' object='algo/cpuminer-bmw256.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2203,8 +2073,7 @@ algo/cpuminer-bmw256.obj: algo/bmw256.c
 algo/cpuminer-c11.o: algo/c11.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-c11.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-c11.Tpo -c -o algo/llvm_cpuminer-c11.ll `test -f 'algo/c11.c' || echo '$(srcdir)/'`algo/c11.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-c11.ll > algo/opt_cpuminer-c11.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-c11.ll > algo/cpuminer-c11.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-c11.o `test -f 'algo/cpuminer-c11.ll' || echo '$(srcdir)/'`algo/cpuminer-c11.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-c11.o `test -f 'algo/opt_cpuminer-c11.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-c11.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-c11.Tpo algo/$(DEPDIR)/cpuminer-c11.Po
 #	$(AM_V_CC)source='algo/c11.c' object='algo/cpuminer-c11.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2220,8 +2089,7 @@ algo/cpuminer-c11.obj: algo/c11.c
 algo/cpuminer-cryptonight.o: algo/cryptonight.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-cryptonight.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-cryptonight.Tpo -c -o algo/llvm_cpuminer-cryptonight.ll `test -f 'algo/cryptonight.c' || echo '$(srcdir)/'`algo/cryptonight.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-cryptonight.ll > algo/opt_cpuminer-cryptonight.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-cryptonight.ll > algo/cpuminer-cryptonight.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-cryptonight.o `test -f 'algo/cpuminer-cryptonight.ll' || echo '$(srcdir)/'`algo/cpuminer-cryptonight.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-cryptonight.o `test -f 'algo/opt_cpuminer-cryptonight.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-cryptonight.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-cryptonight.Tpo algo/$(DEPDIR)/cpuminer-cryptonight.Po
 #	$(AM_V_CC)source='algo/cryptonight.c' object='algo/cpuminer-cryptonight.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2237,8 +2105,7 @@ algo/cpuminer-cryptonight.obj: algo/cryptonight.c
 algo/cpuminer-cryptolight.o: algo/cryptolight.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-cryptolight.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-cryptolight.Tpo -c -o algo/llvm_cpuminer-cryptolight.ll `test -f 'algo/cryptolight.c' || echo '$(srcdir)/'`algo/cryptolight.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-cryptolight.ll > algo/opt_cpuminer-cryptolight.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-cryptolight.ll > algo/cpuminer-cryptolight.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-cryptolight.o `test -f 'algo/cpuminer-cryptolight.ll' || echo '$(srcdir)/'`algo/cpuminer-cryptolight.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-cryptolight.o `test -f 'algo/opt_cpuminer-cryptolight.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-cryptolight.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-cryptolight.Tpo algo/$(DEPDIR)/cpuminer-cryptolight.Po
 #	$(AM_V_CC)source='algo/cryptolight.c' object='algo/cpuminer-cryptolight.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2254,8 +2121,7 @@ algo/cpuminer-cryptolight.obj: algo/cryptolight.c
 algo/cpuminer-decred.o: algo/decred.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-decred.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-decred.Tpo -c -o algo/llvm_cpuminer-decred.ll `test -f 'algo/decred.c' || echo '$(srcdir)/'`algo/decred.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-decred.ll > algo/opt_cpuminer-decred.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-decred.ll > algo/cpuminer-decred.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-decred.o `test -f 'algo/cpuminer-decred.ll' || echo '$(srcdir)/'`algo/cpuminer-decred.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-decred.o `test -f 'algo/opt_cpuminer-decred.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-decred.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-decred.Tpo algo/$(DEPDIR)/cpuminer-decred.Po
 #	$(AM_V_CC)source='algo/decred.c' object='algo/cpuminer-decred.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2271,8 +2137,7 @@ algo/cpuminer-decred.obj: algo/decred.c
 algo/cpuminer-drop.o: algo/drop.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-drop.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-drop.Tpo -c -o algo/llvm_cpuminer-drop.ll `test -f 'algo/drop.c' || echo '$(srcdir)/'`algo/drop.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-drop.ll > algo/opt_cpuminer-drop.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-drop.ll > algo/cpuminer-drop.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-drop.o `test -f 'algo/cpuminer-drop.ll' || echo '$(srcdir)/'`algo/cpuminer-drop.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-drop.o `test -f 'algo/opt_cpuminer-drop.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-drop.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-drop.Tpo algo/$(DEPDIR)/cpuminer-drop.Po
 #	$(AM_V_CC)source='algo/drop.c' object='algo/cpuminer-drop.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2288,8 +2153,7 @@ algo/cpuminer-drop.obj: algo/drop.c
 algo/cpuminer-fresh.o: algo/fresh.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-fresh.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-fresh.Tpo -c -o algo/llvm_cpuminer-fresh.ll `test -f 'algo/fresh.c' || echo '$(srcdir)/'`algo/fresh.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-fresh.ll > algo/opt_cpuminer-fresh.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-fresh.ll > algo/cpuminer-fresh.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-fresh.o `test -f 'algo/cpuminer-fresh.ll' || echo '$(srcdir)/'`algo/cpuminer-fresh.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-fresh.o `test -f 'algo/opt_cpuminer-fresh.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-fresh.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-fresh.Tpo algo/$(DEPDIR)/cpuminer-fresh.Po
 #	$(AM_V_CC)source='algo/fresh.c' object='algo/cpuminer-fresh.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2305,8 +2169,7 @@ algo/cpuminer-fresh.obj: algo/fresh.c
 algo/cpuminer-geek.o: algo/geek.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-geek.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-geek.Tpo -c -o algo/llvm_cpuminer-geek.ll `test -f 'algo/geek.c' || echo '$(srcdir)/'`algo/geek.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-geek.ll > algo/opt_cpuminer-geek.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-geek.ll > algo/cpuminer-geek.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-geek.o `test -f 'algo/cpuminer-geek.ll' || echo '$(srcdir)/'`algo/cpuminer-geek.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-geek.o `test -f 'algo/opt_cpuminer-geek.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-geek.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-geek.Tpo algo/$(DEPDIR)/cpuminer-geek.Po
 #	$(AM_V_CC)source='algo/geek.c' object='algo/cpuminer-geek.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2322,8 +2185,7 @@ algo/cpuminer-geek.obj: algo/geek.c
 algo/cpuminer-groestl.o: algo/groestl.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-groestl.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-groestl.Tpo -c -o algo/llvm_cpuminer-groestl.ll `test -f 'algo/groestl.c' || echo '$(srcdir)/'`algo/groestl.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-groestl.ll > algo/opt_cpuminer-groestl.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-groestl.ll > algo/cpuminer-groestl.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-groestl.o `test -f 'algo/cpuminer-groestl.ll' || echo '$(srcdir)/'`algo/cpuminer-groestl.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-groestl.o `test -f 'algo/opt_cpuminer-groestl.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-groestl.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-groestl.Tpo algo/$(DEPDIR)/cpuminer-groestl.Po
 #	$(AM_V_CC)source='algo/groestl.c' object='algo/cpuminer-groestl.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2339,8 +2201,7 @@ algo/cpuminer-groestl.obj: algo/groestl.c
 algo/cpuminer-heavy.o: algo/heavy.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-heavy.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-heavy.Tpo -c -o algo/llvm_cpuminer-heavy.ll `test -f 'algo/heavy.c' || echo '$(srcdir)/'`algo/heavy.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-heavy.ll > algo/opt_cpuminer-heavy.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-heavy.ll > algo/cpuminer-heavy.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-heavy.o `test -f 'algo/cpuminer-heavy.ll' || echo '$(srcdir)/'`algo/cpuminer-heavy.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-heavy.o `test -f 'algo/opt_cpuminer-heavy.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-heavy.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-heavy.Tpo algo/$(DEPDIR)/cpuminer-heavy.Po
 #	$(AM_V_CC)source='algo/heavy.c' object='algo/cpuminer-heavy.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2356,8 +2217,7 @@ algo/cpuminer-heavy.obj: algo/heavy.c
 algo/cpuminer-ink.o: algo/ink.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-ink.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-ink.Tpo -c -o algo/llvm_cpuminer-ink.ll `test -f 'algo/ink.c' || echo '$(srcdir)/'`algo/ink.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-ink.ll > algo/opt_cpuminer-ink.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-ink.ll > algo/cpuminer-ink.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-ink.o `test -f 'algo/cpuminer-ink.ll' || echo '$(srcdir)/'`algo/cpuminer-ink.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-ink.o `test -f 'algo/opt_cpuminer-ink.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-ink.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-ink.Tpo algo/$(DEPDIR)/cpuminer-ink.Po
 #	$(AM_V_CC)source='algo/ink.c' object='algo/cpuminer-ink.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2373,8 +2233,7 @@ algo/cpuminer-ink.obj: algo/ink.c
 algo/cpuminer-jha.o: algo/jha.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-jha.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-jha.Tpo -c -o algo/llvm_cpuminer-jha.ll `test -f 'algo/jha.c' || echo '$(srcdir)/'`algo/jha.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-jha.ll > algo/opt_cpuminer-jha.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-jha.ll > algo/cpuminer-jha.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-jha.o `test -f 'algo/cpuminer-jha.ll' || echo '$(srcdir)/'`algo/cpuminer-jha.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-jha.o `test -f 'algo/opt_cpuminer-jha.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-jha.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-jha.Tpo algo/$(DEPDIR)/cpuminer-jha.Po
 #	$(AM_V_CC)source='algo/jha.c' object='algo/cpuminer-jha.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2390,8 +2249,7 @@ algo/cpuminer-jha.obj: algo/jha.c
 algo/cpuminer-lbry.o: algo/lbry.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-lbry.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-lbry.Tpo -c -o algo/llvm_cpuminer-lbry.ll `test -f 'algo/lbry.c' || echo '$(srcdir)/'`algo/lbry.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-lbry.ll > algo/opt_cpuminer-lbry.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-lbry.ll > algo/cpuminer-lbry.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lbry.o `test -f 'algo/cpuminer-lbry.ll' || echo '$(srcdir)/'`algo/cpuminer-lbry.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lbry.o `test -f 'algo/opt_cpuminer-lbry.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-lbry.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-lbry.Tpo algo/$(DEPDIR)/cpuminer-lbry.Po
 #	$(AM_V_CC)source='algo/lbry.c' object='algo/cpuminer-lbry.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2407,8 +2265,7 @@ algo/cpuminer-lbry.obj: algo/lbry.c
 algo/cpuminer-luffa.o: algo/luffa.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-luffa.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-luffa.Tpo -c -o algo/llvm_cpuminer-luffa.ll `test -f 'algo/luffa.c' || echo '$(srcdir)/'`algo/luffa.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-luffa.ll > algo/opt_cpuminer-luffa.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-luffa.ll > algo/cpuminer-luffa.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-luffa.o `test -f 'algo/cpuminer-luffa.ll' || echo '$(srcdir)/'`algo/cpuminer-luffa.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-luffa.o `test -f 'algo/opt_cpuminer-luffa.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-luffa.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-luffa.Tpo algo/$(DEPDIR)/cpuminer-luffa.Po
 #	$(AM_V_CC)source='algo/luffa.c' object='algo/cpuminer-luffa.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2424,8 +2281,7 @@ algo/cpuminer-luffa.obj: algo/luffa.c
 algo/cpuminer-lyra2re.o: algo/lyra2re.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-lyra2re.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-lyra2re.Tpo -c -o algo/llvm_cpuminer-lyra2re.ll `test -f 'algo/lyra2re.c' || echo '$(srcdir)/'`algo/lyra2re.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-lyra2re.ll > algo/opt_cpuminer-lyra2re.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-lyra2re.ll > algo/cpuminer-lyra2re.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lyra2re.o `test -f 'algo/cpuminer-lyra2re.ll' || echo '$(srcdir)/'`algo/cpuminer-lyra2re.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lyra2re.o `test -f 'algo/opt_cpuminer-lyra2re.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-lyra2re.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-lyra2re.Tpo algo/$(DEPDIR)/cpuminer-lyra2re.Po
 #	$(AM_V_CC)source='algo/lyra2re.c' object='algo/cpuminer-lyra2re.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2441,8 +2297,7 @@ algo/cpuminer-lyra2re.obj: algo/lyra2re.c
 algo/cpuminer-lyra2rev2.o: algo/lyra2rev2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-lyra2rev2.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-lyra2rev2.Tpo -c -o algo/llvm_cpuminer-lyra2rev2.ll `test -f 'algo/lyra2rev2.c' || echo '$(srcdir)/'`algo/lyra2rev2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-lyra2rev2.ll > algo/opt_cpuminer-lyra2rev2.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-lyra2rev2.ll > algo/cpuminer-lyra2rev2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lyra2rev2.o `test -f 'algo/cpuminer-lyra2rev2.ll' || echo '$(srcdir)/'`algo/cpuminer-lyra2rev2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lyra2rev2.o `test -f 'algo/opt_cpuminer-lyra2rev2.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-lyra2rev2.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-lyra2rev2.Tpo algo/$(DEPDIR)/cpuminer-lyra2rev2.Po
 #	$(AM_V_CC)source='algo/lyra2rev2.c' object='algo/cpuminer-lyra2rev2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2458,8 +2313,7 @@ algo/cpuminer-lyra2rev2.obj: algo/lyra2rev2.c
 algo/cpuminer-lyra2v3.o: algo/lyra2v3.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-lyra2v3.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-lyra2v3.Tpo -c -o algo/llvm_cpuminer-lyra2v3.ll `test -f 'algo/lyra2v3.c' || echo '$(srcdir)/'`algo/lyra2v3.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-lyra2v3.ll > algo/opt_cpuminer-lyra2v3.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-lyra2v3.ll > algo/cpuminer-lyra2v3.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lyra2v3.o `test -f 'algo/cpuminer-lyra2v3.ll' || echo '$(srcdir)/'`algo/cpuminer-lyra2v3.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-lyra2v3.o `test -f 'algo/opt_cpuminer-lyra2v3.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-lyra2v3.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-lyra2v3.Tpo algo/$(DEPDIR)/cpuminer-lyra2v3.Po
 #	$(AM_V_CC)source='algo/lyra2v3.c' object='algo/cpuminer-lyra2v3.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2475,8 +2329,7 @@ algo/cpuminer-lyra2v3.obj: algo/lyra2v3.c
 algo/cpuminer-myr-groestl.o: algo/myr-groestl.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-myr-groestl.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-myr-groestl.Tpo -c -o algo/llvm_cpuminer-myr-groestl.ll `test -f 'algo/myr-groestl.c' || echo '$(srcdir)/'`algo/myr-groestl.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-myr-groestl.ll > algo/opt_cpuminer-myr-groestl.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-myr-groestl.ll > algo/cpuminer-myr-groestl.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-myr-groestl.o `test -f 'algo/cpuminer-myr-groestl.ll' || echo '$(srcdir)/'`algo/cpuminer-myr-groestl.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-myr-groestl.o `test -f 'algo/opt_cpuminer-myr-groestl.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-myr-groestl.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-myr-groestl.Tpo algo/$(DEPDIR)/cpuminer-myr-groestl.Po
 #	$(AM_V_CC)source='algo/myr-groestl.c' object='algo/cpuminer-myr-groestl.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2492,8 +2345,7 @@ algo/cpuminer-myr-groestl.obj: algo/myr-groestl.c
 algo/cpuminer-keccak.o: algo/keccak.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-keccak.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-keccak.Tpo -c -o algo/llvm_cpuminer-keccak.ll `test -f 'algo/keccak.c' || echo '$(srcdir)/'`algo/keccak.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-keccak.ll > algo/opt_cpuminer-keccak.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-keccak.ll > algo/cpuminer-keccak.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-keccak.o `test -f 'algo/cpuminer-keccak.ll' || echo '$(srcdir)/'`algo/cpuminer-keccak.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-keccak.o `test -f 'algo/opt_cpuminer-keccak.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-keccak.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-keccak.Tpo algo/$(DEPDIR)/cpuminer-keccak.Po
 #	$(AM_V_CC)source='algo/keccak.c' object='algo/cpuminer-keccak.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2509,8 +2361,7 @@ algo/cpuminer-keccak.obj: algo/keccak.c
 algo/cpuminer-pentablake.o: algo/pentablake.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-pentablake.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-pentablake.Tpo -c -o algo/llvm_cpuminer-pentablake.ll `test -f 'algo/pentablake.c' || echo '$(srcdir)/'`algo/pentablake.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-pentablake.ll > algo/opt_cpuminer-pentablake.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-pentablake.ll > algo/cpuminer-pentablake.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-pentablake.o `test -f 'algo/cpuminer-pentablake.ll' || echo '$(srcdir)/'`algo/cpuminer-pentablake.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-pentablake.o `test -f 'algo/opt_cpuminer-pentablake.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-pentablake.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-pentablake.Tpo algo/$(DEPDIR)/cpuminer-pentablake.Po
 #	$(AM_V_CC)source='algo/pentablake.c' object='algo/cpuminer-pentablake.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2526,8 +2377,7 @@ algo/cpuminer-pentablake.obj: algo/pentablake.c
 algo/cpuminer-phi1612.o: algo/phi1612.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-phi1612.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-phi1612.Tpo -c -o algo/llvm_cpuminer-phi1612.ll `test -f 'algo/phi1612.c' || echo '$(srcdir)/'`algo/phi1612.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-phi1612.ll > algo/opt_cpuminer-phi1612.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-phi1612.ll > algo/cpuminer-phi1612.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-phi1612.o `test -f 'algo/cpuminer-phi1612.ll' || echo '$(srcdir)/'`algo/cpuminer-phi1612.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-phi1612.o `test -f 'algo/opt_cpuminer-phi1612.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-phi1612.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-phi1612.Tpo algo/$(DEPDIR)/cpuminer-phi1612.Po
 #	$(AM_V_CC)source='algo/phi1612.c' object='algo/cpuminer-phi1612.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2543,8 +2393,7 @@ algo/cpuminer-phi1612.obj: algo/phi1612.c
 algo/cpuminer-phi2.o: algo/phi2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-phi2.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-phi2.Tpo -c -o algo/llvm_cpuminer-phi2.ll `test -f 'algo/phi2.c' || echo '$(srcdir)/'`algo/phi2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-phi2.ll > algo/opt_cpuminer-phi2.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-phi2.ll > algo/cpuminer-phi2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-phi2.o `test -f 'algo/cpuminer-phi2.ll' || echo '$(srcdir)/'`algo/cpuminer-phi2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-phi2.o `test -f 'algo/opt_cpuminer-phi2.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-phi2.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-phi2.Tpo algo/$(DEPDIR)/cpuminer-phi2.Po
 #	$(AM_V_CC)source='algo/phi2.c' object='algo/cpuminer-phi2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2560,8 +2409,7 @@ algo/cpuminer-phi2.obj: algo/phi2.c
 algo/cpuminer-quark.o: algo/quark.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-quark.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-quark.Tpo -c -o algo/llvm_cpuminer-quark.ll `test -f 'algo/quark.c' || echo '$(srcdir)/'`algo/quark.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-quark.ll > algo/opt_cpuminer-quark.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-quark.ll > algo/cpuminer-quark.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-quark.o `test -f 'algo/cpuminer-quark.ll' || echo '$(srcdir)/'`algo/cpuminer-quark.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-quark.o `test -f 'algo/opt_cpuminer-quark.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-quark.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-quark.Tpo algo/$(DEPDIR)/cpuminer-quark.Po
 #	$(AM_V_CC)source='algo/quark.c' object='algo/cpuminer-quark.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2577,8 +2425,7 @@ algo/cpuminer-quark.obj: algo/quark.c
 algo/cpuminer-neoscrypt.o: algo/neoscrypt.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-neoscrypt.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-neoscrypt.Tpo -c -o algo/llvm_cpuminer-neoscrypt.ll `test -f 'algo/neoscrypt.c' || echo '$(srcdir)/'`algo/neoscrypt.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-neoscrypt.ll > algo/opt_cpuminer-neoscrypt.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-neoscrypt.ll > algo/cpuminer-neoscrypt.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-neoscrypt.o `test -f 'algo/cpuminer-neoscrypt.ll' || echo '$(srcdir)/'`algo/cpuminer-neoscrypt.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-neoscrypt.o `test -f 'algo/opt_cpuminer-neoscrypt.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-neoscrypt.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-neoscrypt.Tpo algo/$(DEPDIR)/cpuminer-neoscrypt.Po
 #	$(AM_V_CC)source='algo/neoscrypt.c' object='algo/cpuminer-neoscrypt.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2594,8 +2441,7 @@ algo/cpuminer-neoscrypt.obj: algo/neoscrypt.c
 algo/cpuminer-nist5.o: algo/nist5.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-nist5.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-nist5.Tpo -c -o algo/llvm_cpuminer-nist5.ll `test -f 'algo/nist5.c' || echo '$(srcdir)/'`algo/nist5.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-nist5.ll > algo/opt_cpuminer-nist5.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-nist5.ll > algo/cpuminer-nist5.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-nist5.o `test -f 'algo/cpuminer-nist5.ll' || echo '$(srcdir)/'`algo/cpuminer-nist5.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-nist5.o `test -f 'algo/opt_cpuminer-nist5.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-nist5.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-nist5.Tpo algo/$(DEPDIR)/cpuminer-nist5.Po
 #	$(AM_V_CC)source='algo/nist5.c' object='algo/cpuminer-nist5.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2610,9 +2456,8 @@ algo/cpuminer-nist5.obj: algo/nist5.c
 
 algo/cpuminer-pluck.o: algo/pluck.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-pluck.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-pluck.Tpo -c -o algo/llvm_cpuminer-pluck.ll `test -f 'algo/pluck.c' || echo '$(srcdir)/'`algo/pluck.c 
-	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-pluck.ll > algo/cpuminer-pluck.ll
-	#$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-pluck.ll > algo/cpuminer-pluck.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-pluck.o `test -f 'algo/cpuminer-pluck.ll' || echo '$(srcdir)/'`algo/cpuminer-pluck.ll
+	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-pluck.ll > algo/opt_cpuminer-pluck.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-pluck.o `test -f 'algo/opt_cpuminer-pluck.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-pluck.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-pluck.Tpo algo/$(DEPDIR)/cpuminer-pluck.Po
 #	$(AM_V_CC)source='algo/pluck.c' object='algo/cpuminer-pluck.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2628,8 +2473,7 @@ algo/cpuminer-pluck.obj: algo/pluck.c
 algo/cpuminer-qubit.o: algo/qubit.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-qubit.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-qubit.Tpo -c -o algo/llvm_cpuminer-qubit.ll `test -f 'algo/qubit.c' || echo '$(srcdir)/'`algo/qubit.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-qubit.ll > algo/opt_cpuminer-qubit.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-qubit.ll > algo/cpuminer-qubit.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-qubit.o `test -f 'algo/cpuminer-qubit.ll' || echo '$(srcdir)/'`algo/cpuminer-qubit.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-qubit.o `test -f 'algo/opt_cpuminer-qubit.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-qubit.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-qubit.Tpo algo/$(DEPDIR)/cpuminer-qubit.Po
 #	$(AM_V_CC)source='algo/qubit.c' object='algo/cpuminer-qubit.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2645,8 +2489,7 @@ algo/cpuminer-qubit.obj: algo/qubit.c
 algo/cpuminer-rainforest.o: algo/rainforest.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-rainforest.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-rainforest.Tpo -c -o algo/llvm_cpuminer-rainforest.ll `test -f 'algo/rainforest.c' || echo '$(srcdir)/'`algo/rainforest.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-rainforest.ll > algo/opt_cpuminer-rainforest.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-rainforest.ll > algo/cpuminer-rainforest.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-rainforest.o `test -f 'algo/cpuminer-rainforest.ll' || echo '$(srcdir)/'`algo/cpuminer-rainforest.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-rainforest.o `test -f 'algo/opt_cpuminer-rainforest.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-rainforest.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-rainforest.Tpo algo/$(DEPDIR)/cpuminer-rainforest.Po
 #	$(AM_V_CC)source='algo/rainforest.c' object='algo/cpuminer-rainforest.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2662,8 +2505,7 @@ algo/cpuminer-rainforest.obj: algo/rainforest.c
 algo/cpuminer-scrypt.o: algo/scrypt.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-scrypt.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-scrypt.Tpo -c -o algo/llvm_cpuminer-scrypt.ll `test -f 'algo/scrypt.c' || echo '$(srcdir)/'`algo/scrypt.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-scrypt.ll > algo/opt_cpuminer-scrypt.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-scrypt.ll > algo/cpuminer-scrypt.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-scrypt.o `test -f 'algo/cpuminer-scrypt.ll' || echo '$(srcdir)/'`algo/cpuminer-scrypt.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-scrypt.o `test -f 'algo/opt_cpuminer-scrypt.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-scrypt.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-scrypt.Tpo algo/$(DEPDIR)/cpuminer-scrypt.Po
 #	$(AM_V_CC)source='algo/scrypt.c' object='algo/cpuminer-scrypt.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2679,8 +2521,7 @@ algo/cpuminer-scrypt.obj: algo/scrypt.c
 algo/cpuminer-scrypt-jane.o: algo/scrypt-jane.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-scrypt-jane.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-scrypt-jane.Tpo -c -o algo/llvm_cpuminer-scrypt-jane.ll `test -f 'algo/scrypt-jane.c' || echo '$(srcdir)/'`algo/scrypt-jane.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-scrypt-jane.ll > algo/opt_cpuminer-scrypt-jane.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-scrypt-jane.ll > algo/cpuminer-scrypt-jane.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-scrypt-jane.o `test -f 'algo/cpuminer-scrypt-jane.ll' || echo '$(srcdir)/'`algo/cpuminer-scrypt-jane.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-scrypt-jane.o `test -f 'algo/opt_cpuminer-scrypt-jane.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-scrypt-jane.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-scrypt-jane.Tpo algo/$(DEPDIR)/cpuminer-scrypt-jane.Po
 #	$(AM_V_CC)source='algo/scrypt-jane.c' object='algo/cpuminer-scrypt-jane.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2696,8 +2537,7 @@ algo/cpuminer-scrypt-jane.obj: algo/scrypt-jane.c
 algo/cpuminer-sha2.o: algo/sha2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-sha2.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-sha2.Tpo -c -o algo/llvm_cpuminer-sha2.ll `test -f 'algo/sha2.c' || echo '$(srcdir)/'`algo/sha2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-sha2.ll > algo/opt_cpuminer-sha2.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-sha2.ll > algo/cpuminer-sha2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sha2.o `test -f 'algo/cpuminer-sha2.ll' || echo '$(srcdir)/'`algo/cpuminer-sha2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sha2.o `test -f 'algo/opt_cpuminer-sha2.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-sha2.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-sha2.Tpo algo/$(DEPDIR)/cpuminer-sha2.Po
 #	$(AM_V_CC)source='algo/sha2.c' object='algo/cpuminer-sha2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2713,8 +2553,7 @@ algo/cpuminer-sha2.obj: algo/sha2.c
 algo/cpuminer-sia.o: algo/sia.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-sia.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-sia.Tpo -c -o algo/llvm_cpuminer-sia.ll `test -f 'algo/sia.c' || echo '$(srcdir)/'`algo/sia.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-sia.ll > algo/opt_cpuminer-sia.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-sia.ll > algo/cpuminer-sia.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sia.o `test -f 'algo/cpuminer-sia.ll' || echo '$(srcdir)/'`algo/cpuminer-sia.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sia.o `test -f 'algo/opt_cpuminer-sia.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-sia.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-sia.Tpo algo/$(DEPDIR)/cpuminer-sia.Po
 #	$(AM_V_CC)source='algo/sia.c' object='algo/cpuminer-sia.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2730,8 +2569,7 @@ algo/cpuminer-sia.obj: algo/sia.c
 algo/cpuminer-sibcoin.o: algo/sibcoin.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-sibcoin.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-sibcoin.Tpo -c -o algo/llvm_cpuminer-sibcoin.ll `test -f 'algo/sibcoin.c' || echo '$(srcdir)/'`algo/sibcoin.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-sibcoin.ll > algo/opt_cpuminer-sibcoin.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-sibcoin.ll > algo/cpuminer-sibcoin.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sibcoin.o `test -f 'algo/cpuminer-sibcoin.ll' || echo '$(srcdir)/'`algo/cpuminer-sibcoin.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sibcoin.o `test -f 'algo/opt_cpuminer-sibcoin.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-sibcoin.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-sibcoin.Tpo algo/$(DEPDIR)/cpuminer-sibcoin.Po
 #	$(AM_V_CC)source='algo/sibcoin.c' object='algo/cpuminer-sibcoin.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2747,8 +2585,7 @@ algo/cpuminer-sibcoin.obj: algo/sibcoin.c
 algo/cpuminer-skein.o: algo/skein.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-skein.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-skein.Tpo -c -o algo/llvm_cpuminer-skein.ll `test -f 'algo/skein.c' || echo '$(srcdir)/'`algo/skein.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-skein.ll > algo/opt_cpuminer-skein.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-skein.ll > algo/cpuminer-skein.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-skein.o `test -f 'algo/cpuminer-skein.ll' || echo '$(srcdir)/'`algo/cpuminer-skein.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-skein.o `test -f 'algo/opt_cpuminer-skein.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-skein.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-skein.Tpo algo/$(DEPDIR)/cpuminer-skein.Po
 #	$(AM_V_CC)source='algo/skein.c' object='algo/cpuminer-skein.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2764,8 +2601,7 @@ algo/cpuminer-skein.obj: algo/skein.c
 algo/cpuminer-skein2.o: algo/skein2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-skein2.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-skein2.Tpo -c -o algo/llvm_cpuminer-skein2.ll `test -f 'algo/skein2.c' || echo '$(srcdir)/'`algo/skein2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-skein2.ll > algo/opt_cpuminer-skein2.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-skein2.ll > algo/cpuminer-skein2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-skein2.o `test -f 'algo/cpuminer-skein2.ll' || echo '$(srcdir)/'`algo/cpuminer-skein2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-skein2.o `test -f 'algo/opt_cpuminer-skein2.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-skein2.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-skein2.Tpo algo/$(DEPDIR)/cpuminer-skein2.Po
 #	$(AM_V_CC)source='algo/skein2.c' object='algo/cpuminer-skein2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2781,8 +2617,7 @@ algo/cpuminer-skein2.obj: algo/skein2.c
 algo/cpuminer-sonoa.o: algo/sonoa.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-sonoa.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-sonoa.Tpo -c -o algo/llvm_cpuminer-sonoa.ll `test -f 'algo/sonoa.c' || echo '$(srcdir)/'`algo/sonoa.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-sonoa.ll > algo/opt_cpuminer-sonoa.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-sonoa.ll > algo/cpuminer-sonoa.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sonoa.o `test -f 'algo/cpuminer-sonoa.ll' || echo '$(srcdir)/'`algo/cpuminer-sonoa.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-sonoa.o `test -f 'algo/opt_cpuminer-sonoa.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-sonoa.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-sonoa.Tpo algo/$(DEPDIR)/cpuminer-sonoa.Po
 #	$(AM_V_CC)source='algo/sonoa.c' object='algo/cpuminer-sonoa.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2798,8 +2633,7 @@ algo/cpuminer-sonoa.obj: algo/sonoa.c
 algo/cpuminer-s3.o: algo/s3.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-s3.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-s3.Tpo -c -o algo/llvm_cpuminer-s3.ll `test -f 'algo/s3.c' || echo '$(srcdir)/'`algo/s3.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-s3.ll > algo/opt_cpuminer-s3.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-s3.ll > algo/cpuminer-s3.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-s3.o `test -f 'algo/cpuminer-s3.ll' || echo '$(srcdir)/'`algo/cpuminer-s3.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-s3.o `test -f 'algo/opt_cpuminer-s3.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-s3.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-s3.Tpo algo/$(DEPDIR)/cpuminer-s3.Po
 #	$(AM_V_CC)source='algo/s3.c' object='algo/cpuminer-s3.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2815,8 +2649,7 @@ algo/cpuminer-s3.obj: algo/s3.c
 algo/cpuminer-bitcore.o: algo/bitcore.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-bitcore.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-bitcore.Tpo -c -o algo/llvm_cpuminer-bitcore.ll `test -f 'algo/bitcore.c' || echo '$(srcdir)/'`algo/bitcore.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-bitcore.ll > algo/opt_cpuminer-bitcore.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-bitcore.ll > algo/cpuminer-bitcore.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-bitcore.o `test -f 'algo/cpuminer-bitcore.ll' || echo '$(srcdir)/'`algo/cpuminer-bitcore.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-bitcore.o `test -f 'algo/opt_cpuminer-bitcore.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-bitcore.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-bitcore.Tpo algo/$(DEPDIR)/cpuminer-bitcore.Po
 #	$(AM_V_CC)source='algo/bitcore.c' object='algo/cpuminer-bitcore.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2832,8 +2665,7 @@ algo/cpuminer-bitcore.obj: algo/bitcore.c
 algo/cpuminer-timetravel.o: algo/timetravel.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-timetravel.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-timetravel.Tpo -c -o algo/llvm_cpuminer-timetravel.ll `test -f 'algo/timetravel.c' || echo '$(srcdir)/'`algo/timetravel.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-timetravel.ll > algo/opt_cpuminer-timetravel.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-timetravel.ll > algo/cpuminer-timetravel.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-timetravel.o `test -f 'algo/cpuminer-timetravel.ll' || echo '$(srcdir)/'`algo/cpuminer-timetravel.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-timetravel.o `test -f 'algo/opt_cpuminer-timetravel.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-timetravel.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-timetravel.Tpo algo/$(DEPDIR)/cpuminer-timetravel.Po
 #	$(AM_V_CC)source='algo/timetravel.c' object='algo/cpuminer-timetravel.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2849,8 +2681,7 @@ algo/cpuminer-timetravel.obj: algo/timetravel.c
 algo/cpuminer-tribus.o: algo/tribus.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-tribus.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-tribus.Tpo -c -o algo/llvm_cpuminer-tribus.ll `test -f 'algo/tribus.c' || echo '$(srcdir)/'`algo/tribus.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-tribus.ll > algo/opt_cpuminer-tribus.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-tribus.ll > algo/cpuminer-tribus.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-tribus.o `test -f 'algo/cpuminer-tribus.ll' || echo '$(srcdir)/'`algo/cpuminer-tribus.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-tribus.o `test -f 'algo/opt_cpuminer-tribus.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-tribus.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-tribus.Tpo algo/$(DEPDIR)/cpuminer-tribus.Po
 #	$(AM_V_CC)source='algo/tribus.c' object='algo/cpuminer-tribus.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2866,8 +2697,7 @@ algo/cpuminer-tribus.obj: algo/tribus.c
 algo/cpuminer-veltor.o: algo/veltor.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-veltor.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-veltor.Tpo -c -o algo/llvm_cpuminer-veltor.ll `test -f 'algo/veltor.c' || echo '$(srcdir)/'`algo/veltor.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-veltor.ll > algo/opt_cpuminer-veltor.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-veltor.ll > algo/cpuminer-veltor.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-veltor.o `test -f 'algo/cpuminer-veltor.ll' || echo '$(srcdir)/'`algo/cpuminer-veltor.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-veltor.o `test -f 'algo/opt_cpuminer-veltor.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-veltor.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-veltor.Tpo algo/$(DEPDIR)/cpuminer-veltor.Po
 #	$(AM_V_CC)source='algo/veltor.c' object='algo/cpuminer-veltor.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2883,8 +2713,7 @@ algo/cpuminer-veltor.obj: algo/veltor.c
 algo/cpuminer-x11evo.o: algo/x11evo.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x11evo.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x11evo.Tpo -c -o algo/llvm_cpuminer-x11evo.ll `test -f 'algo/x11evo.c' || echo '$(srcdir)/'`algo/x11evo.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x11evo.ll > algo/opt_cpuminer-x11evo.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x11evo.ll > algo/cpuminer-x11evo.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x11evo.o `test -f 'algo/cpuminer-x11evo.ll' || echo '$(srcdir)/'`algo/cpuminer-x11evo.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x11evo.o `test -f 'algo/opt_cpuminer-x11evo.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x11evo.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x11evo.Tpo algo/$(DEPDIR)/cpuminer-x11evo.Po
 #	$(AM_V_CC)source='algo/x11evo.c' object='algo/cpuminer-x11evo.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2900,8 +2729,7 @@ algo/cpuminer-x11evo.obj: algo/x11evo.c
 algo/cpuminer-x11.o: algo/x11.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x11.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x11.Tpo -c -o algo/llvm_cpuminer-x11.ll `test -f 'algo/x11.c' || echo '$(srcdir)/'`algo/x11.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x11.ll > algo/opt_cpuminer-x11.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x11.ll > algo/cpuminer-x11.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x11.o `test -f 'algo/cpuminer-x11.ll' || echo '$(srcdir)/'`algo/cpuminer-x11.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x11.o `test -f 'algo/opt_cpuminer-x11.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x11.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x11.Tpo algo/$(DEPDIR)/cpuminer-x11.Po
 #	$(AM_V_CC)source='algo/x11.c' object='algo/cpuminer-x11.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2917,8 +2745,7 @@ algo/cpuminer-x11.obj: algo/x11.c
 algo/cpuminer-x12.o: algo/x12.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x12.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x12.Tpo -c -o algo/llvm_cpuminer-x12.ll `test -f 'algo/x12.c' || echo '$(srcdir)/'`algo/x12.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x12.ll > algo/opt_cpuminer-x12.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x12.ll > algo/cpuminer-x12.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x12.o `test -f 'algo/cpuminer-x12.ll' || echo '$(srcdir)/'`algo/cpuminer-x12.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x12.o `test -f 'algo/opt_cpuminer-x12.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x12.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x12.Tpo algo/$(DEPDIR)/cpuminer-x12.Po
 #	$(AM_V_CC)source='algo/x12.c' object='algo/cpuminer-x12.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2934,8 +2761,7 @@ algo/cpuminer-x12.obj: algo/x12.c
 algo/cpuminer-x13.o: algo/x13.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x13.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x13.Tpo -c -o algo/llvm_cpuminer-x13.ll `test -f 'algo/x13.c' || echo '$(srcdir)/'`algo/x13.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x13.ll > algo/opt_cpuminer-x13.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x13.ll > algo/cpuminer-x13.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x13.o `test -f 'algo/cpuminer-x13.ll' || echo '$(srcdir)/'`algo/cpuminer-x13.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x13.o `test -f 'algo/opt_cpuminer-x13.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x13.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x13.Tpo algo/$(DEPDIR)/cpuminer-x13.Po
 #	$(AM_V_CC)source='algo/x13.c' object='algo/cpuminer-x13.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2951,8 +2777,7 @@ algo/cpuminer-x13.obj: algo/x13.c
 algo/cpuminer-x14.o: algo/x14.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x14.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x14.Tpo -c -o algo/llvm_cpuminer-x14.ll `test -f 'algo/x14.c' || echo '$(srcdir)/'`algo/x14.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x14.ll > algo/opt_cpuminer-x14.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x14.ll > algo/cpuminer-x14.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x14.o `test -f 'algo/cpuminer-x14.ll' || echo '$(srcdir)/'`algo/cpuminer-x14.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x14.o `test -f 'algo/opt_cpuminer-x14.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x14.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x14.Tpo algo/$(DEPDIR)/cpuminer-x14.Po
 #	$(AM_V_CC)source='algo/x14.c' object='algo/cpuminer-x14.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2968,8 +2793,7 @@ algo/cpuminer-x14.obj: algo/x14.c
 algo/cpuminer-x15.o: algo/x15.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x15.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x15.Tpo -c -o algo/llvm_cpuminer-x15.ll `test -f 'algo/x15.c' || echo '$(srcdir)/'`algo/x15.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x15.ll > algo/opt_cpuminer-x15.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x15.ll > algo/cpuminer-x15.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x15.o `test -f 'algo/cpuminer-x15.ll' || echo '$(srcdir)/'`algo/cpuminer-x15.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x15.o `test -f 'algo/opt_cpuminer-x15.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x15.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x15.Tpo algo/$(DEPDIR)/cpuminer-x15.Po
 #	$(AM_V_CC)source='algo/x15.c' object='algo/cpuminer-x15.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -2985,8 +2809,7 @@ algo/cpuminer-x15.obj: algo/x15.c
 algo/cpuminer-x16r.o: algo/x16r.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x16r.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x16r.Tpo -c -o algo/llvm_cpuminer-x16r.ll `test -f 'algo/x16r.c' || echo '$(srcdir)/'`algo/x16r.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x16r.ll > algo/opt_cpuminer-x16r.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x16r.ll > algo/cpuminer-x16r.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x16r.o `test -f 'algo/cpuminer-x16r.ll' || echo '$(srcdir)/'`algo/cpuminer-x16r.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x16r.o `test -f 'algo/opt_cpuminer-x16r.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x16r.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x16r.Tpo algo/$(DEPDIR)/cpuminer-x16r.Po
 #	$(AM_V_CC)source='algo/x16r.c' object='algo/cpuminer-x16r.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3002,8 +2825,7 @@ algo/cpuminer-x16r.obj: algo/x16r.c
 algo/cpuminer-x16rv2.o: algo/x16rv2.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x16rv2.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x16rv2.Tpo -c -o algo/llvm_cpuminer-x16rv2.ll `test -f 'algo/x16rv2.c' || echo '$(srcdir)/'`algo/x16rv2.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x16rv2.ll > algo/opt_cpuminer-x16rv2.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x16rv2.ll > algo/cpuminer-x16rv2.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x16rv2.o `test -f 'algo/cpuminer-x16rv2.ll' || echo '$(srcdir)/'`algo/cpuminer-x16rv2.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x16rv2.o `test -f 'algo/opt_cpuminer-x16rv2.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x16rv2.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x16rv2.Tpo algo/$(DEPDIR)/cpuminer-x16rv2.Po
 #	$(AM_V_CC)source='algo/x16rv2.c' object='algo/cpuminer-x16rv2.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3019,8 +2841,7 @@ algo/cpuminer-x16rv2.obj: algo/x16rv2.c
 algo/cpuminer-x16s.o: algo/x16s.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x16s.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x16s.Tpo -c -o algo/llvm_cpuminer-x16s.ll `test -f 'algo/x16s.c' || echo '$(srcdir)/'`algo/x16s.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x16s.ll > algo/opt_cpuminer-x16s.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x16s.ll > algo/cpuminer-x16s.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x16s.o `test -f 'algo/cpuminer-x16s.ll' || echo '$(srcdir)/'`algo/cpuminer-x16s.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x16s.o `test -f 'algo/opt_cpuminer-x16s.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x16s.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x16s.Tpo algo/$(DEPDIR)/cpuminer-x16s.Po
 #	$(AM_V_CC)source='algo/x16s.c' object='algo/cpuminer-x16s.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3036,8 +2857,7 @@ algo/cpuminer-x16s.obj: algo/x16s.c
 algo/cpuminer-x20r.o: algo/x20r.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x20r.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x20r.Tpo -c -o algo/llvm_cpuminer-x20r.ll `test -f 'algo/x20r.c' || echo '$(srcdir)/'`algo/x20r.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x20r.ll > algo/opt_cpuminer-x20r.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x20r.ll > algo/cpuminer-x20r.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x20r.o `test -f 'algo/cpuminer-x20r.ll' || echo '$(srcdir)/'`algo/cpuminer-x20r.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x20r.o `test -f 'algo/opt_cpuminer-x20r.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x20r.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x20r.Tpo algo/$(DEPDIR)/cpuminer-x20r.Po
 #	$(AM_V_CC)source='algo/x20r.c' object='algo/cpuminer-x20r.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3053,8 +2873,7 @@ algo/cpuminer-x20r.obj: algo/x20r.c
 algo/cpuminer-x17.o: algo/x17.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-x17.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-x17.Tpo -c -o algo/llvm_cpuminer-x17.ll `test -f 'algo/x17.c' || echo '$(srcdir)/'`algo/x17.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-x17.ll > algo/opt_cpuminer-x17.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-x17.ll > algo/cpuminer-x17.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x17.o `test -f 'algo/cpuminer-x17.ll' || echo '$(srcdir)/'`algo/cpuminer-x17.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-x17.o `test -f 'algo/opt_cpuminer-x17.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-x17.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-x17.Tpo algo/$(DEPDIR)/cpuminer-x17.Po
 #	$(AM_V_CC)source='algo/x17.c' object='algo/cpuminer-x17.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3070,8 +2889,7 @@ algo/cpuminer-x17.obj: algo/x17.c
 algo/cpuminer-xevan.o: algo/xevan.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-xevan.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-xevan.Tpo -c -o algo/llvm_cpuminer-xevan.ll `test -f 'algo/xevan.c' || echo '$(srcdir)/'`algo/xevan.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-xevan.ll > algo/opt_cpuminer-xevan.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-xevan.ll > algo/cpuminer-xevan.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-xevan.o `test -f 'algo/cpuminer-xevan.ll' || echo '$(srcdir)/'`algo/cpuminer-xevan.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-xevan.o `test -f 'algo/opt_cpuminer-xevan.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-xevan.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-xevan.Tpo algo/$(DEPDIR)/cpuminer-xevan.Po
 #	$(AM_V_CC)source='algo/xevan.c' object='algo/cpuminer-xevan.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3087,8 +2905,7 @@ algo/cpuminer-xevan.obj: algo/xevan.c
 algo/cpuminer-yescrypt.o: algo/yescrypt.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-yescrypt.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-yescrypt.Tpo -c -o algo/llvm_cpuminer-yescrypt.ll `test -f 'algo/yescrypt.c' || echo '$(srcdir)/'`algo/yescrypt.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-yescrypt.ll > algo/opt_cpuminer-yescrypt.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-yescrypt.ll > algo/cpuminer-yescrypt.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-yescrypt.o `test -f 'algo/cpuminer-yescrypt.ll' || echo '$(srcdir)/'`algo/cpuminer-yescrypt.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-yescrypt.o `test -f 'algo/opt_cpuminer-yescrypt.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-yescrypt.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-yescrypt.Tpo algo/$(DEPDIR)/cpuminer-yescrypt.Po
 #	$(AM_V_CC)source='algo/yescrypt.c' object='algo/cpuminer-yescrypt.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3104,8 +2921,7 @@ algo/cpuminer-yescrypt.obj: algo/yescrypt.c
 algo/cpuminer-zr5.o: algo/zr5.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT algo/llvm_cpuminer-zr5.ll -MD -MP -MF algo/$(DEPDIR)/cpuminer-zr5.Tpo -c -o algo/llvm_cpuminer-zr5.ll `test -f 'algo/zr5.c' || echo '$(srcdir)/'`algo/zr5.c 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-zr5.ll > algo/opt_cpuminer-zr5.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-zr5.ll > algo/cpuminer-zr5.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-zr5.o `test -f 'algo/cpuminer-zr5.ll' || echo '$(srcdir)/'`algo/cpuminer-zr5.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-zr5.o `test -f 'algo/opt_cpuminer-zr5.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-zr5.ll
 	$(AM_V_at)$(am__mv) algo/$(DEPDIR)/cpuminer-zr5.Tpo algo/$(DEPDIR)/cpuminer-zr5.Po
 #	$(AM_V_CC)source='algo/zr5.c' object='algo/cpuminer-zr5.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3121,8 +2937,7 @@ algo/cpuminer-zr5.obj: algo/zr5.c
 compat/cpuminer-winansi.o: compat/winansi.c
 	$(AM_V_CC)$(CC) -S -emit-llvm $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(cpuminer_CPPFLAGS) $(CPPFLAGS) $(cpuminer_CFLAGS) $(CFLAGS) -MT compat/llvm_cpuminer-winansi.ll -MD -MP -MF compat/$(DEPDIR)/cpuminer-winansi.Tpo -c -o compat/llvm_cpuminer-winansi.ll `test -f 'compat/winansi.c' || echo '$(srcdir)/'`compat/winansi.c 
 	$(CC_OPT) $(OPTFLAGS) -S < compat/llvm_cpuminer-winansi.ll > compat/opt_cpuminer-winansi.ll
-	$(CC_OPT) $(LCFLAGS) -S < compat/opt_cpuminer-winansi.ll > compat/cpuminer-winansi.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o compat/cpuminer-winansi.o `test -f 'compat/cpuminer-winansi.ll' || echo '$(srcdir)/'`compat/cpuminer-winansi.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o compat/cpuminer-winansi.o `test -f 'compat/opt_cpuminer-winansi.ll' || echo '$(srcdir)/'`compat/opt_cpuminer-winansi.ll
 	$(AM_V_at)$(am__mv) compat/$(DEPDIR)/cpuminer-winansi.Tpo compat/$(DEPDIR)/cpuminer-winansi.Po
 #	$(AM_V_CC)source='compat/winansi.c' object='compat/cpuminer-winansi.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
@@ -3656,8 +3471,7 @@ uninstall-man: uninstall-man1
 #cpuminer-neoscrypt.o: neoscrypt.c
 	# -S -emit-llvm @echo "CUSTOM ${@}: ${filter %.o,${^}} ${filter %.c,${^}}" 
 	$(CC_OPT) $(OPTFLAGS) -S < algo/llvm_cpuminer-neoscrypt.ll > algo/opt_cpuminer-neoscrypt.ll
-	$(CC_OPT) $(LCFLAGS) -S < algo/opt_cpuminer-neoscrypt.ll > algo/cpuminer-neoscrypt.ll
-	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-neoscrypt.o `test -f 'algo/cpuminer-neoscrypt.ll' || echo '$(srcdir)/'`algo/cpuminer-neoscrypt.ll
+	$(CC_LLC) -relocation-model=pic -filetype=obj -o algo/cpuminer-neoscrypt.o `test -f 'algo/opt_cpuminer-neoscrypt.ll' || echo '$(srcdir)/'`algo/opt_cpuminer-neoscrypt.ll
 #	$(CC) $(common_ccflags) -g -O3 $(gprof_cflags) -MT $@ -MD -MP -c -o $@ $<
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

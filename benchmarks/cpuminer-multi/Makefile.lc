@@ -14,6 +14,7 @@
 
 
 
+CUR_PATH = `pwd`
 
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -258,7 +259,7 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I.
+DEFAULT_INCLUDES = -I. -I$(CUR_PATH)/../../src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -417,13 +418,13 @@ distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing aclocal-1.15
+ACLOCAL = ${SHELL} ${CUR_PATH}/missing aclocal-1.15
 ALLOCA = 
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing autoconf
-AUTOHEADER = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing autoheader
-AUTOMAKE = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing automake-1.15
+AUTOCONF = ${SHELL} ${CUR_PATH}/missing autoconf
+AUTOHEADER = ${SHELL} ${CUR_PATH}/missing autoheader
+AUTOMAKE = ${SHELL} ${CUR_PATH}/missing automake-1.15
 AWK = gawk
 #CC = /mnt/nilanjana/bin/clang
 #CC_OPT = /mnt/nilanjana/bin/opt
@@ -449,7 +450,6 @@ ALLOWED_DEVIATION ?= 100
 FIBER_CONFIG ?= 0
 CLOCK_TYPE ?= 1
 CONFIG ?= 2
-CUR_PATH = `pwd`
 OPTFLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 LCFLAGS_MAIN = -load $(CUR_PATH)/../../lib/CompilerInterrupt.so -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
 LCFLAGS = -load $(CUR_PATH)/../../lib/CompilerInterrupt.so -logicalclock -defclock=false -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ../../lc-config.txt
@@ -497,7 +497,7 @@ LIBOBJS =
 LIBS = -lz -lci -L../../lib/ -Wl,-rpath=../../lib/ -L../shenango/shenango libbase.a libnet.a -T base.ld -no-pie $(DPDK_LIBS) -ldl -lnuma
 LTLIBOBJS = 
 MAINT = #
-MAKEINFO = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/missing makeinfo
+MAKEINFO = ${SHELL} ${CUR_PATH}/missing makeinfo
 MKDIR_P = /bin/mkdir -p
 OBJEXT = o
 PACKAGE = cpuminer-multi
@@ -516,10 +516,10 @@ SHELL = /bin/bash
 STRIP = 
 VERSION = 1.3.7
 WS2_LIBS = 
-abs_builddir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
-abs_srcdir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
-abs_top_builddir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
-abs_top_srcdir = /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi
+abs_builddir = ${CUR_PATH}
+abs_srcdir = ${CUR_PATH}
+abs_top_builddir = ${CUR_PATH}
+abs_top_srcdir = ${CUR_PATH}
 ac_ct_CC = gcc
 ac_ct_CXX = g++
 am__include = include
@@ -547,7 +547,7 @@ host_vendor = pc
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/nbasu4/CompilerInterrupts/benchmarks/cpuminer-multi/install-sh
+install_sh = ${SHELL} ${CUR_PATH}/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale

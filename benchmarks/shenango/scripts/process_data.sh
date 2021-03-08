@@ -474,8 +474,6 @@ else
   exit
 fi
 
-PLOTS_DIR=$PWD"/plots"
-mkdir -p $PLOTS_DIR
-gnuplot -e "ofile='${PLOTS_DIR}/cpuminer-hashrate.pdf'" plot_cpuminer_hashrate.gp
-gnuplot -e "ofile='${PLOTS_DIR}/99.9pc.pdf'" -e "col_index=6" -e "ymax=250" -e "key_status=1" -e "ylab='99.9% Latency ({/Symbol m}s)'" plot_shenango_latency.gp
-gnuplot -e "ofile='${PLOTS_DIR}/median.pdf'" -e "col_index=3" -e "ymax=150" -e "key_status=0" -e "ylab='Median Latency ({/Symbol m}s)'" plot_shenango_latency.gp
+gnuplot -e "ofile='cpuminer-hashrate.pdf'" plot_cpuminer_hashrate.gp
+gnuplot -e "ofile='99.9pc.pdf'" -e "col_index=6" -e "ymax=250" -e "key_status=1" -e "ylab='99.9% Latency ({/Symbol m}s)'" plot_shenango_latency.gp
+gnuplot -e "ofile='median.pdf'" -e "col_index=3" -e "ymax=150" -e "key_status=0" -e "ylab='Median Latency ({/Symbol m}s)'" plot_shenango_latency.gp

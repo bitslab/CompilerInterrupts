@@ -2,6 +2,7 @@
 
 CUR_PATH=`pwd`
 EXP_DIR="${CUR_PATH}/exp_results"
+PLOTS_DIR="${CUR_PATH}/plots"
 
 run_command() {
   command=$@
@@ -1424,6 +1425,22 @@ swaptions_shenango_experiment() {
   fi
 }
 
+plot_shenango() {
+  mkdir -p $PLOTS_DIR
+  cp process_data.sh $EXP_DIR/
+  cp plot_shenango_latency.gp plot_cpuminer_hashrate.gp $EXP_DIR/
+  pushd $EXP_DIR
+  dir_set="cpuminer1000 cpuminer16000 cpuminer2000 cpuminer32000 cpuminer4000	cpuminer64000 cpuminer8000 orig_files pthread-memcached pthread-memcached-swaptions standalone"
+  for d in $dir_set; do
+    if [ ! -d $d ]; then
+      echo "$d is not found. Aborting."
+    fi
+  done
+  ./process_data.sh
+  mv *.pdf $PLOTS_DIR
+  popd
+}
+
 build_shenango_iokernel() {
   iokernel_build_path=$CUR_PATH"/../"
   echo "Building iokerneld"
@@ -1447,11 +1464,12 @@ USER_NAME=`logname`
 
 if [ $# -eq 0 ]; then
   echo "Running entire set of experiments for shenango"
-  cpuminer_orig_experiment
+  cpuminer_orig_experiment # stock cpuminer's performance with other jobs running
   run_experiment 0 # for standalone-iokernel
   run_experiment_over_ci # for cpuminer-iokernel for different intervals of CI
   run_experiment_orig 0 # memcached (shenango's version) with pthreads
   run_experiment_orig 1 # memcached (shenango's version) with pthreads + swaptions 
+  plot_shenango
 else
   echo "Usage: ./experiments.sh <option: 0-kill the server, 1-run server, 2-run server with cpuminer, 3-run client, 4-create client env, 5-create server env, 6-copy stats files 7-create linux server env>"
   case $1 in
@@ -1497,6 +1515,8 @@ else
       run_memcached_orig
     ;;
   18) create_linux_client_env
+    ;;
+  19) plot_shenango
     ;;
   *)
     # full set

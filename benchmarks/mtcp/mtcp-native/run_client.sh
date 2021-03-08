@@ -1,6 +1,4 @@
 #!/bin/bash
-RUNS=10
-EXP_DIR="${PWD}/../exp_results/"
 
 print_avg() {
   #conc
@@ -25,9 +23,9 @@ print_avg() {
 
 kill_existing_server() {
   # For precaution, kill any existing running process
-  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
-  #sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
-  pid_present=`sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver"`
+  sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
+  #sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
+  pid_present=`sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver"`
   if [ ! -z $pid_present ]; then
     echo "Could not kill epserver. Exiting."
     exit
@@ -52,7 +50,7 @@ run_server() {
   echo "Running server for mode $1"
   run_str="cd $server_app_path; sudo nohup ./run_server.sh $THREADS"
   echo $run_str
-  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$run_str" &
+  sshpass -e ssh ${USERNAME}@$server "$run_str" &
   sleep_time=15
   echo "Will sleep for $sleep_time sec for server to start running"
   sleep $sleep_time
@@ -62,7 +60,7 @@ build_server() {
   echo "Building server for mode $1"
   build_str="cd $server_app_path; sudo nohup ./build.sh $1"
   echo $build_str
-  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$build_str"
+  sshpass -e ssh ${USERNAME}@$server "$build_str"
 }
 
 build_client() {
@@ -70,6 +68,11 @@ build_client() {
   make epwget-clean
   make epwget
 }
+
+if [ $# -ne 0 ]; then
+  echo "Usage: ./run_client.sh"
+  exit
+fi
 
 USERNAME=`logname`
 if [ -z "$USERNAME" ]; then 
@@ -81,6 +84,10 @@ if [ -z "$SSHPASS" ]; then
   echo "User $USERNAME's password is not set in SSHPASS variable. E.g. export SSHPASS=\"password\". Aborting."
   exit
 fi
+
+RUNS="${RUNS:-10}"
+EXP_DIR="${PWD}/../exp_results/"
+echo "Running mtcp experiment for $RUNS runs & results will be exported in $EXP_DIR"
 
 client=`hostname`
 if [ "$client" == "lines" ]; then
@@ -94,37 +101,28 @@ else
   exit
 fi
 
-sshpass -e ssh ${USERNAME}@${server}.cs.uic.edu "pwd" > /dev/null
+sshpass -e ssh ${USERNAME}@${server} "pwd" > /dev/null
 cmd_status=`echo $?`
 if [ $cmd_status -ne 0 ]; then
   echo "Remote access to server $server is not setup for user $USERNAME. Aborting."
   exit
 fi
 
-#server_app_path="~/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp-native/"
 # since they are on NFS
 server_app_path=`pwd`
 
-if [ $# -ne 0 ]; then
-  echo "Usage: ./run_client.sh"
+pushd ../
+# unbinding dpdk-ports at client
+./setup.sh 0
+if [ $? -ne 0 ]; then 
+  echo "Could not unbind dpdk ports!"
   exit
 fi
+# unbinding dpdk-ports at server
+run_str="cd $server_app_path/../; sudo ./setup.sh 0"
+sshpass -e ssh ${USERNAME}@$server "$run_str"
+popd
 
-#file="out_${mode}_512"
-#print_avg 512
-#exit
-
-#if [ $2 -eq 0 ]; then
-#IP="10.193.34.60"
-#elif [ $2 -eq 1 ]; then
-# IP="192.168.1.1"
-#else
-#echo "Invalid option: $2"
-#echo "Usage: ./run_client.sh <0:ixgbe,1:mellanox>"
-#exit
-#fi
-
-CONCURRENCY="16 32 64 128 256 512 1024"
 CONCURRENCY="16 32 64 128 256 512"
 MODES="0 1" # 0 - unmod, 1 - mod
 THREADS=16

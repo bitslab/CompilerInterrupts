@@ -1,7 +1,5 @@
 #!/bin/bash
 
-EXP_DIR="${PWD}/../../../exp_results/"
-
 print_avg() {
   out_file="out_log_${CONCURRENCY}_m$mode"
   echo -n "Average latency over $RUNS runs ($REQUESTS requests, $THREADS threads, $CONCURRENCY concurrency): "
@@ -55,9 +53,9 @@ run_client_for_conc() {
 
 kill_existing_server() {
   # For precaution, kill any existing running process
-  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
-  #sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
-  pid_present=`sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "pgrep -x epserver"`
+  sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
+  #sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
+  pid_present=`sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver"`
   if [ ! -z $pid_present ]; then
     echo "Could not kill epserver. Exiting."
     exit
@@ -65,7 +63,7 @@ kill_existing_server() {
 }
 
 build_client() {
-  echo "Building client for version $vrsn & type 1"
+  echo "Building client for version 0 & type 1"
   curr_path=`pwd`
   cd ../../
   #./build.sh $vrsn $type
@@ -78,15 +76,15 @@ build_server() {
   echo "Building server for version $vrsn & type $type"
   build_str="cd $server_path; ./build.sh $vrsn $type"
   #echo "Build string: $build_str"
-  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$build_str" 
-  #sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$build_str &" 
+  sshpass -e ssh ${USERNAME}@$server "$build_str" 
+  #sshpass -e ssh ${USERNAME}@$server "$build_str &" 
 }
 
 run_server() {
   echo "Running server for version $vrsn & type $type"
   run_str="cd $server_app_path; sudo nohup ./test_server.sh"
   echo $run_str
-  sshpass -e ssh ${USERNAME}@$server.cs.uic.edu "$run_str" &
+  sshpass -e ssh ${USERNAME}@$server "$run_str" &
 
   sleep_time=15
   echo "Will sleep for $sleep_time sec for server to start running"
@@ -114,6 +112,8 @@ run_experiment() {
   kill_existing_server
 }
 
+#echo "Usage: ./test_client.sh <opt: #requests> <opt: #cores> <opt: #concurrency>"
+
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
@@ -134,7 +134,10 @@ CUR_PATH=`pwd`
 export RTE_TARGET="x86_64-native-linuxapp-gcc"
 export RTE_SDK=$CUR_PATH"/../../dpdk"
 
-echo "Usage: ./test_client.sh <opt: #requests> <opt: #cores> <opt: #concurrency>"
+RUNS="${RUNS:-10}"
+EXP_DIR="${CUR_PATH}/../../../exp_results/"
+THREADS=16
+echo "Running mtcp experiment for $RUNS runs & results will be exported in $EXP_DIR"
 
 client=`hostname`
 cur_path=`pwd`
@@ -151,7 +154,7 @@ else
   exit
 fi
 
-sshpass -e ssh ${USERNAME}@${server}.cs.uic.edu "pwd" > /dev/null
+sshpass -e ssh ${USERNAME}@${server} "pwd" > /dev/null
 cmd_status=`echo $?`
 if [ $cmd_status -ne 0 ]; then
   echo "Remote access to server $server is not setup for user $USERNAME. Aborting."
@@ -160,16 +163,17 @@ fi
 
 server_app_path="$server_path/apps/example"
 
-# debug code
-#rm -f tmp1; RUNS=1 THREADS=16 CONCURRENCY=256 mode=2 STAT_LOG="tmp1" print_avg
-#rm -f tmp2; RUNS=1 THREADS=16 CONCURRENCY=256 mode=3 STAT_LOG="tmp2" print_avg
-#exit
-#kill_existing_server
-#exit
-
-RUNS=10
-THREADS=16
-#RUNS=2
+pushd ../../../
+# binding dpdk-ports at client
+./setup.sh 1
+if [ $? -ne 0 ]; then 
+  echo "Could not bind dpdk ports!"
+  exit
+fi
+# binding dpdk-ports at server
+run_str="cd $server_app_path/../../../; sudo ./setup.sh 1"
+sshpass -e ssh ${USERNAME}@$server "$run_str"
+popd
 
 # Parse cmd line parameters
 if [ $# -eq 1 ]; then
@@ -183,18 +187,14 @@ elif [ $# -eq 3 ]; then
   CONCURRENCIES=$3
 fi
 
-#run_client
-
-MODES="2 3 0 1" # 0 - orig, 1 - ci, 2 - orig unmod, 3 - ci unmod
-#MODES="3 0 1" # 0 - orig, 1 - ci, 2 - orig unmod, 3 - ci unmod
+MODES="2 3 0 1" # 0 - orig mod, 1 - ci mod, 2 - orig unmod, 3 - ci unmod
 CONCURRENCIES="16 32 64 128 256 512"
-#CONCURRENCIES="512"
 for mode in $MODES; do
   if [ "$client" == "lines" ]; then
     # for ixgbe
     case $mode in
     0)
-      REQUESTS=100000
+      REQUESTS=20000 # starts dropping packets & getting errors beyond this
       type_str="orig_mod"
     ;;
     1)
@@ -234,7 +234,6 @@ for mode in $MODES; do
   STAT_LOG="all_log_$type_str"
   STAT_LOG_BACK="backup_all_log_$type_str"
   mv $STAT_LOG $STAT_LOG_BACK
-  #echo -e "Concurrency\tLatency(us)\tRxTh(Mbps)\tTxTh(Mbps)\t#Errors\t#Incompletes" | tee $STAT_LOG
 
   # orig modes or ci mode
   if [ $mode -eq 0 ] || [ $mode -eq 2 ]; then
@@ -255,3 +254,15 @@ for mode in $MODES; do
   run_experiment
   cp $STAT_LOG $EXP_DIR
 done
+
+pushd ../../../
+# unbinding dpdk-ports at client
+./setup.sh 0
+if [ $? -ne 0 ]; then 
+  echo "Could not unbind dpdk ports!"
+  exit
+fi
+# unbinding dpdk-ports at server
+run_str="cd $server_app_path/../../../; sudo ./setup.sh 0"
+sshpass -e ssh ${USERNAME}@$server "$run_str"
+popd

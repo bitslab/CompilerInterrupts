@@ -3,6 +3,7 @@
 CUR_PATH=`pwd`
 EXP_DIR="$CUR_PATH/exp_results/"
 PLOTS_DIR="$CUR_PATH/plots/"
+RUNS="${RUNS:-10}"
 
 # $1 - mode, $2 - yrange
 process_data() {
@@ -21,14 +22,14 @@ process_data() {
 run_mtcp_app() {
   echo "Running MTCP server-client"
   pushd mtcp-client/apps/example
-  time ./test_client.sh
+  time RUNS=$RUNS ./test_client.sh
   popd
 }
 
 run_linux_app() {
   echo "Running Native linux server-client"
   pushd mtcp-native
-  time ./run_client.sh
+  time RUNS=$RUNS ./run_client.sh
   popd
 }
 

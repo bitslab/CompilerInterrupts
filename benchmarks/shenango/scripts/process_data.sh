@@ -168,7 +168,7 @@ create_mc_summary() {
   for client in $clients; do 
     outfile="${mode}${cycle}_${client}_detailed_summary_mc"
     echo -ne "Expected_Load(Mops), " | tee $outfile
-    grep "Distribution" $base_path/0.1/${client}.memcached.out | sed 's/Never Sent/Never_Sent/g' | tee -a $outfile
+    grep "Distribution" $base_path/0.01/${client}.memcached.out | sed 's/Never Sent/Never_Sent/g' | tee -a $outfile
     for rate in $rates; do
       dir=$rate
       if [ ! -d "$base_path/$dir" ]; then
@@ -362,7 +362,7 @@ process_hashrate() {
 
   orig_hashrate=`awk 'NR==3 {printf("%.2f", $1)}' orig_files/$orig_file`
   echo "Orig Hash Rate: $orig_hashrate"
-  echo -e "Actual_Load(Mops)\tCPUMiner\tSwaptions-Memcached-Data\tSwaptions-Memcached-Data-%" | tee $outfile
+  echo -e "Configured_Load(Mops)\tActual_Load(Mops)\tCPUMiner\tSwaptions-Memcached-Data\tSwaptions-Memcached-Data-%" | tee $outfile
 
   for rate in $rates
   do
@@ -380,15 +380,10 @@ process_hashrate() {
     echo -ne "$load\t$actual\t" | tee -a $outfile
     echo -ne "$orig_hashrate\t" | tee -a $outfile
     echo -ne "$data_hashrate\t" | tee -a $outfile
-    echo "$data_hashrate_pc" | tee -a $outfile
+    echo -ne "$data_hashrate_pc" | tee -a $outfile
+    echo "" | tee -a $outfile
   done
 }
-
-cycle=""
-if [ $# -ne 1 ]; then
-  echo "Usage: ./process_data <0:standalone, 1:cpuminer>"
-  exit
-fi
 
 #rates="0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
 #mode="cpuminer"
@@ -402,56 +397,85 @@ fi
 rates="0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
 num_clients=2
 clients="lines pages"
-create_swaptions_orig
+#create_swaptions_orig
 
 if [ ! -d "orig_files" ]; then
   echo "orig_files directory needs to be created & cpuminer-orig.out, cpuminer*-shenango.out, swaptions-*.out need to be placed in it manually."
   exit
 fi
 
-case $1 in
-0)
-  mode="standalone"
-  echo "Generating stat files for $mode mode"
-  create_mc_summary
-  create_swaptions_summary_load
-  collect_mc_latency_hist
-  #copy_files "standalone"
-  ;;
-1)
-  mode="cpuminer"
-#cycles="500 1000 2000 5000 10000 20000"
+
+if [ $# -eq 0 ]; then
+  rates="0.01 0.025 0.05 0.075 0.1 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65" # beyond this packets are getting dropped
+  mode="pthread-memcached" create_mc_summary
+
+  rates="0.01 0.025 0.05 0.075 0.1 0.15 0.20 0.25 0.30 0.35"
+  mode="pthread-memcached-swaptions" create_mc_summary
+
+  rates="0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
+  mode="standalone" create_mc_summary
+
+  rates="0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
   cycles="1000 2000 4000 8000 16000 32000 64000"
   for cycle in $cycles
   do
+    mode="cpuminer" create_mc_summary
+    mode="cpuminer" process_hashrate
+  done
+elif [ $# -eq 1 ]; then
+  case $1 in
+  0)
+    mode="standalone"
+    echo "Generating stat files for $mode mode"
     create_mc_summary
-    process_hashrate
     create_swaptions_summary_load
     collect_mc_latency_hist
-  done
-  process_non_data_hashrate
-  ;;
-2) 
-#rates="0.01 0.03 0.05 0.07 0.09 0.1 0.11 0.13 0.15 0.17 0.19 0.2 0.21 0.23 0.25 0.27 0.29 0.3 0.31 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
-  rates="0.01 0.025 0.05 0.075 0.1 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00"
-  mode="pthread-memcached" # using shenango's memcached-linux
-  echo "Generating stat files for $mode mode"
-  create_mc_summary
-  collect_mc_latency_hist
-  ;;
-3) 
-#rates="0.01 0.03 0.05 0.07 0.09 0.1 0.11 0.13 0.15 0.17 0.19 0.2 0.21 0.23 0.25 0.27 0.29 0.3 0.31 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
-  rates="0.01 0.025 0.05 0.075 0.1 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00"
-  mode="pthread-memcached-swaptions"
-  echo "Generating stat files for $mode mode"
-  create_mc_summary
-  create_swaptions_summary_load
-  collect_mc_latency_hist
-  ;;
-4) 
-  mode="pthread-memcached-1.5.6"
-  echo "Generating stat files for $mode mode"
-  create_mc_summary
-  collect_mc_latency_hist
-  ;;
-esac
+    #copy_files "standalone"
+    ;;
+  1)
+    mode="cpuminer"
+  #cycles="500 1000 2000 5000 10000 20000"
+    cycles="1000 2000 4000 8000 16000 32000 64000"
+    for cycle in $cycles
+    do
+      create_mc_summary
+      process_hashrate
+      create_swaptions_summary_load
+      collect_mc_latency_hist
+    done
+    #process_non_data_hashrate
+    ;;
+  2) 
+  #rates="0.01 0.03 0.05 0.07 0.09 0.1 0.11 0.13 0.15 0.17 0.19 0.2 0.21 0.23 0.25 0.27 0.29 0.3 0.31 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
+    rates="0.01 0.025 0.05 0.075 0.1 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00"
+    mode="pthread-memcached" # using shenango's memcached-linux
+    echo "Generating stat files for $mode mode"
+    create_mc_summary
+    collect_mc_latency_hist
+    ;;
+  3) 
+  #rates="0.01 0.03 0.05 0.07 0.09 0.1 0.11 0.13 0.15 0.17 0.19 0.2 0.21 0.23 0.25 0.27 0.29 0.3 0.31 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"
+    rates="0.01 0.025 0.05 0.075 0.1 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00"
+    mode="pthread-memcached-swaptions"
+    echo "Generating stat files for $mode mode"
+    create_mc_summary
+    create_swaptions_summary_load
+    collect_mc_latency_hist
+    ;;
+  4) 
+    mode="pthread-memcached-1.5.6"
+    echo "Generating stat files for $mode mode"
+    create_mc_summary
+    collect_mc_latency_hist
+    ;;
+  esac
+else
+  echo "Usage: ./process_data <opt:- 0:standalone, 1:cpuminer>"
+  exit
+fi
+
+PLOTS_DIR=$PWD"/plots"
+mkdir -p $PLOTS_DIR
+gnuplot -e "ofile='${PLOTS_DIR}/cpuminer-hashrate.pdf'" plot_cpuminer_hashrate.gp
+gnuplot -e "ofile='${PLOTS_DIR}/99.9pc.pdf'" -e "col_index=6" -e "ymax=250" -e "key_status=1" -e "ylab='99.9% Latency ({/Symbol m}s)'" plot_shenango_latency.gp
+gnuplot -e "ofile='${PLOTS_DIR}/median.pdf'" -e "col_index=3" -e "ymax=150" -e "key_status=0" -e "ylab='Median Latency ({/Symbol m}s)'" plot_shenango_latency.gp

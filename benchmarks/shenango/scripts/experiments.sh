@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CUR_PATH=`pwd`
+EXP_DIR="${CUR_PATH}/exp_results"
 
 run_command() {
   command=$@
@@ -40,20 +41,23 @@ kill_server() {
   echo "Killing processes"
   #echo "Process status before killing:"
   #ps -aef | grep -e "mpstat\|cstate\|iokerneld\|memcached\|swaptions" | grep -v "grep"
-  pkill mpstat
-  pkill cstate
-  pkill iokerneld
-  pkill memcached
-  pkill memcached-debug
+  cmd="pkill mpstat; \
+  pkill cstate; \
+  pkill iokerneld; \
+  pkill memcached; \
+  pkill memcached-debug; \
+  pkill swaptions; \
+  pkill synthetic; \
+  pkill go; \
+  pkill rstat;"
+  run_command_no_err $cmd
+
   # Debug print for other users running on lines
-#echo "Is MEMCACHED running??"
-#pgrep memcached
-#echo "Other user's processes that are running:-"
-#top -b -n 1 -i -u '!nbasu4'
-  pkill swaptions
-  pkill synthetic
-  pkill go
-  pkill rstat
+  #echo "Is MEMCACHED running??"
+  #pgrep memcached
+  #echo "Other user's processes that are running:-"
+  #top -b -n 1 -i -u '!${USER_NAME}'
+
   if [ -z "$do_not_kill_cpuminer" ]; then
     pkill cpuminer
   else
@@ -61,11 +65,32 @@ kill_server() {
   fi
   echo "Process status after killing:"
   ps -aef | grep -e "mpstat\|cstate\|iokerneld\|memcached\|swaptions\|cpuminer" | grep -v "grep"
-#CURR_DIR=`pwd`
-#SRC_SCRIPT_DIR="$CURR_DIR/../shenango/scripts"
-#echo "Unbinding IPs & setting up memory huge pages needed by dpdk"
-#$SRC_SCRIPT_DIR/setup_huge_pages.sh
-#sleep 3
+
+  #CURR_DIR=`pwd`
+  #SRC_SCRIPT_DIR="$CURR_DIR/../shenango/scripts"
+  #echo "Unbinding IPs & setting up memory huge pages needed by dpdk"
+  #$SRC_SCRIPT_DIR/setup_huge_pages.sh
+
+  if [ -z "$do_not_kill_cpuminer" ]; then
+    cpuminer_running=`pgrep cpuminer`
+  else
+    unset cpuminer_running
+  fi
+  iokerneld_running=`pgrep iokerneld` 
+  memcached_running=`pgrep memcached` 
+  swaptions_running=`pgrep swaptions` 
+
+  while [ ! -z "$memcached_running" ] || [ ! -z "$iokerneld_running" ] || [ ! -z "$swaptions_running" ] || [ ! -z "$cpuminer_running" ]
+  do
+    sleep 2
+    echo "Some of the programs are still running. Waiting for them to die."
+    iokerneld_running=`pgrep iokerneld` 
+    memcached_running=`pgrep memcached` 
+    swaptions_running=`pgrep swaptions` 
+    if [ -z "$do_not_kill_cpuminer" ]; then
+      cpuminer_running=`pgrep cpuminer`
+    fi
+  done
 }
 
 unbind_dpdk_ports() {
@@ -235,7 +260,9 @@ run_swaptions_iokernel_memcached()
   run_iokernel_preload $@
   sleep 10
 
-  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 -C 25-31,57-63 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
+  # shmget fails when run in non-superuser mode. Therefore, superuser check is commented out in memcached code.
+  #cmd="sudo -H -u ${USER_NAME} bash -c 'numactl -N 3 -m 3 -C 25-31,57-63 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
+  cmd="numactl -N 3 -m 3 -C 25-31,57-63 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &"
   run_command $cmd
   sleep 20
 
@@ -480,8 +507,9 @@ cpuminer_orig_experiment()
 #read -p "Started cpuminer?" ans
 
   send_int_sig_local "cpuminer"
-  mv $cpuminer_path/cpuminer-hashrate cpuminer-orig.out 
-  cat cpuminer-orig.out
+  mkdir -p ${EXP_DIR}/orig_files/
+  mv $cpuminer_path/cpuminer-hashrate ${EXP_DIR}/orig_files/cpuminer-orig.out 
+  cat orig_files/cpuminer-orig.out
 
   kill_server
 }
@@ -552,7 +580,7 @@ run_shenango_memcached() {
     perf record -e probe_memcached:schedule -o schedule.data -aR sleep 5m &
     perf record -e probe_memcached:test_probe -o test_probe.data -aR sleep 5m &
   fi
-  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &'"
+  cmd="numactl -N 3 -m 3 ${CUR_PATH}/../memcached/memcached memcached.config -t 12 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out &"
   echo $cmd
 #read -p "ran it?" ans
 #return
@@ -569,9 +597,11 @@ run_memcached_orig() {
   if [ $# -ne 0 ]; then
     memcached_path="${CUR_PATH}/../memcached-linux/memcached"
   else
-    memcached_path="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/memcached/memcached-1.5.6/memcached"
+    memcached_path="${CUR_PATH}/../../memcached/memcached-1.5.6/memcached"
+    echo "The experiment with memcached downloaded from source is not supported here. Aborting."
+    exit
   fi
-  cmd="sudo -H -u nbasu4 bash -c 'numactl -N 3 -m 3 $memcached_path -l 192.168.34.1 -t 16 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out' &"
+  cmd="sudo -H -u ${USER_NAME} bash -c 'numactl -N 3 -m 3 $memcached_path -l 192.168.34.1 -t 16 -U 5215 -p 5215 -c 32768 -m 32000 -b 32768 -o hashpower=28,no_hashexpand,lru_crawler,lru_maintainer,idle_timeout=0 2>&1 | tee memcached.out' &"
   run_command $cmd
   cmd="sleep 10"
   run_command $cmd
@@ -586,7 +616,7 @@ cpuminer_shenango_experiment()
 #read -p "cpuminer_shenango_experiment needs to be fixed. The logs should be taken care of. The processing of data needs to be changed. Done yet?" ans
 #intervals="500 1000 2000 5000 10000 20000"
   intervals="1000 2000 4000 8000 16000 32000 64000"
-  CPUMINER_PATH="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi"
+  CPUMINER_PATH="${CUR_PATH}/../../cpuminer-multi"
 
   if [ 0 -eq 1 ]; then
     echo "Building cpuminer for various CI intervals $intervals"
@@ -680,13 +710,13 @@ copy_files_after_process_over() {
   cpuminer_running=`pgrep cpuminer`
   iokerneld_running=`pgrep iokerneld` 
   memcached_running=`pgrep memcached` 
+  swaptions_running=`pgrep swaptions` 
+
   #while [ ! -z "$cpuminer_running" ] || [ ! -z "$iokerneld_running" ] || 
   while [ ! -z "$memcached_running" ]
   do
     sleep 2
     memcached_running=`pgrep memcached` 
-    cpuminer_running=`pgrep cpuminer`
-    iokerneld_running=`pgrep iokerneld` 
   done
 
   if [ $# -eq 0 ]; then
@@ -709,7 +739,6 @@ create_linux_client_env() {
 }
 
 send_usr_sig_local() {
-  #su nbasu4 
   cpuminer_server=`pgrep -x cpuminer`
   if [ ! -z $cpuminer_server ]; then
     cmd="sleep $1"
@@ -727,27 +756,25 @@ send_int_sig_local() {
 }
 
 #send_usr_sig() {
-  #su nbasu4 
-  #sshpass -e ssh nbasu4@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
+  #sshpass -e ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
+#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
 #echo "Sent user signal to cpuminer"
   #sudo bash
 #}
 
 #send_kill_sig() {
 #app=$1
-  #su nbasu4 
-  #sshpass -e ssh nbasu4@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@frames "pgrep -x $app | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
+  #su ${USER_NAME} 
+  #sshpass -e ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
+#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x $app | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
 #echo "Sent kill signal to $app"
   #sudo bash
 #}
 
 #send_int_sig() {
 #app=$1
-  #su nbasu4 
-  #sshpass -e ssh nbasu4@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@frames "pgrep -x $app | awk '{print \"sudo kill -s INT \" \$1}' | sh"
+  #sshpass -e ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
+#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x $app | awk '{print \"sudo kill -s INT \" \$1}' | sh"
 #echo "Sent int signal to $app"
   #sudo bash
 #}
@@ -827,6 +854,7 @@ run_client_for_orig()
   pkill iokerneld
   pkill cstate
   pkill mpstat
+  pkill synthetic
 }
 
 run_client()
@@ -865,7 +893,7 @@ run_client()
     exit
   fi
 
-  cpuminer_server=`sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@frames "pgrep -x cpuminer"`
+  cpuminer_server=`sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x cpuminer"`
 
   if [ ! -z $cpuminer_server ]; then
     if [ 1 -eq 0 ]; then
@@ -929,6 +957,7 @@ run_client()
   pkill iokerneld
   pkill cstate
   pkill mpstat
+  pkill synthetic
 
 #kill_server
 }
@@ -957,14 +986,14 @@ run_remote_client_deprecated()
     exit
   fi
   CURR_DIR=`pwd`
-  parallel  "sshpass -e ssh nbasu4@{}.cs.uic.edu 'mkdir -p $CURR_DIR/scripts-{}'" ::: lines frames
-  parallel  "sshpass -e scp experiment.py nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/shenango/apps/synthetic/target/release/synthetic nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/config.json nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/shenango/scripts/rstat.go nbasu4@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e ssh ${USER_NAME}@{}.cs.uic.edu 'mkdir -p $CURR_DIR/scripts-{}'" ::: lines frames
+  parallel  "sshpass -e scp experiment.py ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e scp $CURR_DIR/shenango/apps/synthetic/target/release/synthetic ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e scp $CURR_DIR/config.json ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "sshpass -e scp $CURR_DIR/shenango/scripts/rstat.go ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
 
   echo "Starting client on lines"
-  parallel --halt now,fail=1 "sshpass -e ssh nbasu4@{}.cs.uic.edu 'ulimit -S -c unlimited; python $CURR_DIR/scripts-{}/experiment.py client $CURR_DIR/scripts-{} > $CURR_DIR/scripts-{}/py.{}.log 2>&1'" ::: lines
+  parallel --halt now,fail=1 "sshpass -e ssh ${USER_NAME}@{}.cs.uic.edu 'ulimit -S -c unlimited; python $CURR_DIR/scripts-{}/experiment.py client $CURR_DIR/scripts-{} > $CURR_DIR/scripts-{}/py.{}.log 2>&1'" ::: lines
 
   echo "Starting local observer"
   python scripts/experiment.py observer scripts/ > ./py.frames.log 2>&1
@@ -973,7 +1002,7 @@ run_remote_client_deprecated()
   cp $CURR_DIR/scripts-lines/*.out $CURR_DIR/scripts-frames/
   cp $CURR_DIR/scripts-lines/*.err $CURR_DIR/scripts-frames/
 #rm -rf $CURR_DIR/scripts-lines
-  #parallel "sshpass -e ssh nbasu4@{}.cs.uic.edu 'date +%s'" ::: lines frames
+  #parallel "sshpass -e ssh ${USER_NAME}@{}.cs.uic.edu 'date +%s'" ::: lines frames
 }
 
 run_remote_client()
@@ -998,27 +1027,27 @@ run_remote_client()
     client="lines"
     #client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+    sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
     sleep 5
   else
     # run multiple clients
     client="lines"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
+    sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
     sleep 5
 
     client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
+    sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
 
 #echo "Running remote client $client with start mpps: $start_mpps, target mpps: 0.5, samples: $samples"
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./debug.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
+#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
   fi
 
   echo "Done with clients"
 #send_usr_sig_local 0 # send user signal to cpuminer after all clients are done
 
-#sudo -H -u nbasu4 sshpass -p $SSHPASS ssh nbasu4@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./debug.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./experiments.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
 }
 
 copy_files() {
@@ -1061,10 +1090,10 @@ copy_files() {
   run_command_no_err $cmd
   cmd="cp ../../shenango-pages/scripts/*stats.*pages.* $DIR"
   run_command_no_err $cmd
-  cmd="cp debug.sh $DIR" # memcached runtime log
+  cmd="cp experiments.sh $DIR" # memcached runtime log
   run_command $cmd
-  cmd="cp config.json $DIR" # memcached runtime log
-  run_command $cmd
+  #cmd="cp config.json $DIR" # memcached runtime log
+  #run_command $cmd
   cmd="cp *.config $DIR" # memcached runtime log
   run_command $cmd
 
@@ -1091,10 +1120,10 @@ run_experiment_combined() {
     #target=`echo "$curr 0.1" | awk '{printf "%.1f\n", $1 + $2}'`
     target=$i
     if [ $1 -eq 0 ]; then
-      dir="standalone/$target"
+      dir="${EXP_DIR}/standalone/$target"
       echo "Running experiment for client with standalone iokernel, start_mpps $start_point, target_mpps $end_point, samples: $samples"
     else
-      dir="cpuminer/$target"
+      dir="${EXP_DIR}/cpuminer/$target"
       echo "Running experiment for client with cpuminer based iokernel, start_mpps $start_point, target_mpps $end_point, samples: $samples"
     fi
     run_server $1
@@ -1103,7 +1132,7 @@ run_experiment_combined() {
     #run_remote_client $curr $target
     run_remote_client $start_point $end_point $samples 3
     
-    send_int_sig_local "swaptions"
+    pkill swaptions
     send_int_sig_local "memcached"
     send_int_sig_local "cpuminer"
     send_int_sig_local "iokerneld"
@@ -1128,7 +1157,12 @@ run_experiment_orig() {
   cmd="${CUR_PATH}/../shenango//scripts/cstate 0 &"
   run_command $cmd
 
-  total_points=16
+  if [ $1 -eq 1 ]; then
+    # program takes unreasonable time to finish creating outliers, for more than 0.7 bidirectional load (in million requests/sec)
+    total_points=10
+  else
+    total_points=16
+  fi
   start_point="0.0"
   samples=1
   curr=$start_point
@@ -1140,18 +1174,25 @@ run_experiment_orig() {
   for i in $(seq 1 $total_points); do
     if [ "$curr" == "0.0" ]; then
       target="0.01"
-#elif [ "$curr" == "0.01" ]; then 
-#target="0.1"
+    elif [ "$curr" == "0.01" ]; then 
+      target="0.025"
+    elif [ "$curr" == "0.025" ]; then 
+      target="0.05"
+    elif [ "$curr" == "0.05" ]; then 
+      target="0.075"
+    elif [ "$curr" == "0.075" ]; then 
+      target="0.1"
     else
-      target=`echo "$curr 0.02" | awk '{printf "%.2f\n", $1 + $2}'`
+      #target=`echo "$curr 0.1" | awk '{printf "%.1f\n", $1 + $2}'`
+      target=`echo "$curr 0.05" | awk '{printf "%.2f\n", $1 + $2}'`
     fi
 
     if [ $1 -eq 0 ]; then
-      dir="pthread-memcached/$target"
+      dir="${EXP_DIR}/pthread-memcached/$target"
     elif [ $1 -eq 1 ]; then
-      dir="pthread-memcached-swaptions/$target"
+      dir="${EXP_DIR}/pthread-memcached-swaptions/$target"
     else
-      dir="pthread-memcached-1.5.6/$target"
+      dir="${EXP_DIR}/pthread-memcached-1.5.6/$target"
     fi
     echo "Running experiment for client with pthread for directory $dir, start_mpps $start_point, target_mpps $target, samples: $samples"
 
@@ -1159,6 +1200,10 @@ run_experiment_orig() {
       swaptions_exec="${CUR_PATH}/../parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions"
       cmd="numactl -N 3 -m 3 $swaptions_exec -ns 16 -sm 40000 -nt 16 2>&1 | ts %s > swaptions.out &"
       run_command $cmd
+      while [ -z `pgrep swaptions` ]; do
+        echo "Waiting for swaptions to start!"
+        sleep 2
+      done
       #cmd="chrt -i -p `pgrep swaptions`"
       #cmd="renice -n 19 -p `pgrep swaptions`"
       memc_pid=`pgrep swaptions`
@@ -1173,11 +1218,17 @@ run_experiment_orig() {
     #run_remote_client $curr $target
     run_remote_client $start_point $target $samples 16 1
     
-    send_int_sig_local "swaptions"
+    pkill swaptions
     send_int_sig_local "memcached"
     send_int_sig_local "cpuminer"
     send_int_sig_local "iokerneld"
-    sleep 5
+
+    swaptions_running=`pgrep swaptions` 
+    while [ ! -z $swaptions_running ]; do
+      sleep 2
+      echo "Waiting for swaptions to die."
+      swaptions_running=`pgrep swaptions` 
+    done
 
     copy_files_after_process_over $dir
     curr=$target
@@ -1192,7 +1243,7 @@ run_experiment_over_ci() {
 #intervals="500 1000 2000 5000 10000 20000"
 #intervals="1000 2000 4000 8000 16000 32000 64000"
   intervals="8000 4000 16000 2000 32000 1000 64000"
-  CPUMINER_PATH="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/cpuminer-multi"
+  CPUMINER_PATH="${CUR_PATH}/../../cpuminer-multi"
 
   if [ 0 -eq 1 ]; then
     echo "Building cpuminer for various CI intervals $intervals"
@@ -1229,7 +1280,7 @@ run_experiment_over_ci() {
         target=`echo "$curr 0.1" | awk '{printf "%.1f\n", $1 + $2}'`
       fi
 
-      dir="cpuminer${intv}/$target"
+      dir="${EXP_DIR}/cpuminer${intv}/$target"
       echo "Running experiment for client with cpuminer based iokernel, start_mpps $start_point, target_mpps $target, samples: $samples"
 
       cmd="cp $CPUMINER_PATH/cpuminer-${intv} $CPUMINER_PATH/cpuminer"
@@ -1242,7 +1293,7 @@ run_experiment_over_ci() {
       #run_remote_client $start_point $target $samples 3 # run single client
       run_remote_client $start_point $target $samples 3 1 # run multiple client
     
-      send_int_sig_local "swaptions"
+      pkill swaptions
       send_int_sig_local "memcached"
       send_int_sig_local "cpuminer"
       send_int_sig_local "iokerneld"
@@ -1259,11 +1310,13 @@ run_experiment_over_ci() {
 }
 
 run_experiment() {
+
   # runs experiment for each throughput using a separate run of the client
   if [ $# -ne 1 ]; then
     echo "Usage: run_experiment <0:standalone server/1:cpuminer server>"
     exit
   fi
+
   date_at_start=`date`
   total_points=16
   start_point="0.0"
@@ -1271,8 +1324,8 @@ run_experiment() {
   curr=$start_point
   intv=""
 
-total_points=1
-curr="1.2"
+#total_points=1
+#curr="1.1"
 
   i=0
   for i in $(seq 1 $total_points); do
@@ -1285,10 +1338,10 @@ curr="1.2"
       target=`echo "$curr 0.1" | awk '{printf "%.1f\n", $1 + $2}'`
     fi
     if [ $1 -eq 0 ]; then
-      dir="standalone/$target"
+      dir="${EXP_DIR}/standalone/$target"
       echo "Running experiment for client with standalone iokernel, start_mpps $start_point, target_mpps $target, samples: $samples"
     else
-      dir="cpuminer$intv/$target"
+      dir="${EXP_DIR}/cpuminer$intv/$target"
       echo "Running experiment for client with cpuminer based iokernel, start_mpps $start_point, target_mpps $target, samples: $samples"
     fi
     run_server $1
@@ -1299,11 +1352,10 @@ curr="1.2"
     #run_remote_client $start_point $target $samples 3 # run single client
     run_remote_client $start_point $target $samples 3 1 # run multiple client
     
-    send_int_sig_local "swaptions"
+    pkill swaptions
     send_int_sig_local "memcached"
     send_int_sig_local "cpuminer"
     send_int_sig_local "iokerneld"
-    sleep 5
 
     copy_files_after_process_over $dir
     curr=$target
@@ -1372,64 +1424,90 @@ swaptions_shenango_experiment() {
   fi
 }
 
+build_shenango_iokernel() {
+  iokernel_build_path=$CUR_PATH"/../"
+  echo "Building iokerneld"
+  pushd $iokernel_build_path
+    ./build_all.sh
+  popd
+}
+
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
 
-if [ $# -lt 1 ]; then
- echo "Usage: ./debug.sh <option: 0-kill the server, 1-run server, 2-run server with cpuminer, 3-run client, 4-create client env, 5-create server env, 6-copy stats files 7-create linux server env>"
- exit
-fi
+USER_NAME=`logname`
 
-#top -b -n 1 -i -u '!nbasu4'
+#top -b -n 1 -i -u '!${USER_NAME}'
 #top -b -n 1 -i
 
 #run_shenango_swaptions
 #exit
 
-case $1 in
-0) kill_server;;
-1) run_server 0 1;;
-2) run_server 1 1;;
-3) run_client ${@:2};;
-4) unbind_dpdk_ports;;
-5) create_shenango_env;;
-6) if [ $# -ne 2 ]; then
-    echo "Usage: ./debug.sh 6 <name of directory (e.g. 1mpps)>"
-    exit
-   fi
-  copy_files $2
-  ;;
-7) cpuminer_shenango_experiment
-  ;;
-8) run_observer;;
-9) run_experiment_combined ${@:2}
-  ;;
-10) run_experiment ${@:2}
-  ;;
-11) swaptions_orig_experiment # swaptions-orig with other apps; 0-6 for individual types
-  ;;
-12) swaptions_shenango_experiment # swaptions-shenango with other apps; 0-3 for individual types
-  ;;
-13) cpuminer_orig_experiment # run cpuminer-orig with iokerneld & swaptions & memcached separately
-    #cpuminer_orig_experiment 1 # run cpuminer-orig alone
-  ;;
-14) run_experiment_over_ci
-  ;;
-15) 
-  run_experiment_orig 0 # schenango's version of memcached
-  run_experiment_orig 1 # schenango's version of memcached + swaptions 
-  #run_experiment_orig 2 # original memcached
-  ;;
-16) run_client_for_orig ${@:2}
-  ;;
-17) create_linux_server_env; sleep 5
-    run_memcached_orig
-  ;;
-18) create_linux_client_env
-  ;;
-esac
+if [ $# -eq 0 ]; then
+  echo "Running entire set of experiments for shenango"
+  cpuminer_orig_experiment
+  run_experiment 0 # for standalone-iokernel
+  run_experiment_over_ci # for cpuminer-iokernel for different intervals of CI
+  run_experiment_orig 0 # memcached (shenango's version) with pthreads
+  run_experiment_orig 1 # memcached (shenango's version) with pthreads + swaptions 
+else
+  echo "Usage: ./experiments.sh <option: 0-kill the server, 1-run server, 2-run server with cpuminer, 3-run client, 4-create client env, 5-create server env, 6-copy stats files 7-create linux server env>"
+  case $1 in
+  0) kill_server;;
+  1) run_server 0 # using shenango-iokerneld
+     #run_server 0 1 # for debug mode where iokernel runs in foreground
+    ;;
+
+  2) run_server 1 1;; # using cpuminer-iokerneld
+  3) run_client ${@:2};;
+  4) unbind_dpdk_ports;;
+  5) create_shenango_env;;
+  6) if [ $# -ne 2 ]; then
+      echo "Usage: ./experiments.sh 6 <name of directory (e.g. 1mpps)>"
+      exit
+     fi
+    copy_files $2
+    ;;
+  7) cpuminer_shenango_experiment
+    ;;
+  8) run_observer;;
+  9) run_experiment_combined ${@:2}
+    ;;
+  10) run_experiment ${@:2}
+    ;;
+  11) swaptions_orig_experiment # swaptions-orig with other apps; 0-6 for individual types
+    ;;
+  12) swaptions_shenango_experiment # swaptions-shenango with other apps; 0-3 for individual types
+    ;;
+  13) cpuminer_orig_experiment # run cpuminer-orig with iokerneld & swaptions & memcached separately
+      #cpuminer_orig_experiment 1 # run cpuminer-orig alone
+    ;;
+  14) run_experiment_over_ci
+    ;;
+  15) 
+    run_experiment_orig 0 # schenango's version of memcached
+    run_experiment_orig 1 # schenango's version of memcached + swaptions 
+    #run_experiment_orig 2 # original memcached
+    ;;
+  16) run_client_for_orig ${@:2}
+    ;;
+  17) create_linux_server_env; sleep 5
+      run_memcached_orig
+    ;;
+  18) create_linux_client_env
+    ;;
+  *)
+    # full set
+    cpuminer_orig_experiment
+    run_experiment 0 # for standalone-iokernel
+    run_experiment_over_ci # for cpuminer-iokernel for different intervals of CI
+    run_experiment_orig 0 # memcached (shenango's version) with pthreads
+    run_experiment_orig 1 # memcached (shenango's version) with pthreads + swaptions 
+    ;;
+  esac
+fi
 
 #kill_server
 #unbind_dpdk_ports

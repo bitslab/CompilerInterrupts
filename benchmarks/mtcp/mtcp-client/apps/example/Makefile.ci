@@ -22,6 +22,7 @@ export FIBER_CONFIG ?= 0
 export CYCLE_INTV ?= 5000
 
 CI_LIB_PATH=$(ROOT)/../../../../../lib
+CI_SRC_PATH=$(ROOT)/../../../../../src
 
 export LC_FLAGS = -load $(CI_LIB_PATH)/CompilerInterrupt.so -logicalclock -clock-type $(CLOCK_TYPE) -config $(CONFIG) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) -config-file ${ROOT}../../../lc-config.txt
 export OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
@@ -51,7 +52,7 @@ UTIL_OBJ = ${UTIL_FLD}/opt_http_parsing.ll ${UTIL_FLD}/opt_tdate_parse.ll ${UTIL
 
 # util library and header
 INC = -I./include/ ${UTIL_INC} ${MTCP_INC} -I${UTIL_FLD}/include
-INC += -I$(CI_LIB_PATH)
+INC += -I$(CI_LIB_PATH) -I$(CI_SRC_PATH)
 LIBS = ${MTCP_LIB}
 
 # psio-specific variables

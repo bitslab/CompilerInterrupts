@@ -10,6 +10,7 @@ CCP=
 #CFLAGS=-g -O2
 
 CI_LIB_PATH=$(ROOT)/../../../../../lib
+CI_SRC_PATH=$(ROOT)/../../../../../src
 
 # For CI
 export ROOT ?= ${PWD}
@@ -40,7 +41,7 @@ UTIL_OBJ = ${UTIL_FLD}/opt_http_parsing.ll ${UTIL_FLD}/opt_tdate_parse.ll ${UTIL
 
 # util library and header
 INC = -I./include/ ${UTIL_INC} ${MTCP_INC} -I${UTIL_FLD}/include
-INC += -I$(CI_LIB_PATH)
+INC += -I$(CI_LIB_PATH) -I$(CI_SRC_PATH)
 LIBS = ${MTCP_LIB}
 
 # psio-specific variables

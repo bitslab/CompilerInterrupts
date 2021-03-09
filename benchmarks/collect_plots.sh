@@ -12,3 +12,7 @@ cp server_delegation/plots/client_latency_distribution_with_54_th.pdf plots/Figu
 
 cp mtcp/plots/perf_unmod.pdf plots/Figure4.pdf
 cp mtcp/plots/perf_mod.pdf plots/Figure5.pdf
+
+cp shenango/scripts/plots/99.9pc.pdf plots/Figure6a.pdf
+cp shenango/scripts/plots/median.pdf plots/Figure6b.pdf
+cp shenango/scripts/plots/cpuminer-hashrate.pdf plots/Figure6c.pdf

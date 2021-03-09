@@ -14,16 +14,34 @@ FRAMES_CONF_IP="192.168.34.1"
 
 NETMASK="255.255.255.0"
 
+is_interface_up_with_ip() {
+  IFACE=$1
+  IP=$2
+  ip_present=`ip addr | grep $IFACE | grep $IP`
+  if [ "$IFACE" == "dpdk0" ]; then
+    iface_up=`ip addr | grep $IFACE | grep UNKNOWN`
+  else
+    iface_up=`ip addr | grep $IFACE | grep UP`
+  fi
+  if [ ! -z "$ip_present" ] && [ ! -z "$iface_up" ]; then
+    echo "1"
+  else
+    echo "0"
+  fi
+}
+
 unbind_frames() {
   ifconfig dpdk0 down > /dev/null
   ifconfig $FRAMES_IFACE down > /dev/null; sleep 5
   ./mtcp-server/dpdk/usertools/dpdk-devbind.py -b ixgbe $FRAMES_PCI
-  iface_up=`ip addr | grep $FRAMES_IFACE | grep $FRAMES_IP`
-  while [ -z "$iface_up" ]; do
+
+  ifconfig $FRAMES_IFACE $FRAMES_IP netmask $NETMASK up
+  config_done=$(is_interface_up_with_ip $FRAMES_IFACE $FRAMES_IP)
+  while [ $config_done -ne 1 ]; do
     sleep 2
     ifconfig $FRAMES_IFACE $FRAMES_IP netmask $NETMASK up
     #ip addr del $FRAMES_CONF_IP/24 dev $FRAMES_IFACE
-    iface_up=`ip addr | grep $FRAMES_IFACE | grep $FRAMES_IP`
+    config_done=$(is_interface_up_with_ip $FRAMES_IFACE $FRAMES_IP)
   done
   rmmod dpdk_iface
   sleep 5
@@ -34,6 +52,10 @@ bind_dpdk_frames() {
 
   sleep 10
   (lsmod | grep -q igb_uio) || insmod $RTE_SDK/$RTE_TARGET/kmod/igb_uio.ko
+  if [ $? -ne 0 ]; then
+    echo "IGB_UIO module is not compiled properly. Please run ./mtcp-server/dpdk/usertools/dpdk-setup.sh, build for target $RTE_TARGET (option 15), and try again."
+    exit
+  fi
   ./mtcp-server/dpdk/usertools/dpdk-devbind.py --b igb_uio $FRAMES_PCI
 
   pushd ./mtcp-server/dpdk-iface-kmod
@@ -42,11 +64,12 @@ bind_dpdk_frames() {
   popd
 
   sleep 5
-  iface_up=`ip addr | grep dpdk0 | grep $FRAMES_IP`
-  while [ -z "$iface_up" ]; do
+  ifconfig dpdk0 $FRAMES_IP netmask $NETMASK up
+  config_done=$(is_interface_up_with_ip "dpdk0" $FRAMES_IP)
+  while [ $config_done -ne 1 ]; do
     sleep 2
     ifconfig dpdk0 $FRAMES_IP netmask $NETMASK up
-    iface_up=`ip addr | grep dpdk0 | grep $FRAMES_IP`
+    config_done=$(is_interface_up_with_ip "dpdk0" $FRAMES_IP)
   done
 }
 
@@ -54,12 +77,13 @@ unbind_lines() {
   ifconfig dpdk0 down > /dev/null
   ifconfig $LINES_IFACE down > /dev/null; sleep 5
   ./mtcp-client/dpdk/usertools/dpdk-devbind.py -b ixgbe $LINES_PCI
-  iface_up=`ip addr | grep $LINES_IFACE | grep $LINES_IP`
-  while [ -z "$iface_up" ]; do
+  ifconfig $LINES_IFACE $LINES_IP netmask $NETMASK up
+  config_done=$(is_interface_up_with_ip $LINES_IFACE $LINES_IP)
+  while [ $config_done -ne 1 ]; do
     sleep 2
     ifconfig $LINES_IFACE $LINES_IP netmask $NETMASK up
     #ip addr del $LINES_CONF_IP/24 dev $LINES_IFACE
-    iface_up=`ip addr | grep $LINES_IFACE | grep $LINES_IP`
+    config_done=$(is_interface_up_with_ip $LINES_IFACE $LINES_IP)
   done
   rmmod dpdk_iface
   sleep 5
@@ -70,6 +94,10 @@ bind_dpdk_lines() {
 
   sleep 10
   (lsmod | grep -q igb_uio) || insmod $RTE_SDK/$RTE_TARGET/kmod/igb_uio.ko
+  if [ $? -ne 0 ]; then
+    echo "IGB_UIO module is not compiled properly. Please run ./mtcp-client/dpdk/usertools/dpdk-setup.sh, build for target $RTE_TARGET (option 15), and try again."
+    exit
+  fi
   ./mtcp-client/dpdk/usertools/dpdk-devbind.py --b igb_uio $LINES_PCI
 
   pushd ./mtcp-client/dpdk-iface-kmod
@@ -78,11 +106,12 @@ bind_dpdk_lines() {
   popd
 
   sleep 5
-  iface_up=`ip addr | grep dpdk0 | grep $LINES_IP`
-  while [ -z "$iface_up" ]; do
+  ifconfig dpdk0 $LINES_IP netmask $NETMASK up
+  config_done=$(is_interface_up_with_ip "dpdk0" $LINES_IP)
+  while [ $config_done -ne 1 ]; do
     sleep 2
     ifconfig dpdk0 $LINES_IP netmask $NETMASK up
-    iface_up=`ip addr | grep dpdk0 | grep $LINES_IP`
+    config_done=$(is_interface_up_with_ip "dpdk0" $LINES_IP)
   done
 }
 
@@ -90,8 +119,8 @@ setup_huge_pages() {
   HUGEPGSZ=`cat /proc/meminfo  | grep Hugepagesize | cut -d : -f 2 | tr -d ' '`
 	grep -s '/mnt/huge' /proc/mounts > /dev/null
 	if [ $? -ne 0 ] ; then
-    echo "hugetlbfs is not mounted. Use <dpdk_path>/usertools/dpdk-setup.sh to mount. Aborting."
-    exit
+    echo "hugetlbfs is not mounted. Use <dpdk_path>/usertools/dpdk-setup.sh to mount. Trying to mount it."
+    ./mnt_hugepages.sh
   fi
   
 	echo > .echo_tmp

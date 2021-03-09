@@ -33,7 +33,14 @@ run_linux_app() {
   popd
 }
 
+server=`hostname`
+if [ "$server" != "lines" ]; then
+  echo "This experiment must be run from the 'lines' server. Aborting."
+  exit
+fi
+
 mkdir -p $EXP_DIR $PLOTS_DIR
+./mnt_hugepages.sh
 run_linux_app
 run_mtcp_app
 process_data "unmod" 10000

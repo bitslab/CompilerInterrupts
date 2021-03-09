@@ -1,7 +1,4 @@
 #!/bin/bash
-set -e
-set -x
-
 ROOTDIR=`pwd`
 CLIENTS="lines pages"
 
@@ -64,6 +61,11 @@ check_all_builds() {
     echo "parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-shenango/bin/swaptions not found. Aborting."
   fi
 }
+
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root"
+   exit 1
+fi
 
 if [ $# -eq 1 ]; then
   echo "Cleaning all components"

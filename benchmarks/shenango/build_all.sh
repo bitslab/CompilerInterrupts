@@ -81,7 +81,7 @@ fi
 if [ $BUILD_MEMCACHED -eq 1 ]; then
   pushd $ROOTDIR/memcached
   ./autogen.sh
-  ./configure --with-shenango=${ROOTDIR}/
+  ./configure --with-shenango=${ROOTDIR}/shenango
   make clean
   make -j20
   err_status=`echo $?`

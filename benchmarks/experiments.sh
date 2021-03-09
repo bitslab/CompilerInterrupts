@@ -43,8 +43,24 @@ run_hw_counters_test() {
   popd
 }
 
+run_shenango() {
+  pushd shenango
+  # must be run from frames
+  ./run_shenango_experiments.sh
+  popd
+}
+
+run_mtcp() {
+  pushd mtcp
+  # must be run from lines
+  RUNS=3 ./experiment.sh
+  popd
+}
+
 run_server_delegation_fetch_n_add
 run_server_delegation_client_req_latency
 run_interval_accuracy_test
 run_performance_overhead_test
 run_hw_counters_test
+run_shenango
+run_mtcp

@@ -1,8 +1,14 @@
 #!/bin/bash
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
 CUR_PATH=`pwd`
 EXP_DIR="${CUR_PATH}/exp_results"
 PLOTS_DIR="${CUR_PATH}/plots"
+ERROR_LOG="${EXP_DIR}/error_log"
 
 run_command() {
   command=$@
@@ -1140,7 +1146,14 @@ run_experiment_combined() {
     sleep 5
 
     copy_files_after_process_over $dir
-    #curr=$target
+    lines_out=`grep "Latencies" "$DIR/lines.memcached.out"`
+    pages_out=`grep "Latencies" "$DIR/pages.memcached.out"`
+    if [ -z "$lines_out" ]; then
+      printf "${RED}Lines-based client failed to complete for target $target mpps for combined experiment${NC}\n" | tee -a $ERROR_LOG
+    fi
+    if [ -z "$pages_out" ]; then
+      printf "${RED}Pages-based client failed to complete for target $target mpps for combined experiment${NC}\n" | tee -a $ERROR_LOG
+    fi
   done
   date_at_end=`date`
   echo "Start time: $date_at_start"
@@ -1232,6 +1245,14 @@ run_experiment_orig() {
     done
 
     copy_files_after_process_over $dir
+    lines_out=`grep "Latencies" "$DIR/lines.memcached.out"`
+    pages_out=`grep "Latencies" "$DIR/pages.memcached.out"`
+    if [ -z "$lines_out" ]; then
+      printf "${RED}Lines-based client failed to complete for target $target mpps for experiments with pthread based memcached${NC}\n" | tee -a $ERROR_LOG
+    fi
+    if [ -z "$pages_out" ]; then
+      printf "${RED}Pages-based client failed to complete for target $target mpps for experiments with pthread based memcached${NC}\n" | tee -a $ERROR_LOG
+    fi
     curr=$target
   done
   date_at_end=`date`
@@ -1301,6 +1322,14 @@ run_experiment_over_ci() {
       sleep 5
       
       copy_files_after_process_over $dir
+      lines_out=`grep "Latencies" "$DIR/lines.memcached.out"`
+      pages_out=`grep "Latencies" "$DIR/pages.memcached.out"`
+      if [ -z "$lines_out" ]; then
+        printf "${RED}Lines-based client failed to complete for target $target mpps for experiments with cpuminer-iokernel based memcached${NC}\n" | tee -a $ERROR_LOG
+      fi
+      if [ -z "$pages_out" ]; then
+        printf "${RED}Pages-based client failed to complete for target $target mpps for experiments with cpuminer-iokernel based memcached${NC}\n" | tee -a $ERROR_LOG
+      fi
       curr=$target
     done
     date_at_end=`date`
@@ -1359,6 +1388,14 @@ run_experiment() {
     send_int_sig_local "iokerneld"
 
     copy_files_after_process_over $dir
+    lines_out=`grep "Latencies" "$DIR/lines.memcached.out"`
+    pages_out=`grep "Latencies" "$DIR/pages.memcached.out"`
+    if [ -z "$lines_out" ]; then
+      printf "${RED}Lines-based client failed to complete for target $target mpps for experiments with standalone iokernel based memcached${NC}\n" | tee -a $ERROR_LOG
+    fi
+    if [ -z "$pages_out" ]; then
+      printf "${RED}Pages-based client failed to complete for target $target mpps for experiments with standalone iokernel based memcached${NC}\n" | tee -a $ERROR_LOG
+    fi
     curr=$target
   done
   date_at_end=`date`
@@ -1453,6 +1490,8 @@ if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
+
+rm -f $ERROR_LOG
 
 USER_NAME=`logname`
 

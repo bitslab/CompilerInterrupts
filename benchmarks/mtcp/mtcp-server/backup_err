@@ -1,0 +1,813 @@
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 255] Socket 2 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 2 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 2 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 275] Socket 2 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 255] Socket 2 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 2 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 2 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 2 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 2: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 2 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 2 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 2: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 3 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 3 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 3 File size: 1076 (0MB)
+   APP: SendUntilAvailable: 167] Socket 2: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 3 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 2 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 2: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 3 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 3: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 3 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 3 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 3 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 4 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 3 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 232] Socket 3 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 3 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 3 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 3 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 232] Socket 4 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 3 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 4 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 3 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 4 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 3 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 3 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: SendUntilAvailable: 167] Socket 3: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 3 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 4 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 3: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 3 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 4 URL: /NOTES
+   APP: HandleReadEvent: 275] Socket 3 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 275] Socket 4 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 4 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 4: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 3: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 4 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 4 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 4 File size: 1076 (0MB)
+   APP: HandleReadEvent: 230] Socket 4 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 4 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 4 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 4 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 4 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 4: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 5 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 5 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 5 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 5 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 5 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 5: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 4 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 5 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 5 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 4 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 4 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 275] Socket 4 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 4: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 5 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 4: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 6 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 5 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 6 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 232] Socket 5 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 6 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 5 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 5 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 5 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 5: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 5 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 5 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 5 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 6 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 6 URL: /NOTES
+   APP: HandleReadEvent: 255] Socket 5 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 5 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 5 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: SendUntilAvailable: 167] Socket 5: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 6 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 6 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 5 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 6 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 6 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 6 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 5: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 6 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 275] Socket 6 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 6: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 6 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 7 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 6 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 232] Socket 7 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 6 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 7 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 6 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 7 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 6 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 6 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 6: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 7 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 7: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 7 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 7 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 6: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 8 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 8 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 6 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 255] Socket 8 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 8 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 7 URL: /NOTES
+   APP: HandleReadEvent: 275] Socket 6 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 255] Socket 7 File size: 1076 (0MB)
+   APP: SendUntilAvailable: 167] Socket 6: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 8 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 8: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 7 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 9 URL: /NOTES
+   APP: HandleReadEvent: 275] Socket 7 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 7: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 8 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 9 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 232] Socket 7 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 9 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 7 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 8 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 8 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 9 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 9 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 7 URL: /NOTES
+   APP: HandleReadEvent: 272] Socket 7 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 8 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: SendUntilAvailable: 167] Socket 9: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 7 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 275] Socket 7 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 275] Socket 8 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 10 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 8: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 10 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 230] Socket 9 URL: /NOTES
+   APP: HandleReadEvent: 255] Socket 10 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 9 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 7: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 10 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 10 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 255] Socket 7 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 9 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 7 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 9 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 7 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 275] Socket 9 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 10: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 7: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 9: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 10 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 11 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 11 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 11 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 10 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 11 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 255] Socket 10 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 11 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 10 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 8 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 8 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 11: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 12 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 12 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 12 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 8 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 10 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 10: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 8 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 11 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 8 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 8 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 255] Socket 8 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 8 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 8 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 12 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 8 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 11 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 11 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 12 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 11 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: SendUntilAvailable: 167] Socket 12: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 11 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 8: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 9 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 9 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 11: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 12 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 12 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 230] Socket 13 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 13 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 13 File size: 1076 (0MB)
+   APP: SendUntilAvailable: 167] Socket 8: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 13 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 9 URL: /NOTES
+   APP: HandleReadEvent: 275] Socket 13 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 9 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 12 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 9 File size: 1076 (0MB)
+   APP: SendUntilAvailable: 167] Socket 13: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 14 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 14 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 12 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 9 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 9 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 255] Socket 9 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 9 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 12 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 9: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 12: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 255] Socket 14 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 14 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 14 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 14: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 13 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 13 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 13 File size: 1076 (0MB)
+   APP: HandleReadEvent: 275] Socket 9 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 272] Socket 13 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: SendUntilAvailable: 167] Socket 9: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 13 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 10 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 13: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 10 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 230] Socket 14 URL: /NOTES
+   APP: HandleReadEvent: 255] Socket 10 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 14 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 10 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 15 URL: /NOTES
+   APP: HandleReadEvent: 275] Socket 10 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 10 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 10 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 232] Socket 15 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 15 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 15 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 15 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 255] Socket 10 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 14 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 14 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 14 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 10: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 15: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 16 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 16 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 10 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 10 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 11 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 11 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 10: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 255] Socket 16 File size: 1076 (0MB)
+   APP: HandleReadEvent: 230] Socket 11 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 14: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 255] Socket 11 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 16 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 11 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 16 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 15 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 15 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 275] Socket 11 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 11: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 11 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 15 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 15 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 15 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 15: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 16: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 17 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 17 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 230] Socket 16 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 16 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 230] Socket 12 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 12 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 11 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 12 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 16 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 12 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 11 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 255] Socket 17 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 16 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 12 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 275] Socket 11 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 12: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 11: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 12 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 12 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 272] Socket 17 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 17 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 17: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 16 Sent response header: try: 142, sent: 142
+   APP: AcceptConnection: 306] New connection 18 accepted.
+   APP: HandleReadEvent: 230] Socket 13 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 16: mtcp_write try: 1076, ret: 1076
+   APP: AcceptConnection: 311] Socket 18 registered.
+   APP: HandleReadEvent: 230] Socket 17 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 17 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 12 File size: 1076 (0MB)
+   APP: AcceptConnection: 306] New connection 19 accepted.
+   APP: HandleReadEvent: 272] Socket 12 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 12 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 13 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: AcceptConnection: 311] Socket 19 registered.
+   APP: HandleReadEvent: 255] Socket 13 File size: 1076 (0MB)
+   APP: SendUntilAvailable: 167] Socket 12: mtcp_write try: 1076, ret: 1076
+   APP: AcceptConnection: 306] New connection 20 accepted.
+   APP: HandleReadEvent: 230] Socket 13 URL: /NOTES
+   APP: HandleReadEvent: 272] Socket 13 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: AcceptConnection: 311] Socket 20 registered.
+   APP: HandleReadEvent: 275] Socket 13 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 13 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 17 File size: 1076 (0MB)
+   APP: AcceptConnection: 306] New connection 21 accepted.
+   APP: HandleReadEvent: 272] Socket 17 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: AcceptConnection: 311] Socket 21 registered.
+   APP: HandleReadEvent: 275] Socket 17 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 18 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 13: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 255] Socket 13 File size: 1076 (0MB)
+   APP: HandleReadEvent: 230] Socket 14 URL: /NOTES
+   APP: HandleReadEvent: 272] Socket 13 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: SendUntilAvailable: 167] Socket 17: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 13 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 18 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: AcceptConnection: 306] New connection 18 accepted.
+   APP: AcceptConnection: 311] Socket 18 registered.
+   APP: AcceptConnection: 306] New connection 19 accepted.
+   APP: AcceptConnection: 311] Socket 19 registered.
+   APP: AcceptConnection: 306] New connection 20 accepted.
+   APP: AcceptConnection: 311] Socket 20 registered.
+   APP: SendUntilAvailable: 167] Socket 13: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 14 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 14 File size: 1076 (0MB)
+   APP: AcceptConnection: 306] New connection 21 accepted.
+   APP: HandleReadEvent: 230] Socket 14 URL: /NOTES
+   APP: HandleReadEvent: 255] Socket 18 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 14 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 18 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 14 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 275] Socket 18 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 14: mtcp_write try: 1076, ret: 1076
+   APP: SendUntilAvailable: 167] Socket 18: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 232] Socket 14 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: AcceptConnection: 311] Socket 21 registered.
+   APP: HandleReadEvent: 255] Socket 14 File size: 1076 (0MB)
+   APP: HandleReadEvent: 230] Socket 18 URL: /NOTES
+   APP: HandleReadEvent: 272] Socket 14 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 232] Socket 18 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 230] Socket 15 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 15 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 275] Socket 14 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 14: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 15 URL: /NOTES
+   APP: HandleReadEvent: 230] Socket 19 URL: /NOTES
+   APP: HandleReadEvent: 255] Socket 15 File size: 1076 (0MB)
+   APP: HandleReadEvent: 232] Socket 19 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 18 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 18 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 18 Sent response header: try: 142, sent: 142
+   APP: SendUntilAvailable: 167] Socket 18: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 255] Socket 19 File size: 1076 (0MB)
+   APP: HandleReadEvent: 272] Socket 15 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 15 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 15 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: SendUntilAvailable: 167] Socket 15: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 255] Socket 15 File size: 1076 (0MB)
+   APP: AcceptConnection: 306] New connection 16 accepted.
+   APP: HandleReadEvent: 272] Socket 15 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 230] Socket 19 URL: /NOTES
+   APP: HandleReadEvent: 272] Socket 19 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: AcceptConnection: 311] Socket 16 registered.
+   APP: HandleReadEvent: 275] Socket 19 Sent response header: try: 142, sent: 142
+   APP: AcceptConnection: 306] New connection 17 accepted.
+   APP: SendUntilAvailable: 167] Socket 19: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 275] Socket 15 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 19 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: AcceptConnection: 311] Socket 17 registered.
+   APP: HandleReadEvent: 230] Socket 20 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 15: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 230] Socket 16 URL: /NOTES
+   APP: HandleReadEvent: 232] Socket 20 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: AcceptConnection: 306] New connection 18 accepted.
+   APP: HandleReadEvent: 255] Socket 20 File size: 1076 (0MB)
+   APP: AcceptConnection: 311] Socket 18 registered.
+   APP: HandleReadEvent: 232] Socket 16 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 16 File size: 1076 (0MB)
+   APP: AcceptConnection: 306] New connection 19 accepted.
+   APP: HandleReadEvent: 272] Socket 20 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: AcceptConnection: 311] Socket 19 registered.
+   APP: HandleReadEvent: 275] Socket 20 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 230] Socket 16 URL: /NOTES
+   APP: SendUntilAvailable: 167] Socket 20: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 16 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 275] Socket 16 Sent response header: try: 142, sent: 142
+   APP: HandleReadEvent: 232] Socket 16 File name: /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example/root/NOTES
+   APP: HandleReadEvent: 255] Socket 19 File size: 1076 (0MB)
+   APP: HandleReadEvent: 255] Socket 16 File size: 1076 (0MB)
+   APP: SendUntilAvailable: 167] Socket 16: mtcp_write try: 1076, ret: 1076
+   APP: HandleReadEvent: 272] Socket 16 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close
+
+   APP: HandleReadEvent: 272] Socket 19 HTTP Response: 
+HTTP/1.1 200 OK
+Date: Mon, 18 May 2020 21:05:18 GMT
+Server: Webserver on Middlebox TCP (Ubuntu)
+Content-Length: 1076
+Connection: Close

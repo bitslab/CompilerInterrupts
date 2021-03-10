@@ -1,0 +1,100 @@
+make  all-recursive
+make[1]: Entering directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server'
+Making all in mtcp/src
+make[2]: Entering directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/mtcp/src'
+   CC core.c
+   CC tcp_stream.c
+   CC config.c
+   CC api.c
+   CC eventpoll.c
+   CC socket.c
+   CC pipe.c
+   CC tcp_util.c
+   CC eth_in.c
+   CC ip_in.c
+   CC tcp_in.c
+   CC eth_out.c
+   CC ip_out.c
+   CC tcp_out.c
+   CC arp.c
+   CC timer.c
+   CC cpu.c
+   CC rss.c
+   CC addr_pool.c
+   CC fhash.c
+   CC memory_mgt.c
+   CC logger.c
+   CC debug.c
+   CC tcp_rb_frag_queue.c
+   CC tcp_ring_buffer.c
+   CC tcp_send_buffer.c
+   CC tcp_sb_queue.c
+   CC tcp_stream_queue.c
+   CC psio_module.c
+   CC io_module.c
+   CC dpdk_module.c
+   CC netmap_module.c
+   CC onvm_module.c
+   CC icmp.c
+cp ./include/mtcp_api.h ../include/mtcp_api.h
+cp ./include/mtcp_epoll.h ../include/mtcp_epoll.h
+mkdir -p ../lib
+ar rvs ../lib/libmtcp.a core.o tcp_stream.o config.o api.o eventpoll.o socket.o pipe.o tcp_util.o eth_in.o ip_in.o tcp_in.o eth_out.o ip_out.o tcp_out.o arp.o timer.o cpu.o rss.o addr_pool.o fhash.o memory_mgt.o logger.o debug.o tcp_rb_frag_queue.o tcp_ring_buffer.o tcp_send_buffer.o tcp_sb_queue.o tcp_stream_queue.o psio_module.o io_module.o dpdk_module.o netmap_module.o onvm_module.o icmp.o
+a - core.o
+a - tcp_stream.o
+a - config.o
+a - api.o
+a - eventpoll.o
+a - socket.o
+a - pipe.o
+a - tcp_util.o
+a - eth_in.o
+a - ip_in.o
+a - tcp_in.o
+a - eth_out.o
+a - ip_out.o
+a - tcp_out.o
+a - arp.o
+a - timer.o
+a - cpu.o
+a - rss.o
+a - addr_pool.o
+a - fhash.o
+a - memory_mgt.o
+a - logger.o
+a - debug.o
+a - tcp_rb_frag_queue.o
+a - tcp_ring_buffer.o
+a - tcp_send_buffer.o
+a - tcp_sb_queue.o
+a - tcp_stream_queue.o
+a - psio_module.o
+a - io_module.o
+a - dpdk_module.o
+a - netmap_module.o
+a - onvm_module.o
+a - icmp.o
+make[2]: Leaving directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/mtcp/src'
+Making all in util
+make[2]: Entering directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/util'
+   CC tdate_parse.c
+cc -m64 -Wall -fPIC -c -DNDEBUG -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR -I./include/ tdate_parse.c
+   CC http_parsing.c
+cc -m64 -Wall -fPIC -c -DNDEBUG -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR -I./include/ http_parsing.c
+   CC netlib.c
+cc -m64 -Wall -fPIC -c -DNDEBUG -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR -I./include/ netlib.c
+make[2]: Leaving directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/util'
+Making all in io_engine/lib
+make[2]: Entering directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/io_engine/lib'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/io_engine/lib'
+Making all in apps/example
+make[2]: Entering directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example'
+   CC epserver.c
+   LD epserver.o
+   CC epwget.c
+   LD epwget.o
+make[2]: Leaving directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server/apps/example'
+make[2]: Entering directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server'
+make[2]: Leaving directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server'
+make[1]: Leaving directory '/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp-server'

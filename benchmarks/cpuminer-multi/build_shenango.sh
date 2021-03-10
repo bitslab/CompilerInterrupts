@@ -9,8 +9,13 @@ cpuminer_orig_build() {
   if [ $err_status -eq 0 ]; then
     mv cpuminer cpuminer-orig
   else
-    echo "Cpuminer orig version did not build properly. Check make_log_orig & make_err_orig."
-    exit
+    diff=`diff Makefile.orig Makefile`
+    if [ -z "$diff" ]; then
+      echo "Cpuminer orig version did not build properly. Check make_log_orig & make_err_orig."
+      exit
+    else
+      cpuminer_orig_build
+    fi
   fi
 }
 
@@ -27,8 +32,13 @@ cpuminer_shenango_build() {
   if [ $err_status -eq 0 ]; then
     mv cpuminer cpuminer-$cyc
   else
-    echo "CPUMiner did not build properly. Check make_log_$1 and make_err_$1."
-    exit
+    diff=`diff Makefile.lc Makefile`
+    if [ -z "$diff" ]; then
+      echo "CPUMiner did not build properly. Check make_log_$1 and make_err_$1."
+      exit
+    else
+      cpuminer_shenango_build
+    fi
   fi
 }
 

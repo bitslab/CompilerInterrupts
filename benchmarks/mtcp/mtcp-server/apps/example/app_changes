@@ -1,0 +1,58 @@
+diff --git a/test-suite/mtcp-server/apps/example/epserver.c b/test-suite/mtcp-server/apps/example/epserver.c
+old mode 100644
+new mode 100755
+index 0ed0be770a9..930442b8476
+--- a/test-suite/mtcp-server/apps/example/epserver.c
++++ b/test-suite/mtcp-server/apps/example/epserver.c
+@@ -24,6 +24,8 @@
+ #include "netlib.h"
+ #include "debug.h"
+ 
++#include "TriggerAction.h"
++
+ #define MAX_FLOW_NUM  (10000)
+ 
+ #define RCVBUF_SIZE (2*1024)
+@@ -315,6 +317,9 @@ AcceptConnection(struct thread_context *ctx, int listener)
+ 	return c;
+ }
+ /*----------------------------------------------------------------------------*/
++
++__thread mctx_t mtcp_ctx; // declared extern in mtcp library, used for running CI as interrupt handler parameter
++
+ struct thread_context *
+ InitializeServerThread(int core)
+ {
+@@ -335,6 +340,7 @@ InitializeServerThread(int core)
+ 
+ 	/* create mtcp context: this will spawn an mtcp thread */
+ 	ctx->mctx = mtcp_create_context(core);
++  mtcp_ctx = ctx->mctx;
+ 	if (!ctx->mctx) {
+ 		TRACE_ERROR("Failed to create mtcp context!\n");
+ 		free(ctx);
+@@ -413,6 +419,7 @@ CreateListeningSocket(struct thread_context *ctx)
+ void *
+ RunServerThread(void *arg)
+ {
++  init_stats();
+ 	int core = *(int *)arg;
+ 	struct thread_context *ctx;
+ 	mctx_t mctx;
+@@ -446,6 +453,7 @@ RunServerThread(void *arg)
+ 	}
+ 
+ 	while (!done[core]) {
++    //RunMainLoop((void*)(mtcp_ctx->mtcp_thr_ctx));
+ 		nevents = mtcp_epoll_wait(mctx, ep, events, MAX_EVENTS, -1);
+ 		if (nevents < 0) {
+ 			if (errno != EINTR)
+@@ -556,6 +564,8 @@ printHelp(const char *prog_name)
+ int 
+ main(int argc, char **argv)
+ {
++
++  init_stats();
+ 	DIR *dir;
+ 	struct dirent *ent;
+ 	int fd;

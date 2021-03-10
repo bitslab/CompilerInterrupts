@@ -1,0 +1,15 @@
+Requests  SBufSiz  CBufSize SCores  CCores  Concurrency Type  Latency(approx) Comments
+10000000  4096  4096  1  4 10  Orig  134.912us "Rx Throughput decreased to 0.17Gbps, Tx to 0.52Gbps, took 6mins to run"
+10000000  4096  4096  16  4 10  Orig  138.894us "Rx Throughput decreased to 0.17Gbps, Tx to 0.52Gbps"
+10000000  16384 16384 16  4 10  Orig  135.658us "Rx Throughput decreased to 0.17Gbps, Tx to 0.52Gbps"
+10000000  16384 16384 16  4 50  Orig  341.488us
+10000000  4096  4096  16  4 100 Orig  700us
+10000000  16384 16384 16  4 100 Orig  700us
+10000000  16384 16384 16  4 300 Orig  2102.62us "Rx Throughput increased to 0.38Gbps"
+10000000  16384 16384 16  4 500 Orig  3522.91us "Rx Throughput increased to 0.38Gbps"
+
+10000000  4096  4096  16  4 10  CI  141.795us "Rx Throughput decreased to 0.17Gbps, Tx to 0.52Gbps, took 6mins to run"
+10000000  4096  4096  16  4 50  CI 342.601us "Rx Throughput decreased to 0.17Gbps, Tx to 0.49Gbps"
+
+10000000  16384  16384  16  4 10  CI 142.906us "Rx Throughput decreased to 0.17Gbps, Tx to 0.49Gbps, took 6mins to run"
+10000000  16384  16384  16  4 100  CI 694.9us

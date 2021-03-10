@@ -1,0 +1,220 @@
+Convention:
+MTCP server for ixgbe interface: frames
+MTCP client for ixgbe interface: lines
+MTCP server for mellanox interface: quad1
+MTCP client for mellanox interface: quad2
+
+Important: For mellanox interfaces, the interface does not need to be bound to DPDK's igb_uio kernel module
+
+Carefully follow "- DPDK VERSION -" section of README
+
+Modify dpdk/config/common_base
+------------------------------
+CONFIG_RTE_EAL_IGB_UIO=y
+CONFIG_RTE_LIBRTE_MLX5_PMD=y
+CONFIG_RTE_LIBRTE_MLX5_DEBUG=y
+CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD=y
+CONFIG_RTE_IBVERBS_LINK_STATIC=y
+CONFIG_RTE_LIBRTE_KNI=y
+CONFIG_RTE_LIBRTE_PMD_KNI=y
+CONFIG_RTE_KNI_KMOD=y
+
+Turn off dpdk interface
+./setup_mtcp_dpdk_env.sh /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+DPDK environment to build: x86_64-native-linuxapp-clang
+linuxapp environment: Insert IGB UIO module
+Attach IGB UIO to Intel NICS
+Load KNI
+Add hugepages (8192 or 16384 2MB pages per node)
+
+Turn on dpdk interface:
+  lines: 
+    ifconfig dpdk0 131.193.34.70 netmask 255.255.255.0 up
+    arp -s 131.193.34.60 a0:36:9f:17:69:b0
+  frames: 
+    ifconfig dpdk0 131.193.34.60 netmask 255.255.255.0 up
+    arp -s 131.193.34.70 a0:36:9f:2d:d9:90
+  quads1: ifconfig enp175s0f0 192.168.1.1 netmask 255.255.255.0 up
+  quads2: ifconfig enp175s0f0 192.168.1.2 netmask 255.255.255.0 up
+
+Remove dpdk interface:
+  ixgbe interfaces (frames & lines): ifconfig dpdk0 down
+  lines (on detaching): ifconfig enp3s0f0 131.193.34.70 netmask 255.255.255.0 up
+  frames (on detaching): ifconfig enp196s0f0 131.193.34.60 netmask 255.255.255.0 up
+
+Clearing arp cache:
+ip -s -s neigh flush all
+
+Interface details:
+------------------
+frames ixgbe interface: enp196s0f0(name), 131.193.34.60(ip), a0:36:9f:17:69:b0(mac)
+lines ixgbe interface: enp3s0f0(name), 131.193.34.70(ip), a0:36:9f:2d:d9:90(mac)
+
+Arp details:
+------------
+frames: 
+131.193.34.70            ether   a0:36:9f:2d:d9:90   C                     enp196s0f0
+
+lines:
+131.193.34.60            ether   a0:36:9f:17:69:b0   C                     enp3s0f0
+
+Route details:
+--------------
+frames:
+131.193.34.0    0.0.0.0         255.255.255.0   U     0      0        0 enp196s0f0
+
+lines:
+131.193.34.0    0.0.0.0         255.255.255.0   U     0      0        0 enp3s0f0
+
+export RTE_SDK=/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+sudo export RTE_TARGET=x86_64-native-linuxapp-gcc
+./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET
+make
+
+
+LightHTTPD:
+./configure --without-bzip2 CFLAGS="-g -O3" --with-libmtcp="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp" --with-libdpdk="$RTE_SDK/$RTE_TARGET" --enable-netmap --enable-multithreading
+make
+cd src
+./lighttpd -D -f ../doc/config/m-lighttpd.conf -n 56 -m .libs/
+
+
+EPS Server:
+./epserver -p ./root -f frames_epserver.conf -N 2
+./epserver -p ./root -f lines_epserver.conf -N 2
+
+EPS Client:
+./epwget 131.193.34.60/NOTES 100 -N 2 -c 16 -f lines_epwget.conf
+./epwget 131.193.34.70/NOTES 10000000 -N 8 -c 8000 -f frames_epwget.conf
+
+Perf Client:
+./client wait 131.193.34.60 9000 60 # runs on mtcp sockets
+python recv.py send 131.193.34.60 9000 # receiver runs on traditional sockets, detach interfaces, add ips
+
+
+quad1:
+enp175s0f0:
+PCI Address:1780:55:16.C3
+
+
+Enable hugepages:
+echo 65536 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages # for lines, with 8 sockets
+echo 32768 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages # for frames, with 4 sockets
+or,
+sysctl -w vm.nr_hugepages=65536 # for lines, with 8 sockets
+sysctl -w vm.nr_hugepages=32768 # for frames, with 4 sockets
+sysctl -w vm.nr_hugepages=131072
+
+lines private ip:10.193.34.70
+frames private ip:10.193.34.60
+
+lines intel interface: dpdk0/enp3s0f0 (a0:36:9f:2d:d9:90 - 131.193.34.70)
+frames intel interface: enp196s0f0 (a0:36:9f:17:69:b0 - 131.193.34.60)
+
+Unbind interfaces:
+Attach to mellanox driver in quad1:
+/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk/usertools/dpdk-devbind.py -b mlx5_core 0000:af:00.0
+Attach igb_uio to ixgbe interface in lines: 0000:03:00.0
+
+Set IP:
+lines: ifconfig dpdk0 131.193.34.70 netmask 255.255.255.0 up
+#ip addr add dev dpdk0 131.193.34.70
+
+
+Setup:
+1. Add next two lines in /etc/bash.bashrc
+export RTE_SDK=/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+export RTE_TARGET=x86_64-native-linuxapp-gcc
+2. Run ./setup_mtcp_dpdk_env.sh
+Choose options 15, 18, 20, 22, 24. Exit with 35.
+3. Turn on dpdk interface:
+  lines: ifconfig dpdk0 131.193.34.70 netmask 255.255.255.0 up
+  frames: ifconfig dpdk0 131.193.34.60 netmask 255.255.255.0 up
+4. configure using:
+./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET
+5. make clean; make
+
+
+CI related app changes are kept in:
+apps/example/app_changes
+
+For remote login:
+Install sshpass
+
+
+Installing Mellanox:
+Steps:
+
+1. apt remove libibverbs1 libmlx5-1
+   apt remove libibverbs-dev:amd64 ibverbs-providers:amd64 openmpi-common
+
+2. apt install libnl-route-3-dev libnl-3-dev libibverbs-dev ibverbs-utils libmlx5-1
+(libibverbs-dev ibverbs-utils libmlx5-1 are probably not required. Packages are replaced once Mellanox OFED is installed in the next step)
+
+3. dpkg -l | grep "libibverbs\|libmlx5"
+rc  ibverbs-providers:amd64                50mlnx1-1.50218                                 amd64        User space provider drivers for libibverbs
+ii  ibverbs-utils                          41mlnx1-OFED.4.5.0.1.0.45101                    amd64        Examples for the libibverbs library
+ii  libibverbs-dev                         41mlnx1-OFED.4.5.0.1.0.45101                    amd64        Development files for the libibverbs library
+ii  libibverbs1                            41mlnx1-OFED.4.5.0.1.0.45101                    amd64        Library for direct userspace use of RDMA (InfiniBand/iWARP)
+ii  libmlx5-1                              41mlnx1-OFED.4.5.0.3.8.45101                    amd64        Userspace driver for Mellanox ConnectX InfiniBand HCAs
+
+4. lsmod | grep "mlx5_core\|mlx5_ib\|ib_uverbs"
+
+5. Installing Mellanox OFED MLNX_OFED_LINUX-4.6-1.0.1.1-ubuntu18.04-x86_64
+	./mlnxofedinstall --upstream-libs --dpdk
+  /etc/init.d/ibacm stop
+  modprobe -rv  rpcrdma
+	/etc/init.d/openibd restart
+
+	dpkg -l | grep "libibverbs\|libmlx5" shows:
+ii  ibverbs-providers:amd64                46mlnx1-1.46101                                 amd64        User space provider drivers for libibverbs
+ii  ibverbs-utils                          46mlnx1-1.46101                                 amd64        Examples for the libibverbs library
+ii  libibverbs-dev:amd64                   46mlnx1-1.46101                                 amd64        Development files for the libibverbs library
+ii  libibverbs1:amd64                      46mlnx1-1.46101                                 amd64        Library for direct userspace use of RDMA (InfiniBand/iWARP)
+
+6. Downloaded dpdk-20.05, set ~/.bashrc with export RTE_SDK=/home/nbasu4/dpdk-20.05. source ~/.bashrc
+
+7. Install mtcp-dpdk with ./setup_mtcp_dpdk_env.sh $RTE_SDK
+
+8. Imp. - Do not bind interface with IGB_UIO
+
+9. Running testpmd shows output using "testpmd -c 0xff -n 4 -- -i":
+
+EAL: Detected 56 lcore(s)
+EAL: Detected 2 NUMA nodes
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+EAL: Selected IOVA mode 'PA'
+EAL: No available hugepages reported in hugepages-1048576kB
+EAL: Probing VFIO support...
+EAL:   no supported IOMMU extensions found!
+EAL: VFIO support could not be initialized
+EAL: Probe PCI driver: net_mlx5 (15b3:1017) device: 0000:af:00.0 (socket 1)
+net_mlx5: mlx5.c:3322: mlx5_pci_probe(): no Verbs device matches PCI device 0000:af:00.0, are kernel drivers loaded?
+EAL: Requested device 0000:af:00.0 cannot be used
+EAL: Probe PCI driver: net_mlx5 (15b3:1017) device: 0000:af:00.1 (socket 1)
+net_mlx5: mlx5.c:2698: mlx5_dev_spawn(): DV flow is not supported
+EAL: No legacy callbacks, legacy socket not created
+Interactive-mode selected
+testpmd: create a new mbuf pool <mbuf_pool_socket_0>: n=203456, size=2176, socket=0
+testpmd: preferred mempool ops selected: ring_mp_mc
+testpmd: create a new mbuf pool <mbuf_pool_socket_1>: n=203456, size=2176, socket=1
+testpmd: preferred mempool ops selected: ring_mp_mc
+
+Warning! port-topology=paired and odd forward ports number, the last port will pair with itself.
+
+10. ./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET
+
+11. Made changes in mtcp/src/Makefile, added new include directory of $(RTE_SDK)/lib/librte_eal/common/
+
+12. Run:
+Server: ./epserver -p ./root -f ./quads1_epserver.conf -N 16
+Client: time ./epwget 192.168.1.1/NOTES 50000000 -N 16 -c 2048 -f quads2_epwget.conf
+TX: 24Gbps, RX: 8.36Gbps
+
+13. 2 problems - dpdk/apps are not building (might be because dpdk is not compatible with mlx5 drivers, though dpdk drivers compiled fine), and device_name is unavailable from mtcp/src/dpdk_module.c from rte_eth_dev_info_get()
+
+14. No need to bind dpdk on mellanox interface - https://community.mellanox.com/s/question/0D51T00006gsyN0SAI/unable-to-bind-mellanox-interfaces-on-to-dpdk-on-ubuntuazure
+
+15. modprobe -a ib_uverbs mlx4_en mlx4_core mlx4_ib
+
+16. For mtcp-server/mtcp-client, "export RTE_TARGET=x86_64-native-linuxapp-gcc; export RTE_SDK=/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp-server/dpdk"

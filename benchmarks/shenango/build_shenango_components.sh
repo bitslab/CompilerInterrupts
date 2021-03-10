@@ -28,37 +28,52 @@ build_shenango_server() {
 }
 
 check_all_builds() {
+  rm -f build_err_log
   intervals="8000 4000 16000 2000 32000 1000 64000"
+  err=0
   for intv in $intervals; do
     if [ ! -f ../cpuminer-multi/cpuminer-$intv ] ; then
-      echo "../cpuminer-multi/cpuminer-$intv not found. Aborting."
+      echo "../cpuminer-multi/cpuminer-$intv not found. Aborting." | tee -a build_err_log
+      err=`expr $err + 1`
     fi
   done
   if [ ! -f ../cpuminer-multi/cpuminer-orig ] ; then
-    echo "../cpuminer-multi/cpuminer-orig not found. Aborting."
+    echo "../cpuminer-multi/cpuminer-orig not found. Aborting." | tee -a build_err_log
+    err=`expr $err + 1`
   fi
   for cl in $CLIENTS; do
     if [ ! -f ../shenango-$cl/scripts/synthetic ] ; then
-      echo "../shenango-$cl/scripts/synthetic not found. Aborting."
+      echo "../shenango-$cl/scripts/synthetic not found. Aborting." | tee -a build_err_log
+      err=`expr $err + 1`
     fi
     if [ ! -f ../shenango-$cl/shenango/iokerneld ] ; then
-      echo "../shenango-$cl/shenango/iokerneld not found. Aborting."
+      echo "../shenango-$cl/shenango/iokerneld not found. Aborting." | tee -a build_err_log
+      err=`expr $err + 1`
     fi
   done
   if [ ! -f shenango/iokerneld ] ; then
-    echo "shenango/iokerneld not found. Aborting."
+    echo "shenango/iokerneld not found. Aborting." | tee -a build_err_log
+    err=`expr $err + 1`
   fi
   if [ ! -f memcached-linux/memcached ] ; then
-    echo "memcached-linux/memcached not found. Aborting."
+    echo "memcached-linux/memcached not found. Aborting." | tee -a build_err_log
+    err=`expr $err + 1`
   fi
   if [ ! -f memcached/memcached ] ; then
-    echo "memcached/memcached not found. Aborting."
+    echo "memcached/memcached not found. Aborting." | tee -a build_err_log
+    err=`expr $err + 1`
   fi
   if [ ! -f parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions ] ; then
-    echo "parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions not found. Aborting."
+    echo "parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-pthreads/bin/swaptions not found. Aborting." | tee -a build_err_log
+    err=`expr $err + 1`
   fi
   if [ ! -f parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-shenango/bin/swaptions ] ; then
-    echo "parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-shenango/bin/swaptions not found. Aborting."
+    echo "parsec/pkgs/apps/swaptions/inst/amd64-linux.gcc-shenango/bin/swaptions not found. Aborting." | tee -a build_err_log
+    err=`expr $err + 1`
+  fi
+  if [ $err -ne 0 ]; then
+    echo "$err number of builds failed. Check build_err_log for details."
+    exit
   fi
 }
 

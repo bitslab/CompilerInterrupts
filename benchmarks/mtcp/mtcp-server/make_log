@@ -1,0 +1,28 @@
+Making clean in mtcp/src
+make[1]: Entering directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/mtcp/src'
+   CLEAN *.a
+rm -f ../lib/*
+   CLEAN *.h
+rm -f ../include/*
+   CLEAN *.o's
+rm -f *.o *~ core
+   CLEAN *.d's
+rm -f .*.d
+make[1]: Leaving directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/mtcp/src'
+Making clean in util
+make[1]: Entering directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/util'
+   CC *.o
+rm -rf *~ *.o *.ll
+make[1]: Leaving directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/util'
+Making clean in io_engine/lib
+make[1]: Entering directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/io_engine/lib'
+make[1]: Nothing to be done for 'clean'.
+make[1]: Leaving directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/io_engine/lib'
+Making clean in apps/example
+make[1]: Entering directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/apps/example'
+   CLEAN epserver epwget
+rm -f *~ *.o *.ll epserver epwget log_*
+make[1]: Leaving directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server/apps/example'
+make[1]: Entering directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server'
+make[1]: Nothing to be done for 'clean-am'.
+make[1]: Leaving directory '/home/nbasu4/CompilerInterrupts/benchmarks/mtcp/mtcp-server'

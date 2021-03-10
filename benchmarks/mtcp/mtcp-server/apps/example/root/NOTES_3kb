@@ -1,0 +1,84 @@
+Carefully follow "- DPDK VERSION -" section of README
+
+Turn off dpdk interface
+./setup_mtcp_dpdk_env.sh /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+DPDK environment to build: x86_64-native-linuxapp-clang
+linuxapp environment: Insert IGB UIO module
+Attach IGB UIO to Intel NICS
+Load KNI
+Add hugepages (8192 or 16384 2MB pages per node)
+Turn on dpdk interface:
+  lines: ifconfig dpdk0 131.193.34.70 netmask 255.255.255.0 up
+  frames: ifconfig dpdk0 131.193.34.60 netmask 255.255.255.0 up
+export RTE_SDK=/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+sudo export RTE_TARGET=x86_64-native-linuxapp-gcc
+./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET
+make
+
+
+LightHTTPD:
+./configure --without-bzip2 CFLAGS="-g -O3" --with-libmtcp="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp" --with-libdpdk="$RTE_SDK/$RTE_TARGET" --enable-netmap --enable-multithreading
+make
+cd src
+./lighttpd -D -f ../doc/config/m-lighttpd.conf -n 56 -m .libs/
+
+
+EPS Server:
+./epserver -p ./root -f frames_epserver.conf -N 2
+./epserver -p ./root -f lines_epserver.conf -N 2
+Carefully follow "- DPDK VERSION -" section of README
+
+Turn off dpdk interface
+./setup_mtcp_dpdk_env.sh /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+DPDK environment to build: x86_64-native-linuxapp-clang
+linuxapp environment: Insert IGB UIO module
+Attach IGB UIO to Intel NICS
+Load KNI
+Add hugepages (8192 or 16384 2MB pages per node)
+Turn on dpdk interface:
+  lines: ifconfig dpdk0 131.193.34.70 netmask 255.255.255.0 up
+  frames: ifconfig dpdk0 131.193.34.60 netmask 255.255.255.0 up
+export RTE_SDK=/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+sudo export RTE_TARGET=x86_64-native-linuxapp-gcc
+./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET
+make
+
+
+LightHTTPD:
+./configure --without-bzip2 CFLAGS="-g -O3" --with-libmtcp="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp" --with-libdpdk="$RTE_SDK/$RTE_TARGET" --enable-netmap --enable-multithreading
+make
+cd src
+./lighttpd -D -f ../doc/config/m-lighttpd.conf -n 56 -m .libs/
+
+
+EPS Server:
+./epserver -p ./root -f frames_epserver.conf -N 2
+./epserver -p ./root -f lines_epserver.conf -N 2
+Carefully follow "- DPDK VERSION -" section of README
+
+Turn off dpdk interface
+./setup_mtcp_dpdk_env.sh /home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+DPDK environment to build: x86_64-native-linuxapp-clang
+linuxapp environment: Insert IGB UIO module
+Attach IGB UIO to Intel NICS
+Load KNI
+Add hugepages (8192 or 16384 2MB pages per node)
+Turn on dpdk interface:
+  lines: ifconfig dpdk0 131.193.34.70 netmask 255.255.255.0 up
+  frames: ifconfig dpdk0 131.193.34.60 netmask 255.255.255.0 up
+export RTE_SDK=/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/dpdk
+sudo export RTE_TARGET=x86_64-native-linuxapp-gcc
+./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET
+make
+
+
+LightHTTPD:
+./configure --without-bzip2 CFLAGS="-g -O3" --with-libmtcp="/home/nbasu4/logicalclock/ci-llvm-v9/test-suite/mtcp/mtcp" --with-libdpdk="$RTE_SDK/$RTE_TARGET" --enable-netmap --enable-multithreading
+make
+cd src
+./lighttpd -D -f ../doc/config/m-lighttpd.conf -n 56 -m .libs/
+
+
+EPS Server:
+./epserver -p ./root -f frames_epserver.conf -N 2
+./epserver -p ./root -f lines_epserver.conf -N 2

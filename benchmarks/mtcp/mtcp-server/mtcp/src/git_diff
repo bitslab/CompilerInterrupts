@@ -1,0 +1,387 @@
+diff --git a/test-suite/mtcp-server/mtcp/src/core.c b/test-suite/mtcp-server/mtcp/src/core.c
+old mode 100644
+new mode 100755
+index b06c4d73f51..d01c963ed89
+--- a/test-suite/mtcp-server/mtcp/src/core.c
++++ b/test-suite/mtcp-server/mtcp/src/core.c
+@@ -480,7 +480,9 @@ FlushEpollEvents(mtcp_manager_t mtcp, uint32_t cur_ts)
+ 				ep->usr_queue->num_events, cur_ts, mtcp->ts_last_event);
+ 		mtcp->ts_last_event = cur_ts;
+ 		ep->stat.wakes++;
++#ifndef CI
+ 		pthread_cond_signal(&ep->epoll_cond);
++#endif
+ 	}
+ 	pthread_mutex_unlock(&ep->epoll_lock);
+ }
+@@ -735,6 +737,8 @@ InterruptApplication(mtcp_manager_t mtcp)
+ 	int i;
+ 	struct tcp_listener *listener = NULL;
+ 
++  /* For CI, cond_wait is not used */
++#ifndef CI
+ 	/* interrupt if the mtcp_epoll_wait() is waiting */
+ 	if (mtcp->ep) {
+ 		pthread_mutex_lock(&mtcp->ep->epoll_lock);
+@@ -743,6 +747,7 @@ InterruptApplication(mtcp_manager_t mtcp)
+ 		}
+ 		pthread_mutex_unlock(&mtcp->ep->epoll_lock);
+ 	}
++#endif
+ 
+ 	/* interrupt if the accept() is waiting */
+ 	/* this may be a looong loop but this is called only on exit */
+@@ -758,9 +763,10 @@ InterruptApplication(mtcp_manager_t mtcp)
+ 	}
+ }
+ /*----------------------------------------------------------------------------*/
+-static void 
+-RunMainLoop(struct mtcp_thread_context *ctx)
++void 
++RunMainLoop(void *context)
+ {
++	struct mtcp_thread_context *ctx = (struct mtcp_thread_context *)context;
+ 	mtcp_manager_t mtcp = ctx->mtcp_manager;
+ 	int i;
+ 	int recv_cnt;
+@@ -770,10 +776,15 @@ RunMainLoop(struct mtcp_thread_context *ctx)
+ 	int thresh;
+ 
+ 	gettimeofday(&cur_ts, NULL);
++	//printf("RunMainLoop called for cpu %d, context %p\n", ctx->cpu, ctx);
+ 	TRACE_DBG("CPU %d: mtcp thread running.\n", ctx->cpu);
+ 
+ 	ts = ts_prev = 0;
++#ifndef CI
+ 	while ((!ctx->done || mtcp->flow_cnt) && !ctx->exit) {
++#else
++	if ((!ctx->done || mtcp->flow_cnt) && !ctx->exit) {
++#endif
+ 		
+ 		STAT_COUNT(mtcp->runstat.rounds);
+ 		recv_cnt = 0;
+@@ -864,16 +875,39 @@ RunMainLoop(struct mtcp_thread_context *ctx)
+ 		}
+ 	}
+ 
++#ifdef CI
++  else {
++#endif
++
+ #if TESTING
+ 	DestroyRemainingFlows(mtcp);
+ #endif
+-
+ 	TRACE_DBG("MTCP thread %d out of main loop.\n", ctx->cpu);
+ 	/* flush logs */
+ 	flush_log_data(mtcp);
+ 	TRACE_DBG("MTCP thread %d flushed logs.\n", ctx->cpu);
+ 	InterruptApplication(mtcp);
+ 	TRACE_INFO("MTCP thread %d finished.\n", ctx->cpu);
++
++#ifdef CI
++#if 1
++	/* Cleanup done in MTCPRunThread for the original program */
++		struct mtcp_context m;
++		m.cpu = ctx->cpu;
++		mtcp_free_context(&m);
++		/* destroy hash tables */
++		DestroyHashtable(g_mtcp[ctx->cpu]->tcp_flow_table);
++	#if USE_CCP
++		DestroyHashtable(g_mtcp[ctx->cpu]->tcp_sid_table);
++	#endif
++		DestroyHashtable(g_mtcp[ctx->cpu]->listeners);
++		
++		TRACE_DBG("CI-MTCP thread %d finished.\n", ctx->cpu);
++
++#endif
++  }
++#endif
++
+ }
+ /*----------------------------------------------------------------------------*/
+ struct mtcp_sender *
+@@ -942,6 +976,7 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
+ 
+ 	mtcp->ctx = ctx;
+ #if !defined(DISABLE_DPDK) && !ENABLE_ONVM
++	//TRACE_INFO("Enabled dpdk and disabled onvm. Max concurrency: %d, mem created for: %lu, %lu, %lu\n", CONFIG.max_concurrency, sizeof(tcp_stream), sizeof(struct tcp_recv_vars), sizeof(struct tcp_send_vars));
+ 	char pool_name[RTE_MEMPOOL_NAMESIZE];
+ 	sprintf(pool_name, "flow_pool_%d", ctx->cpu);
+ 	mtcp->flow_pool = MPCreate(pool_name, sizeof(tcp_stream),
+@@ -1213,7 +1248,7 @@ MTCPRunThread(void *arg)
+ 
+ 	/* remember this context pointer for signal processing */
+ 	g_pctx[cpu] = ctx;
+-	mlockall(MCL_CURRENT);
++	//mlockall(MCL_CURRENT);
+ 
+ #if USE_CCP
+ 	setup_ccp_connection(mtcp);
+@@ -1235,15 +1270,20 @@ MTCPRunThread(void *arg)
+ 		return NULL;
+ 	}
+ 
+-	TRACE_DBG("CPU %d: initialization finished.\n", cpu);
++#ifdef CI
++	TRACE_INFO("CI-MTCP:- CPU %d: initialization finished.\n", cpu);
++#else
++	TRACE_INFO("Orig-MTCP:- CPU %d: initialization finished.\n", cpu);
++#endif
+ 
+-	fprintf(stderr, "CPU %d: initialization finished.\n", cpu);
+-	
+ 	sem_post(&g_init_sem[ctx->cpu]);
+ 
++	// For CI
++	mctx->mtcp_thr_ctx = ctx;
+ 	/* start the main loop */
+-	RunMainLoop(ctx);
++	RunMainLoop((void *)ctx);
+ 
++#ifndef CI
+ 	struct mtcp_context m;
+ 	m.cpu = cpu;
+ 	mtcp_free_context(&m);
+@@ -1254,10 +1294,11 @@ MTCPRunThread(void *arg)
+ #endif
+ 	DestroyHashtable(g_mtcp[cpu]->listeners);
+ 	
+-	TRACE_DBG("MTCP thread %d finished.\n", ctx->cpu);
+-	
++	TRACE_INFO("Orig-MTCP thread %d finished.\n", ctx->cpu);
++#endif
+ 	return 0;
+ }
++
+ /*----------------------------------------------------------------------------*/
+ #ifndef DISABLE_DPDK
+ int MTCPDPDKRunThread(void *arg)
+@@ -1322,32 +1363,60 @@ mtcp_create_context(int cpu)
+ 		return NULL;
+ 	}
+ #endif
+-#ifndef DISABLE_DPDK
+-	/* Wake up mTCP threads (wake up I/O threads) */
+-	if (current_iomodule_func == &dpdk_module_func) {
+-		int master;
+-		master = rte_get_master_lcore();
+-		
+-		if (master == whichCoreID(cpu)) {
+-			lcore_config[master].ret = 0;
+-			lcore_config[master].state = FINISHED;
+-			
+-			if (pthread_create(&g_thread[cpu], 
+-					   NULL, MTCPRunThread, (void *)mctx) != 0) {
+-				TRACE_ERROR("pthread_create of mtcp thread failed!\n");
+-				return NULL;
+-			}
+-		} else
+-			rte_eal_remote_launch(MTCPDPDKRunThread, mctx, whichCoreID(cpu));
+-	} else
++#ifndef CI
++  TRACE_DBG("Executing MTCP Original version, of creating separate parallel thread\n");
++  printf("Executing MTCP Original version, of creating separate parallel thread\n");
++  #ifndef DISABLE_DPDK
++    /* Wake up mTCP threads (wake up I/O threads) */
++    if (current_iomodule_func == &dpdk_module_func) {
++      int master;
++      master = rte_get_master_lcore();
++      
++      if (master == whichCoreID(cpu)) {
++        lcore_config[master].ret = 0;
++        lcore_config[master].state = FINISHED;
++        
++        if (pthread_create(&g_thread[cpu], 
++               NULL, MTCPRunThread, (void *)mctx) != 0) {
++          TRACE_ERROR("pthread_create of mtcp thread failed!\n");
++          return NULL;
++        }
++      } else {
++        rte_eal_remote_launch(MTCPDPDKRunThread, mctx, whichCoreID(cpu));
++      }
++    } else
++  #endif
++      {
++        if (pthread_create(&g_thread[cpu], 
++               NULL, MTCPRunThread, (void *)mctx) != 0) {
++          TRACE_ERROR("pthread_create of mtcp thread failed!\n");
++          return NULL;
++        }
++      }
++#else
++  TRACE_DBG("Executing MTCP CI version, of not creating separate thread\n");
++  printf("Executing MTCP CI version, of not creating separate thread\n");
++  #ifndef DISABLE_DPDK
++    /* Wake up mTCP threads (wake up I/O threads) */
++    if (current_iomodule_func == &dpdk_module_func) {
++      int master;
++      master = rte_get_master_lcore();
++      
++      if (master == whichCoreID(cpu)) {
++        lcore_config[master].ret = 0;
++        lcore_config[master].state = FINISHED;
++        
++        MTCPRunThread((void*)mctx);
++      } else {
++        MTCPRunThread((void*)mctx);
++        //rte_eal_remote_launch(MTCPDPDKRunThread, mctx, whichCoreID(cpu));
++      }
++    } else
++  #endif
++      {
++        MTCPRunThread((void*)mctx);
++      }
+ #endif
+-		{
+-			if (pthread_create(&g_thread[cpu], 
+-					   NULL, MTCPRunThread, (void *)mctx) != 0) {
+-				TRACE_ERROR("pthread_create of mtcp thread failed!\n");
+-				return NULL;
+-			}
+-		}
+ 
+ 	sem_wait(&g_init_sem[cpu]);
+ 	sem_destroy(&g_init_sem[cpu]);
+@@ -1574,6 +1643,7 @@ mtcp_init(const char *config_file)
+ 			
+ 	assert(num_cpus >= 1);
+ 
++#if 1
+ 	if (num_cpus > MAX_CPUS) {
+ 		TRACE_ERROR("You cannot run mTCP with more than %d cores due "
+ 			    "to your static mTCP configuration. Please disable "
+@@ -1581,6 +1651,7 @@ mtcp_init(const char *config_file)
+ 			    MAX_CPUS, num_cpus - MAX_CPUS);
+ 		exit(EXIT_FAILURE);
+ 	}
++#endif
+ 
+ #if 0
+ 	/* TODO: Enable this macro if cross-machine comm. with onvm client/server fails */
+diff --git a/test-suite/mtcp-server/mtcp/src/eventpoll.c b/test-suite/mtcp-server/mtcp/src/eventpoll.c
+old mode 100644
+new mode 100755
+index ded10a01cd0..d2ad604ac1d
+--- a/test-suite/mtcp-server/mtcp/src/eventpoll.c
++++ b/test-suite/mtcp-server/mtcp/src/eventpoll.c
+@@ -214,7 +214,9 @@ CloseEpollSocket(mctx_t mctx, int epid)
+ 	pthread_mutex_lock(&ep->epoll_lock);
+ 	mtcp->ep = NULL;
+ 	mtcp->smap[epid].ep = NULL;
++#ifndef CI
+ 	pthread_cond_signal(&ep->epoll_cond);
++#endif
+ 	pthread_mutex_unlock(&ep->epoll_lock);
+ 
+ 	pthread_cond_destroy(&ep->epoll_cond);
+@@ -366,11 +368,14 @@ mtcp_epoll_wait(mctx_t mctx, int epid,
+ 	mtcp_manager_t mtcp;
+ 	struct mtcp_epoll *ep;
+ 	struct event_queue *eq;
+-	struct event_queue *eq_shadow;
+-	socket_map_t event_socket;
+-	int validity;
+-	int i, cnt, ret;
+ 	int num_events;
++  int i, cnt = 0;
++	int validity;
++	socket_map_t event_socket;
++#ifndef CI
++	int ret;
++	struct event_queue *eq_shadow;
++#endif
+ 
+ 	mtcp = GetMTCPManager(mctx);
+ 	if (!mtcp) {
+@@ -414,6 +419,7 @@ mtcp_epoll_wait(mctx_t mctx, int epid,
+ 		assert(0);
+ 	}
+ 
++#ifndef CI
+ wait:
+ 	eq = ep->usr_queue;
+ 	eq_shadow = ep->usr_shadow_queue;
+@@ -441,6 +447,7 @@ wait:
+ 			}
+ 
+ 			deadline.tv_nsec += timeout * 1000000;
++			//deadline.tv_nsec += timeout; // considering timeout in microseconds
+ 
+ 			if (deadline.tv_nsec >= 1000000000) {
+ 				deadline.tv_sec++;
+@@ -480,9 +487,12 @@ wait:
+ 		}
+ 	
+ 	}
++#endif
+ 	
+-	/* fetch events from the user event queue */
+ 	cnt = 0;
++
++	/* fetch events from the user event queue */
++	eq = ep->usr_queue;
+ 	num_events = eq->num_events;
+ 	for (i = 0; i < num_events && cnt < maxevents; i++) {
+ 		event_socket = &mtcp->smap[eq->events[eq->start].sockid];
+@@ -557,8 +567,10 @@ wait:
+ 		}
+ 	}
+ 
++#ifndef CI
+ 	if (cnt == 0 && timeout != 0)
+ 		goto wait;
++#endif
+ 
+ 	pthread_mutex_unlock(&ep->epoll_lock);
+ 
+diff --git a/test-suite/mtcp-server/mtcp/src/include/mtcp.h b/test-suite/mtcp-server/mtcp/src/include/mtcp.h
+old mode 100644
+new mode 100755
+index 791acf9b3b2..f0b3ca9b1e8
+--- a/test-suite/mtcp-server/mtcp/src/include/mtcp.h
++++ b/test-suite/mtcp-server/mtcp/src/include/mtcp.h
+@@ -193,11 +193,6 @@ struct mtcp_config
+ #endif
+ };
+ /*----------------------------------------------------------------------------*/
+-struct mtcp_context
+-{
+-	int cpu;
+-};
+-/*----------------------------------------------------------------------------*/
+ struct mtcp_sender
+ {
+ 	int ifidx;
+diff --git a/test-suite/mtcp-server/mtcp/src/include/mtcp_api.h b/test-suite/mtcp-server/mtcp/src/include/mtcp_api.h
+old mode 100644
+new mode 100755
+index 0a1ee40fddc..d36fa102954
+--- a/test-suite/mtcp-server/mtcp/src/include/mtcp_api.h
++++ b/test-suite/mtcp-server/mtcp/src/include/mtcp_api.h
+@@ -40,6 +40,11 @@ struct mtcp_conf
+ 	int tcp_timeout;
+ };
+ 
++struct mtcp_context
++{
++	int cpu;
++	void *mtcp_thr_ctx; // for CI
++};
+ typedef struct mtcp_context *mctx_t;
+ 
+ int 
+@@ -141,6 +146,13 @@ mtcp_write(mctx_t mctx, int sockid, const char *buf, size_t len);
+ int
+ mtcp_writev(mctx_t mctx, int sockid, const struct iovec *iov, int numIOV);
+ 
++/* For CI */
++/*----------------------------------------------------------------------------*/
++extern __thread mctx_t mtcp_ctx;
++
++void RunMainLoop(void *);
++/*----------------------------------------------------------------------------*/
++
+ #ifdef __cplusplus
+ };
+ #endif

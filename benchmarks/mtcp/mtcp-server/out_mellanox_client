@@ -1,0 +1,161 @@
+Only in mtcp/include: mtcp_api.h
+Only in mtcp/include: mtcp_epoll.h
+Only in ../mtcp-mellanox-client/mtcp/: out
+Only in mtcp/src: backup_core.c
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/core.c ../mtcp-mellanox-client/mtcp/src/core.c
+72d71
+< #ifndef CI
+74d72
+< #endif
+487d484
+< #ifndef CI
+489d485
+< #endif
+770,771c766,767
+< void 
+< RunMainLoop(void *context)
+---
+> static void 
+> RunMainLoop(struct mtcp_thread_context *ctx)
+773d768
+< 	struct mtcp_thread_context *ctx = (struct mtcp_thread_context *)context;
+783d777
+< 	//printf("RunMainLoop called for cpu %d, context %p\n", ctx->cpu, ctx);
+882,884c876
+< #ifdef CI
+<   else {
+< #endif
+---
+>   TRACE_INFO("cpu: %d, done: %d, exit: %d, flows: %d\n", ctx->cpu, ctx->done, ctx->exit, mtcp->flow_cnt);
+886,889c878,883
+< #if TESTING
+< 	DestroyRemainingFlows(mtcp);
+< #endif
+< 	TRACE_DBG("MTCP thread %d out of main loop.\n", ctx->cpu);
+---
+> #ifndef CI
+>   #if TESTING
+>     DestroyRemainingFlows(mtcp);
+>   #endif
+> 
+> 	TRACE_INFO("MTCP thread %d out of main loop.\n", ctx->cpu);
+895,897d888
+< 
+< #ifdef CI
+<   }
+899d889
+< 
+968d957
+< 	//TRACE_INFO("Enabled dpdk and disabled onvm. Max concurrency: %d, mem created for: %lu, %lu, %lu\n", CONFIG.max_concurrency, sizeof(tcp_stream), sizeof(struct tcp_recv_vars), sizeof(struct tcp_send_vars));
+1261a1251,1256
+> 	TRACE_DBG("CPU %d: initialization finished.\n", cpu);
+> 
+> 	fprintf(stderr, "CPU %d: initialization finished.\n", cpu);
+> 	
+> 	sem_post(&g_init_sem[ctx->cpu]);
+> 
+1263c1258
+< 	TRACE_INFO("CI-MTCP:- CPU %d: initialization finished.\n", cpu);
+---
+> 	printf("CI version of MTCP running.\n");
+1265c1260
+< 	TRACE_INFO("Orig-MTCP:- CPU %d: initialization finished.\n", cpu);
+---
+> 	printf("Original version of MTCP running.\n");
+1268,1270d1262
+< 	sem_post(&g_init_sem[ctx->cpu]);
+< 
+< 	mctx->mtcp_thr_ctx = ctx;
+1272c1264
+< 	RunMainLoop((void *)ctx);
+---
+> 	RunMainLoop(ctx);
+1285c1277
+< 	TRACE_INFO("Orig-MTCP thread %d finished.\n", ctx->cpu);
+---
+> 	TRACE_DBG("MTCP thread %d finished.\n", ctx->cpu);
+1286a1279
+> 	
+1289d1281
+< 
+1331d1322
+< 	mctx->mtcp_thr_ctx = NULL;
+1346,1347d1336
+<   TRACE_APP("Logger thread %d started in trace app.\n", cpu);
+<   fprintf(stderr, "Logger thread %d started.\n", cpu);
+1357a1347
+>   TRACE_DBG("Executing MTCP Original version, of creating separate parallel thread\n");
+1374c1364
+<       } else {
+---
+>       } else
+1376d1365
+<       }
+1386a1376
+>   TRACE_DBG("Executing MTCP CI version, of not creating separate thread\n");
+1482d1471
+<   fprintf(stderr, "Logger thread %d joined.\n", ctx->cpu);
+1636d1624
+< #if 1
+1644d1631
+< #endif
+1709d1695
+< #ifndef CI
+1726d1711
+< #endif
+Only in ../mtcp-mellanox-client/mtcp/src: .core.c.swp
+Only in mtcp/src: git_diff
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/io_module.c ../mtcp-mellanox-client/mtcp/src/io_module.c
+108,109c108
+< #ifdef MELLANOX
+<   // crazy hack for mellanox drivers of quads1 and quads2 - hardcoding the pci address
+---
+> #if 1
+113c112
+<   printf("Device name list in probe_all_rte_devices(): %s & pci address is %s\n", dev_name_list, argv[*argc-1]);
+---
+>   printf("Device name list in probe_all_rte_devices(): %s\n", dev_name_list);
+115c114
+< #else
+---
+> #endif
+166d164
+< #endif
+271a270
+>     uint16_t pi;
+329,334d327
+<     printf("After calling probe_all_rte_devices");
+<     int i=0;
+<     for(i=0; i<argc; i++) {
+<       printf("argv[%d]: %s\n", i, argv[i]);
+<     }
+< 
+356c349
+< #ifdef DEBUG
+---
+> #if 1
+369d361
+<     uint16_t pi;
+383c375
+< 			exit(EXIT_FAILURE);
+---
+> 			//exit(EXIT_FAILURE);
+387,389c379,380
+< #if 1
+< 		for (ret = 0; ret < num_devices; ret++) {
+<       printf("Found a valid port!!!\n");
+---
+> #if 0
+> 		for (ret = 0; ret < num_devices; ret++)
+391d381
+<     }
+393d382
+<     /* DPDK says RTE_ETH_FOREACH_DEV is a better implementation when the devices are not located sequentially */
+429a419
+>         printf("Trying to find device : %s\n", iter_if->ifa_name);
+654c644
+< 			exit(EXIT_FAILURE);
+---
+> 			//exit(EXIT_FAILURE);
+Only in ../mtcp-mellanox-client/mtcp/src: out
+Only in ../mtcp-mellanox-client/mtcp/: src_backup

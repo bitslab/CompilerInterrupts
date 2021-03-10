@@ -1,0 +1,777 @@
+Threshold multiplier for  Opt Int: 0.000000e+00
+******************** Clock Type: Instantaneous, Instrumentation Granularity : Optimized with Thread Local *********************
+Running with configuration:
+PI: 5000, CI: 1000, Allowed Dev: 100, Lib call cost: 0, Target Cycle: 5000
+Target Interval in IR 5000, in Cycles 5000, Commit Interval 1000
+No library file supplied
+Compiler Interrupt function: compiler_interrupt_handler
+Compiler Interrupt function: compiler_interrupt_handler
+List of Functions in Call Graph order:-
+Function: AffinitizeThreadToCore
+Function: CreateConnectionSocket
+Function: CreateServerSocket
+Function: GetHeaderLong
+Function: GetHeaderString
+Function: GetNumCPUCores
+Function: ParseOptions
+Function: PrintOptions
+Function: SignalHandler
+Function: compiler_interrupt_handler
+Function: find_http_header
+Function: http_check_header_field
+Function: http_get_http_version_resp
+Function: http_get_maxage
+Function: http_get_status_code
+Function: http_get_url
+Function: http_header_date
+Function: http_header_long_val
+Function: http_header_str_val
+Function: http_parse_first_resp_line
+Function: httpdate_to_timet
+Function: init_stats
+Function: is_http_request
+Function: is_http_response
+Function: main
+Function: mystrtol
+Function: print_usage
+Function: strlong_compare
+Function: timet_to_httpdate
+AffinitizeThreadToCore(): Transformed branch between if.end and cleanup in the forward direction
+Func cost 24 for AffinitizeThreadToCore has been optimized for entry cost!
+Storing cost of AffinitizeThreadToCore() : 24
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function AffinitizeThreadToCore
+
+Loops scheduled for transform for AffinitizeThreadToCore:- 
+
+CreateConnectionSocket(): Transformed branch between if.end and cleanup in the forward direction
+CreateConnectionSocket(): Transformed branch between if.end7 and cleanup_dummy in the forward direction
+CreateConnectionSocket(): Transformed branch between if.end12 and cleanup_dummy_dummy in the forward direction
+CreateConnectionSocket(): Transformed branch between if.end27 and cleanup_dummy_dummy_dummy in the forward direction
+CreateConnectionSocket(): Transformed branch between if.then31 and cleanup_dummy_dummy_dummy_dummy in the forward direction
+manageDanglingLCCs(inverted V shape): Removing cost 13 of entry
+manageDanglingLCCs(inverted V shape): Adding pred cost 13 of entry to successor if.then
+manageDanglingLCCs(inverted V shape): Adding pred cost 13 of entry to successor if.end
+manageDanglingLCCs(inverted V shape): Removing cost 20 of if.end
+manageDanglingLCCs(inverted V shape): Adding pred cost 20 of if.end to successor if.then5
+manageDanglingLCCs(inverted V shape): Adding pred cost 20 of if.end to successor if.end7
+manageDanglingLCCs(inverted V shape): Removing cost 23 of if.end7
+manageDanglingLCCs(inverted V shape): Adding pred cost 23 of if.end7 to successor if.then10
+manageDanglingLCCs(inverted V shape): Adding pred cost 23 of if.end7 to successor if.end12
+Pred cost for cleanup_dummy_dummy_dummy is 1
+Pred cost for if.then10 is 25
+manageDanglingLCCs(V shape): Removing cost 25 of predecessor if.then10 for merge node cleanup_dummy_dummy
+manageDanglingLCCs(V shape): Removing cost 1 of predecessor cleanup_dummy_dummy_dummy for merge node cleanup_dummy_dummy
+manageDanglingLCCs(V shape): Settting average cost 13 as initial cost for merge node cleanup_dummy_dummy
+Pred cost for cleanup_dummy_dummy is 14
+Pred cost for if.then5 is 22
+manageDanglingLCCs(V shape): Removing cost 22 of predecessor if.then5 for merge node cleanup_dummy
+manageDanglingLCCs(V shape): Removing cost 14 of predecessor cleanup_dummy_dummy for merge node cleanup_dummy
+manageDanglingLCCs(V shape): Settting average cost 18 as initial cost for merge node cleanup_dummy
+Pred cost for cleanup_dummy is 19
+Pred cost for if.then is 18
+manageDanglingLCCs(V shape): Removing cost 18 of predecessor if.then for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 19 of predecessor cleanup_dummy for merge node cleanup
+manageDanglingLCCs(V shape): Settting average cost 18 as initial cost for merge node cleanup
+Func cost 22 for CreateConnectionSocket has been optimized for exit cost!
+Storing cost of CreateConnectionSocket() : 22
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function CreateConnectionSocket
+
+Loops scheduled for transform for CreateConnectionSocket:- 
+
+CreateServerSocket(): Transformed branch between if.end and cleanup in the forward direction
+CreateServerSocket(): Transformed branch between if.end9 and cleanup_dummy in the forward direction
+CreateServerSocket(): Transformed branch between if.end14 and cleanup_dummy_dummy in the forward direction
+CreateServerSocket(): Transformed branch between if.end47 and cleanup_dummy_dummy_dummy in the forward direction
+CreateServerSocket(): Transformed branch between if.end58 and cleanup_dummy_dummy_dummy_dummy in the forward direction
+manageDanglingLCCs(inverted V shape): Removing cost 13 of entry
+manageDanglingLCCs(inverted V shape): Adding pred cost 13 of entry to successor if.then
+manageDanglingLCCs(inverted V shape): Adding pred cost 13 of entry to successor if.end
+manageDanglingLCCs(inverted V shape): Removing cost 20 of if.end
+manageDanglingLCCs(inverted V shape): Adding pred cost 20 of if.end to successor if.then7
+manageDanglingLCCs(inverted V shape): Adding pred cost 20 of if.end to successor if.end9
+manageDanglingLCCs(inverted V shape): Removing cost 23 of if.end9
+manageDanglingLCCs(inverted V shape): Adding pred cost 23 of if.end9 to successor if.then12
+manageDanglingLCCs(inverted V shape): Adding pred cost 23 of if.end9 to successor if.end14
+Pred cost for cleanup_dummy_dummy_dummy is 1
+Pred cost for if.then12 is 25
+manageDanglingLCCs(V shape): Removing cost 25 of predecessor if.then12 for merge node cleanup_dummy_dummy
+manageDanglingLCCs(V shape): Removing cost 1 of predecessor cleanup_dummy_dummy_dummy for merge node cleanup_dummy_dummy
+manageDanglingLCCs(V shape): Settting average cost 13 as initial cost for merge node cleanup_dummy_dummy
+Pred cost for cleanup_dummy_dummy is 14
+Pred cost for if.then7 is 22
+manageDanglingLCCs(V shape): Removing cost 22 of predecessor if.then7 for merge node cleanup_dummy
+manageDanglingLCCs(V shape): Removing cost 14 of predecessor cleanup_dummy_dummy for merge node cleanup_dummy
+manageDanglingLCCs(V shape): Settting average cost 18 as initial cost for merge node cleanup_dummy
+Pred cost for cleanup_dummy is 19
+Pred cost for if.then is 19
+manageDanglingLCCs(V shape): Removing cost 19 of predecessor if.then for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 19 of predecessor cleanup_dummy for merge node cleanup
+manageDanglingLCCs(V shape): Settting average cost 19 as initial cost for merge node cleanup
+Func cost 23 for CreateServerSocket has been optimized for exit cost!
+Storing cost of CreateServerSocket() : 23
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function CreateServerSocket
+
+Loops scheduled for transform for CreateServerSocket:- 
+
+GetHeaderLong(): Transformed branch between if.then.i and cleanup in the forward direction
+GetHeaderLong(): Transformed branch between if.then and cleanup_dummy in the forward direction
+WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.
+#branches: 3, #successors: 2
+Succs are:- if.then6 (6)
+Succs are:- cleanup_dummy_dummy (7)
+manageDanglingLCCs(inverted V shape): Removing cost 6 of land.rhs.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 6 of land.rhs.i to successor while.body.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 6 of land.rhs.i to successor if.then
+Pred cost for if.then6 is 2
+Pred cost for cleanup_dummy_dummy is 1
+Pred cost for cleanup_dummy is 1
+Func cost 3 for GetHeaderLong has been optimized for entry cost!
+Func cost 1 for GetHeaderLong has been optimized for exit cost!
+Storing cost of GetHeaderLong() : 4
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function GetHeaderLong
+
+Loops scheduled for transform for GetHeaderLong:- 
+
+GetHeaderString(): Transformed branch between if.then and cleanup in the forward direction
+Pred cost for cleanup_dummy is 1
+Func cost 3 for GetHeaderString has been optimized for entry cost!
+Func cost 1 for GetHeaderString has been optimized for exit cost!
+Storing cost of GetHeaderString() : 4
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function GetHeaderString
+
+Loops scheduled for transform for GetHeaderString:- 
+
+Func cost 3 for GetNumCPUCores has been optimized for entry cost!
+Storing cost of GetNumCPUCores() : 3
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function GetNumCPUCores
+
+Loops scheduled for transform for GetNumCPUCores:- 
+
+Skipping unreachable block if.then10
+Skipping unreachable block if.then24
+manageDanglingLCCs(inverted V shape): Removing cost 3 of for.cond1.preheader
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of for.cond1.preheader to successor for.body2.lr.ph
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of for.cond1.preheader to successor if.then24.loopexit81.split.loop.exit
+manageDanglingLCCs(inverted V shape): Removing cost 4 of for.cond1
+manageDanglingLCCs(inverted V shape): Adding pred cost 4 of for.cond1 to successor for.body2
+manageDanglingLCCs(inverted V shape): Adding pred cost 4 of for.cond1 to successor if.then24.loopexit
+Func cost 2 for ParseOptions has been optimized for entry cost!
+Storing cost of ParseOptions() : 2
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function ParseOptions
+
+Loops scheduled for transform for ParseOptions:- 
+
+PrintOptions(): Transformed branch between for.body.lr.ph and for.end in the forward direction
+PrintOptions(): Checking if simple for Loop Loop at depth 1 containing: %for.body.us<header><latch><exiting>
+. Latch: for.body.us, Exiting block: for.body.us
+PrintOptions(): Checking if simple for Loop Loop at depth 1 containing: %for.body<header><latch><exiting>
+. Latch: for.body, Exiting block: for.body
+Pred cost for for.end_dummy is 1
+Func cost 7 for PrintOptions has been optimized for entry cost!
+Func cost 1 for PrintOptions has been optimized for exit cost!
+Storing cost of PrintOptions() : 8
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function PrintOptions
+
+Loops scheduled for transform for PrintOptions:- 
+
+
+PrintOptions(): Self loop Loop at depth 1 containing: %for.body.us<header><latch><exiting>
+
+
+This selfloop has fixed cost & is not scheduled for instrumentation in the body --> for.body.us
+
+PrintOptions(): Transformed Self loop Loop at depth 1 containing: %for.body.us<header><latch><exiting>
+
+
+PrintOptions(): Self loop Loop at depth 1 containing: %for.body<header><latch><exiting>
+
+
+This selfloop has fixed cost & is not scheduled for instrumentation in the body --> for.body
+
+PrintOptions(): Transformed Self loop Loop at depth 1 containing: %for.body<header><latch><exiting>
+
+Skipping unreachable block entry
+Func cost 5 for SignalHandler has been optimized for entry cost!
+Storing cost of SignalHandler() : 5
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function SignalHandler
+
+Loops scheduled for transform for SignalHandler:- 
+
+Pred cost for if.then25 is 6
+Pred cost for while.end is 2
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor while.end for merge node if.end28
+manageDanglingLCCs(V shape): Removing cost 6 of predecessor if.then25 for merge node if.end28
+manageDanglingLCCs(V shape): Settting average cost 4 as initial cost for merge node if.end28
+Func cost 7 for find_http_header has been optimized for entry cost!
+Func cost 5 for find_http_header has been optimized for exit cost!
+Storing cost of find_http_header() : 12
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function find_http_header
+
+Loops scheduled for transform for find_http_header:- 
+
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.rhs.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i to successor if.end.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i to successor while.body7.i
+Func cost 6 for http_check_header_field has been optimized for entry cost!
+Func cost 3 for http_check_header_field has been optimized for exit cost!
+Storing cost of http_check_header_field() : 9
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_check_header_field
+
+Loops scheduled for transform for http_check_header_field:- 
+
+http_get_http_version_resp(): Transformed branch between if.end and cleanup in the forward direction
+Pred cost for cleanup_dummy is 1
+Func cost 2 for http_get_http_version_resp has been optimized for entry cost!
+Func cost 2 for http_get_http_version_resp has been optimized for exit cost!
+Storing cost of http_get_http_version_resp() : 4
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_get_http_version_resp
+
+Loops scheduled for transform for http_get_http_version_resp:- 
+
+http_get_maxage(): Transformed branch between if.then2 and return in the forward direction
+http_get_maxage(): Transformed branch between if.end11 and return in the forward direction
+http_get_maxage(): Transformed branch between nre_strcasestr.exit55 and return_dummy1 in the forward direction
+http_get_maxage(): Transformed branch between if.then14 and return_dummy1_dummy in the forward direction
+WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.
+#branches: 3, #successors: 2
+Succs are:- return_dummy (17)
+Succs are:- if.end10 (7)
+WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.
+#branches: 3, #successors: 2
+Succs are:- if.end26 (16)
+Succs are:- return_dummy1_dummy_dummy (18)
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.rhs.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i to successor while.body7.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i to successor if.end.i
+manageDanglingLCCs(inverted V shape): Removing cost 6 of if.end.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 6 of if.end.i to successor if.end.i.while.cond.i_crit_edge
+manageDanglingLCCs(inverted V shape): Adding pred cost 6 of if.end.i to successor if.then2
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.rhs.i47
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i47 to successor while.body7.i50
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i47 to successor if.end.i53
+manageDanglingLCCs(inverted V shape): Removing cost 6 of if.end.i53
+manageDanglingLCCs(inverted V shape): Adding pred cost 6 of if.end.i53 to successor if.end.i53.while.cond.i42_crit_edge
+manageDanglingLCCs(inverted V shape): Adding pred cost 6 of if.end.i53 to successor nre_strcasestr.exit55
+Pred cost for return_dummy1_dummy_dummy is 1
+Pred cost for return_dummy1_dummy is 1
+Pred cost for return_dummy1 is 1
+Pred cost for return_dummy is 1
+Func cost 3 for http_get_maxage has been optimized for entry cost!
+Func cost 1 for http_get_maxage has been optimized for exit cost!
+Storing cost of http_get_maxage() : 4
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_get_maxage
+
+Loops scheduled for transform for http_get_maxage:- 
+
+WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.
+#branches: 3, #successors: 2
+Succs are:- if.end (5)
+Succs are:- cleanup (6)
+Pred cost for if.end is 2
+Func cost 1 for http_get_status_code has been optimized for entry cost!
+Func cost 1 for http_get_status_code has been optimized for exit cost!
+Storing cost of http_get_status_code() : 2
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_get_status_code
+
+Loops scheduled for transform for http_get_status_code:- 
+
+http_get_url(): Checking if simple for Loop Loop at depth 1 containing: %while.cond<header><exiting>,%while.body<latch>
+. Latch: while.body, Exiting block: while.cond
+Pred cost for while.end19 is 3
+Func cost 3 for http_get_url has been optimized for entry cost!
+Header-colocated-exit loop will be transformed, & body cost is 6 for loop Loop at depth 1 containing: %while.cond<header><exiting>,%while.body<latch>
+
+Func cost 2 for http_get_url has been optimized for exit cost!
+Storing cost of http_get_url() : 5
+
+Instrumenting loops (self loop count: 0, sese loop count: 1) for function http_get_url
+
+Loops scheduled for transform for http_get_url:- 
+Sese Loop: Loop at depth 1 containing: %while.cond<header><exiting>,%while.body<latch>
+
+
+
+http_get_url(): Max depth loop Loop at depth 1 containing: %while.cond<header><exiting>,%while.body<latch>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> while.cond( http_get_url() )
+
+http_get_url(): Transformed loop Loop at depth 1 containing: %while.cond<header><exiting>,%while.body<latch>
+
+http_header_date(): Checking if simple for Loop Loop at depth 1 containing: %while.cond.i<header><exiting>,%while.body.i<latch>
+. Latch: while.body.i, Exiting block: while.cond.i
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.rhs.i.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i.i to successor while.body7.i.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i.i to successor if.end.i.i
+manageDanglingLCCs(inverted V shape): Removing cost 2 of land.rhs29.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 2 of land.rhs29.i to successor while.end35.i.thread
+manageDanglingLCCs(inverted V shape): Adding pred cost 2 of land.rhs29.i to successor while.body33.i
+Pred cost for if.end is 2
+Pred cost for if.then40.i is 2
+Pred cost for if.then17.i is 2
+Pred cost for if.then.i is 2
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then.i for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then17.i for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then40.i for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.end for merge node cleanup
+manageDanglingLCCs(V shape): Settting average cost 2 as initial cost for merge node cleanup
+Func cost 9 for http_header_date has been optimized for entry cost!
+Func cost 4 for http_header_date has been optimized for exit cost!
+Storing cost of http_header_date() : 13
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_header_date
+
+Loops scheduled for transform for http_header_date:- 
+
+http_header_long_val(): Transformed branch between if.end and cleanup in the forward direction
+http_header_long_val(): Checking if simple for Loop Loop at depth 1 containing: %while.cond.i<header><exiting>,%while.body.i<latch>
+. Latch: while.body.i, Exiting block: while.cond.i
+WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.
+#branches: 3, #successors: 2
+Succs are:- if.end7 (19)
+Succs are:- cleanup_dummy (20)
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.rhs.i.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i.i to successor while.body7.i.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i.i to successor if.end.i.i
+manageDanglingLCCs(inverted V shape): Removing cost 2 of land.rhs29.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 2 of land.rhs29.i to successor while.end35.i.thread
+manageDanglingLCCs(inverted V shape): Adding pred cost 2 of land.rhs29.i to successor while.body33.i
+Pred cost for cleanup_dummy is 1
+Pred cost for if.then40.i is 2
+Pred cost for if.then17.i is 2
+Pred cost for if.then.i is 2
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then.i for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then17.i for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then40.i for merge node cleanup
+manageDanglingLCCs(V shape): Removing cost 1 of predecessor cleanup_dummy for merge node cleanup
+manageDanglingLCCs(V shape): Settting average cost 1 as initial cost for merge node cleanup
+Func cost 9 for http_header_long_val has been optimized for entry cost!
+Func cost 3 for http_header_long_val has been optimized for exit cost!
+Storing cost of http_header_long_val() : 12
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_header_long_val
+
+Loops scheduled for transform for http_header_long_val:- 
+
+http_header_str_val(): Checking if simple for Loop Loop at depth 1 containing: %while.cond<header><exiting>,%while.body<latch>
+. Latch: while.body, Exiting block: while.cond
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.rhs.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i to successor while.body7.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.rhs.i to successor if.end.i
+Pred cost for cleanup.sink.split is 2
+Func cost 6 for http_header_str_val has been optimized for entry cost!
+Func cost 1 for http_header_str_val has been optimized for exit cost!
+Storing cost of http_header_str_val() : 7
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_header_str_val
+
+Loops scheduled for transform for http_header_str_val:- 
+
+http_parse_first_resp_line(): Transformed branch between if.end9 and cleanup in the forward direction
+WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.
+#branches: 3, #successors: 2
+Succs are:- if.end19 (4)
+Succs are:- cleanup_dummy (5)
+Pred cost for cleanup_dummy is 1
+Func cost 3 for http_parse_first_resp_line has been optimized for entry cost!
+Func cost 1 for http_parse_first_resp_line has been optimized for exit cost!
+Storing cost of http_parse_first_resp_line() : 4
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function http_parse_first_resp_line
+
+Loops scheduled for transform for http_parse_first_resp_line:- 
+
+httpdate_to_timet(): Transformed branch between if.end.i360 and if.end23.i in the forward direction
+httpdate_to_timet(): Transformed branch between land.lhs.true.i and tm_to_time.exit in the forward direction
+httpdate_to_timet(): Transformed branch between cond.true.i.i and tm_to_time.exit_dummy in the forward direction
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.cond<header><exiting>,%for.inc<latch>
+. Latch: for.inc, Exiting block: for.cond
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i<header>,%if.then.i.i,%for.inc.i.i<latch><exiting>
+. Latch: for.inc.i.i, Exiting block: for.inc.i.i
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i191<header>,%if.then.i.i195,%for.inc.i.i198<latch><exiting>
+. Latch: for.inc.i.i198, Exiting block: for.inc.i.i198
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i211<header>,%if.then.i.i215,%for.inc.i.i218<latch><exiting>
+. Latch: for.inc.i.i218, Exiting block: for.inc.i.i218
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i231<header>,%if.then.i.i235,%for.inc.i.i238<latch><exiting>
+. Latch: for.inc.i.i238, Exiting block: for.inc.i.i238
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i251<header>,%if.then.i.i255,%for.inc.i.i258<latch><exiting>
+. Latch: for.inc.i.i258, Exiting block: for.inc.i.i258
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i270<header>,%if.then.i.i274,%for.inc.i.i277<latch><exiting>
+. Latch: for.inc.i.i277, Exiting block: for.inc.i.i277
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i290<header>,%if.then.i.i294,%for.inc.i.i297<latch><exiting>
+. Latch: for.inc.i.i297, Exiting block: for.inc.i.i297
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i310<header>,%if.then.i.i314,%for.inc.i.i317<latch><exiting>
+. Latch: for.inc.i.i317, Exiting block: for.inc.i.i317
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i330<header>,%if.then.i.i334,%for.inc.i.i337<latch><exiting>
+. Latch: for.inc.i.i337, Exiting block: for.inc.i.i337
+httpdate_to_timet(): Checking if simple for Loop Loop at depth 1 containing: %for.body.i.i350<header>,%if.then.i.i354,%for.inc.i.i357<latch><exiting>
+. Latch: for.inc.i.i357, Exiting block: for.inc.i.i357
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i376
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i376 to successor if.then.i378
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i376 to successor if.else.i380
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i398
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i398 to successor if.then.i400
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i398 to successor if.else.i402
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i421
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i421 to successor if.then.i423
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i421 to successor if.else.i425
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i444
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i444 to successor if.then.i446
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i444 to successor if.else.i448
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i467
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i467 to successor if.then.i469
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i467 to successor if.else.i471
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i490
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i490 to successor if.then.i492
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i490 to successor if.else.i494
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i513
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i513 to successor if.then.i515
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i513 to successor if.else.i517
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i536
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i536 to successor if.then.i538
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i536 to successor if.else.i540
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i559
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i559 to successor if.then.i561
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i559 to successor if.else.i563
+manageDanglingLCCs(inverted V shape): Removing cost 8 of for.cond.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i to successor if.then.i367
+manageDanglingLCCs(inverted V shape): Adding pred cost 8 of for.cond.i to successor if.else.i
+manageDanglingLCCs(inverted V shape): Removing cost 3 of land.lhs.true.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.lhs.true.i to successor is_leap.exit.thread71.i
+manageDanglingLCCs(inverted V shape): Adding pred cost 3 of land.lhs.true.i to successor cond.true.i.i
+Pred cost for if.then3.i382 is 2
+Pred cost for if.then.i378 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i378 for merge node if.end9.i388
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i382 for merge node if.end9.i388
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i388
+Pred cost for if.then3.i404 is 2
+Pred cost for if.then.i400 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i400 for merge node if.end9.i410
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i404 for merge node if.end9.i410
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i410
+Pred cost for if.then3.i427 is 2
+Pred cost for if.then.i423 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i423 for merge node if.end9.i433
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i427 for merge node if.end9.i433
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i433
+Pred cost for if.then3.i450 is 2
+Pred cost for if.then.i446 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i446 for merge node if.end9.i456
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i450 for merge node if.end9.i456
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i456
+Pred cost for if.then3.i473 is 2
+Pred cost for if.then.i469 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i469 for merge node if.end9.i479
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i473 for merge node if.end9.i479
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i479
+Pred cost for if.then3.i496 is 2
+Pred cost for if.then.i492 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i492 for merge node if.end9.i502
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i496 for merge node if.end9.i502
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i502
+Pred cost for if.then3.i519 is 2
+Pred cost for if.then.i515 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i515 for merge node if.end9.i525
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i519 for merge node if.end9.i525
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i525
+Pred cost for if.then3.i542 is 2
+Pred cost for if.then.i538 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i538 for merge node if.end9.i548
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i542 for merge node if.end9.i548
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i548
+Pred cost for if.then3.i565 is 2
+Pred cost for if.then.i561 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i561 for merge node if.end9.i571
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i565 for merge node if.end9.i571
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i571
+Pred cost for if.then3.i is 2
+Pred cost for if.then.i367 is 10
+manageDanglingLCCs(V shape): Removing cost 10 of predecessor if.then.i367 for merge node if.end9.i
+manageDanglingLCCs(V shape): Removing cost 2 of predecessor if.then3.i for merge node if.end9.i
+manageDanglingLCCs(V shape): Settting average cost 6 as initial cost for merge node if.end9.i
+Pred cost for is_leap.exit.thread.i is 1
+Pred cost for tm_to_time.exit_dummy_dummy is 1
+Pred cost for is_leap.exit.thread71.i is 5
+manageDanglingLCCs(V shape): Removing cost 5 of predecessor is_leap.exit.thread71.i for merge node tm_to_time.exit_dummy
+manageDanglingLCCs(V shape): Removing cost 1 of predecessor tm_to_time.exit_dummy_dummy for merge node tm_to_time.exit_dummy
+manageDanglingLCCs(V shape): Settting average cost 3 as initial cost for merge node tm_to_time.exit_dummy
+Pred cost for tm_to_time.exit is 13
+Header-colocated-exit loop will be transformed, & body cost is 6 for loop Loop at depth 1 containing: %for.cond<header><exiting>,%for.inc<latch>
+
+Func cost 27 for httpdate_to_timet has been optimized for entry cost!
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i<header>,%if.then.i.i,%for.inc.i.i<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i191<header>,%if.then.i.i195,%for.inc.i.i198<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i211<header>,%if.then.i.i215,%for.inc.i.i218<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i231<header>,%if.then.i.i235,%for.inc.i.i238<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i251<header>,%if.then.i.i255,%for.inc.i.i258<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i270<header>,%if.then.i.i274,%for.inc.i.i277<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i290<header>,%if.then.i.i294,%for.inc.i.i297<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i310<header>,%if.then.i.i314,%for.inc.i.i317<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i330<header>,%if.then.i.i334,%for.inc.i.i337<latch><exiting>
+
+Instrumenting loop with body cost: 14
+Non-header-colocated-exit loop will be transformed, & body cost is 14 for loop Loop at depth 1 containing: %for.body.i.i350<header>,%if.then.i.i354,%for.inc.i.i357<latch><exiting>
+
+Func cost 8 for httpdate_to_timet has been optimized for exit cost!
+Storing cost of httpdate_to_timet() : 35
+
+Instrumenting loops (self loop count: 0, sese loop count: 11) for function httpdate_to_timet
+
+Loops scheduled for transform for httpdate_to_timet:- 
+Sese Loop: Loop at depth 1 containing: %for.body.i.i<header>,%if.then.i.i,%for.inc.i.i<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i191<header>,%if.then.i.i195,%for.inc.i.i198<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i211<header>,%if.then.i.i215,%for.inc.i.i218<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i231<header>,%if.then.i.i235,%for.inc.i.i238<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i270<header>,%if.then.i.i274,%for.inc.i.i277<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i251<header>,%if.then.i.i255,%for.inc.i.i258<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i310<header>,%if.then.i.i314,%for.inc.i.i317<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i290<header>,%if.then.i.i294,%for.inc.i.i297<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i350<header>,%if.then.i.i354,%for.inc.i.i357<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.body.i.i330<header>,%if.then.i.i334,%for.inc.i.i337<latch><exiting>
+
+Sese Loop: Loop at depth 1 containing: %for.cond<header><exiting>,%for.inc<latch>
+
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.cond<header><exiting>,%for.inc<latch>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.cond( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.cond<header><exiting>,%for.inc<latch>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i330<header>,%if.then.i.i334,%for.inc.i.i337<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i330( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i330<header>,%if.then.i.i334,%for.inc.i.i337<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i350<header>,%if.then.i.i354,%for.inc.i.i357<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i350( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i350<header>,%if.then.i.i354,%for.inc.i.i357<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i290<header>,%if.then.i.i294,%for.inc.i.i297<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i290( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i290<header>,%if.then.i.i294,%for.inc.i.i297<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i310<header>,%if.then.i.i314,%for.inc.i.i317<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i310( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i310<header>,%if.then.i.i314,%for.inc.i.i317<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i251<header>,%if.then.i.i255,%for.inc.i.i258<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i251( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i251<header>,%if.then.i.i255,%for.inc.i.i258<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i270<header>,%if.then.i.i274,%for.inc.i.i277<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i270( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i270<header>,%if.then.i.i274,%for.inc.i.i277<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i231<header>,%if.then.i.i235,%for.inc.i.i238<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i231( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i231<header>,%if.then.i.i235,%for.inc.i.i238<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i211<header>,%if.then.i.i215,%for.inc.i.i218<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i211( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i211<header>,%if.then.i.i215,%for.inc.i.i218<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i191<header>,%if.then.i.i195,%for.inc.i.i198<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i191( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i191<header>,%if.then.i.i195,%for.inc.i.i198<latch><exiting>
+
+
+httpdate_to_timet(): Max depth loop Loop at depth 1 containing: %for.body.i.i<header>,%if.then.i.i,%for.inc.i.i<latch><exiting>
+
+
+This seseloop will not be transformed since it has no canonical induction variable --> for.body.i.i( httpdate_to_timet() )
+
+httpdate_to_timet(): Transformed loop Loop at depth 1 containing: %for.body.i.i<header>,%if.then.i.i,%for.inc.i.i<latch><exiting>
+
+Func cost 3 for init_stats has been optimized for entry cost!
+Storing cost of init_stats() : 3
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function init_stats
+
+Loops scheduled for transform for init_stats:- 
+
+Pred cost for if.end9 is 1
+Func cost 2 for is_http_request has been optimized for entry cost!
+Func cost 1 for is_http_request has been optimized for exit cost!
+Storing cost of is_http_request() : 3
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function is_http_request
+
+Loops scheduled for transform for is_http_request:- 
+
+Func cost 5 for is_http_response has been optimized for entry cost!
+Storing cost of is_http_response() : 5
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function is_http_response
+
+Loops scheduled for transform for is_http_response:- 
+
+main(): Transformed branch between if.end5 and if.end63 in the forward direction
+main(): Transformed branch between if.end28 and if.end63 in the forward direction
+main(): Transformed branch between if.then149 and cleanup308 in the forward direction
+main(): Transformed branch between if.else256 and for.inc285 in the forward direction
+main(): Transformed branch between if.then262 and for.inc285_dummy in the forward direction
+main(): Transformed branch between if.else273 and for.inc285_dummy_dummy in the forward direction
+Skipping unreachable block if.else238
+main(): Checking if simple for Loop Loop at depth 1 containing: %while.cond209<header><latch><exiting>
+. Latch: while.cond209, Exiting block: while.cond209
+main(): Checking if simple for Loop Loop at depth 2 containing: %while.cond221<header><latch><exiting>
+. Latch: while.cond221, Exiting block: while.cond221
+manageDanglingLCCs(inverted V shape): Removing cost 48 of entry
+manageDanglingLCCs(inverted V shape): Adding pred cost 48 of entry to successor if.then
+manageDanglingLCCs(inverted V shape): Adding pred cost 48 of entry to successor if.end
+manageDanglingLCCs(inverted V shape): Removing cost 53 of if.end
+manageDanglingLCCs(inverted V shape): Adding pred cost 53 of if.end to successor if.else19
+manageDanglingLCCs(inverted V shape): Adding pred cost 53 of if.end to successor if.then2
+manageDanglingLCCs(inverted V shape): Removing cost 56 of if.else19
+manageDanglingLCCs(inverted V shape): Adding pred cost 56 of if.else19 to successor if.end59
+manageDanglingLCCs(inverted V shape): Adding pred cost 56 of if.else19 to successor if.then24
+manageDanglingLCCs(inverted V shape): Removing cost 21 of if.end63
+manageDanglingLCCs(inverted V shape): Adding pred cost 21 of if.end63 to successor if.then70
+manageDanglingLCCs(inverted V shape): Adding pred cost 21 of if.end63 to successor if.end72
+manageDanglingLCCs(inverted V shape): Removing cost 5 of if.end113
+manageDanglingLCCs(inverted V shape): Adding pred cost 5 of if.end113 to successor if.then118
+manageDanglingLCCs(inverted V shape): Adding pred cost 5 of if.end113 to successor if.end120
+manageDanglingLCCs(inverted V shape): Removing cost 9 of if.end120
+manageDanglingLCCs(inverted V shape): Adding pred cost 9 of if.end120 to successor if.then124
+manageDanglingLCCs(inverted V shape): Adding pred cost 9 of if.end120 to successor if.end126
+Self loop:- #backedges: 0, body cost: 8, preheader cost: 10
+Self loop will be transformed, & body cost is 8 for loop Loop at depth 1 containing: %while.cond209<header><latch><exiting>
+
+Self loop:- #backedges: 0, body cost: 10, preheader cost: 1
+Self loop will be transformed, & body cost is 10 for loop Loop at depth 2 containing: %while.cond221<header><latch><exiting>
+
+
+Instrumenting loops (self loop count: 2, sese loop count: 0) for function main
+
+Loops scheduled for transform for main:- 
+Self Loop: Loop at depth 2 containing: %while.cond221<header><latch><exiting>
+
+Self Loop: Loop at depth 1 containing: %while.cond209<header><latch><exiting>
+
+
+
+main(): Self loop Loop at depth 2 containing: %while.cond221<header><latch><exiting>
+
+
+This selfloop will not be transformed since it has no canonical induction variable --> while.cond221( main() )
+
+main(): Transformed Self loop Loop at depth 2 containing: %while.cond221<header><latch><exiting>
+
+
+main(): Self loop Loop at depth 1 containing: %while.cond209<header><latch><exiting>
+
+
+This selfloop will not be transformed since it has no canonical induction variable --> while.cond209( main() )
+
+main(): Transformed Self loop Loop at depth 1 containing: %while.cond209<header><latch><exiting>
+
+Skipping unreachable block if.then
+Skipping unreachable block if.then19
+Func cost 17 for mystrtol has been optimized for entry cost!
+Storing cost of mystrtol() : 17
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function mystrtol
+
+Loops scheduled for transform for mystrtol:- 
+
+Func cost 7 for print_usage has been optimized for entry cost!
+Storing cost of print_usage() : 7
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function print_usage
+
+Loops scheduled for transform for print_usage:- 
+
+Func cost 6 for strlong_compare has been optimized for entry cost!
+Storing cost of strlong_compare() : 6
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function strlong_compare
+
+Loops scheduled for transform for strlong_compare:- 
+
+Func cost 26 for timet_to_httpdate has been optimized for entry cost!
+Storing cost of timet_to_httpdate() : 26
+
+Instrumenting loops (self loop count: 0, sese loop count: 0) for function timet_to_httpdate
+
+Loops scheduled for transform for timet_to_httpdate:- 
+
+Total functions: 29, uninstrumented functions: 8
+Optimized 42 function costs!!

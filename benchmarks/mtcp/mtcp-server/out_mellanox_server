@@ -1,0 +1,198 @@
+Only in ../mtcp-mellanox-server/mtcp/: out
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/api.c ../mtcp-mellanox-server/mtcp/src/api.c
+616a617
+> 	  TRACE_APP("Allocated socket %d, stream: %d.\n", accepted->socket->id, accepted->id);
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/core.c ../mtcp-mellanox-server/mtcp/src/core.c
+65d64
+< #define MBPS(bytes) (bytes * 8.0 / (1000 * 1000))
+72d70
+< #ifndef CI
+74d71
+< #endif
+89a87
+> //#ifndef CI
+90a89
+> //#endif
+98a98
+> //#ifndef CI
+139a140,142
+> #ifdef CI
+>   //mtcp_sig_handler();
+> #endif
+141a145
+>     printf("Calling app handler\n");
+208,209c212,213
+< 					"RX: %7ld(pps) (err: %5ld), %5.2lf(Mbps), "
+< 					"TX: %7ld(pps), %5.2lf(Mbps)\n", 
+---
+> 					"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
+> 					"TX: %7ld(pps), %5.2lf(Gbps)\n", 
+211,212c215,216
+< 					ns->rx_packets[i], ns->rx_errors[i], MBPS(ns->rx_bytes[i]), 
+< 				ns->tx_packets[i], MBPS(ns->tx_bytes[i]));
+---
+> 					ns->rx_packets[i], ns->rx_errors[i], GBPS(ns->rx_bytes[i]), 
+> 				ns->tx_packets[i], GBPS(ns->tx_bytes[i]));
+317,318c321,322
+< 					"RX: %7ld(pps) (err: %5ld), %5.2lf(Mbps), "
+< 					"TX: %7ld(pps), %5.2lf(Mbps)\n", CONFIG.eths[i].dev_name, 
+---
+> 					"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
+> 					"TX: %7ld(pps), %5.2lf(Gbps)\n", CONFIG.eths[i].dev_name, 
+320,321c324,325
+< 					MBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
+< 					MBPS(g_nstat.tx_bytes[i]));
+---
+> 					GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
+> 					GBPS(g_nstat.tx_bytes[i]));
+487d490
+< #ifndef CI
+489d491
+< #endif
+773c775
+< 	struct mtcp_thread_context *ctx = (struct mtcp_thread_context *)context;
+---
+>   struct mtcp_thread_context *ctx = (struct mtcp_thread_context *)context;
+783c785
+< 	//printf("RunMainLoop called for cpu %d, context %p\n", ctx->cpu, ctx);
+---
+>   //printf("RunMainLoop called for cpu %d, context %p\n", ctx->cpu, ctx);
+882,888c884,887
+< #ifdef CI
+<   else {
+< #endif
+< 
+< #if TESTING
+< 	DestroyRemainingFlows(mtcp);
+< #endif
+---
+> #ifndef CI
+>   #if TESTING
+>     DestroyRemainingFlows(mtcp);
+>   #endif
+895,897d893
+< 
+< #ifdef CI
+<   }
+899d894
+< 
+968d962
+< 	//TRACE_INFO("Enabled dpdk and disabled onvm. Max concurrency: %d, mem created for: %lu, %lu, %lu\n", CONFIG.max_concurrency, sizeof(tcp_stream), sizeof(struct tcp_recv_vars), sizeof(struct tcp_send_vars));
+1261a1256,1261
+> 	TRACE_DBG("CPU %d: initialization finished.\n", cpu);
+> 
+> 	fprintf(stderr, "CPU %d: initialization finished.\n", cpu);
+> 	
+> 	sem_post(&g_init_sem[ctx->cpu]);
+> 
+1263c1263
+< 	TRACE_INFO("CI-MTCP:- CPU %d: initialization finished.\n", cpu);
+---
+> 	printf("CI version of MTCP running.\n");
+1265c1265
+< 	TRACE_INFO("Orig-MTCP:- CPU %d: initialization finished.\n", cpu);
+---
+> 	printf("Original version of MTCP running.\n");
+1268,1270c1268,1269
+< 	sem_post(&g_init_sem[ctx->cpu]);
+< 
+< 	mctx->mtcp_thr_ctx = ctx;
+---
+>   // For CI
+>   mctx->mtcp_thr_ctx = ctx;
+1285c1284
+< 	TRACE_INFO("Orig-MTCP thread %d finished.\n", ctx->cpu);
+---
+> 	TRACE_DBG("MTCP thread %d finished.\n", ctx->cpu);
+1289a1289,1315
+> #ifdef CI
+> void mtcp_sig_handler() {
+>   struct mtcp_thread_context *mctx = mtcp_ctx->mtcp_thr_ctx;
+>   int cpu = mtcp_ctx->cpu;
+>   printf("mtcp_sig_handler for CI is called\n");
+> 	mtcp_manager_t mtcp = mctx->mtcp_manager;
+> 	TRACE_DBG("MTCP thread %d out of main loop.\n", cpu);
+> 	/* flush logs */
+> 	flush_log_data(mtcp);
+> 	TRACE_DBG("MTCP thread %d flushed logs.\n", cpu);
+> 	InterruptApplication(mtcp);
+> 	TRACE_INFO("MTCP thread %d finished.\n", cpu);
+> 
+> 	struct mtcp_context m;
+> 	m.cpu = cpu;
+> 	mtcp_free_context(&m);
+> 	/* destroy hash tables */
+> 	DestroyHashtable(g_mtcp[cpu]->tcp_flow_table);
+> #if USE_CCP
+> 	DestroyHashtable(g_mtcp[cpu]->tcp_sid_table);
+> #endif
+> 	DestroyHashtable(g_mtcp[cpu]->listeners);
+> 	
+> 	TRACE_DBG("MTCP thread %d finished.\n", cpu);
+> }
+> #endif
+> 
+1331d1356
+< 	mctx->mtcp_thr_ctx = NULL;
+1346,1347d1370
+<   TRACE_APP("Logger thread %d started in trace app.\n", cpu);
+<   fprintf(stderr, "Logger thread %d started.\n", cpu);
+1357a1381
+>   TRACE_DBG("Executing MTCP Original version, of creating separate parallel thread\n");
+1386a1411
+>   TRACE_DBG("Executing MTCP CI version, of not creating separate thread\n");
+1482d1506
+<   fprintf(stderr, "Logger thread %d joined.\n", ctx->cpu);
+1709d1732
+< #ifndef CI
+1726d1748
+< #endif
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/eth_out.c ../mtcp-mellanox-server/mtcp/src/eth_out.c
+48c48
+< 		TRACE_INFO("No interface set!\n");
+---
+> 		//TRACE_INFO("No interface set!\n");
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/io_module.c ../mtcp-mellanox-server/mtcp/src/io_module.c
+108,109c108
+< #ifdef MELLANOX
+<   // crazy hack for mellanox drivers of quads1 and quads2 - hardcoding the pci address
+---
+> #if 1
+329,334d327
+<     printf("After calling probe_all_rte_devices");
+<     int i=0;
+<     for(i=0; i<argc; i++) {
+<       printf("argv[%d]: %s\n", i, argv[i]);
+<     }
+< 
+356c349
+< #ifdef DEBUG
+---
+> #if 1
+387,389c380,381
+< #if 1
+< 		for (ret = 0; ret < num_devices; ret++) {
+<       printf("Found a valid port!!!\n");
+---
+> #if 0
+> 		for (ret = 0; ret < num_devices; ret++)
+391d382
+<     }
+393d383
+<     /* DPDK says RTE_ETH_FOREACH_DEV is a better implementation when the devices are not located sequentially */
+429a420
+>         printf("Trying to find device : %s\n", iter_if->ifa_name);
+654c645
+< 			exit(EXIT_FAILURE);
+---
+> 			//exit(EXIT_FAILURE);
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/Makefile ../mtcp-mellanox-server/mtcp/src/Makefile
+50c50
+< GCC_OPT += -DNDEBUG -g -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR
+---
+> GCC_OPT += -DNDEBUG -g -O3 -DNETSTAT -DINFO -DDBGERR -DDBGCERR -DCI
+diff -r -x '*.d' -x '*.o' -x '*.a' -x cscope.out mtcp/src/tcp_in.c ../mtcp-mellanox-server/mtcp/src/tcp_in.c
+886c886
+< 		//TRACE_DBG("Stream %d inserted into acceptq.\n", cur_stream->id);
+---
+> 		//TRACE_INFO("Stream %d inserted into acceptq.\n", cur_stream->id);

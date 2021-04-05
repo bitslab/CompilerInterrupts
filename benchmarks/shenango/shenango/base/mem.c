@@ -95,7 +95,6 @@ __mem_map_anom(void *base, size_t len, size_t pgsize,
 	//log_debug("__mem_map_anom(): mmap anonymous pages\n"); 
 	addr = mmap(base, len, PROT_READ | PROT_WRITE, flags, -1, 0);
 	if (addr == MAP_FAILED) {
-    log_debug("mbind error: %s\n", strerror(errno));
 		return MAP_FAILED;
   }
 
@@ -106,7 +105,6 @@ __mem_map_anom(void *base, size_t len, size_t pgsize,
 
   if (mbind(addr, len, numa_policy, mask ? mask : NULL,
       mask ? NNUMA : 0, MPOL_MF_STRICT)) {
-    log_debug("mbind error: %s\n", strerror(errno));
     goto fail;
   }
 
@@ -147,7 +145,11 @@ void *mem_map_anom(void *base, size_t len, size_t pgsize, int node)
  */
 void *mem_map_file(void *base, size_t len, int fd, off_t offset)
 {
+#ifndef CLIENT
 	return mmap(base, len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, offset);
+#else
+	return mmap(base, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_POPULATE, fd, offset);
+#endif
 }
 
 /**
@@ -188,19 +190,16 @@ void *mem_map_shm(mem_key_t key, void *base, size_t len, size_t pgsize,
 		return MAP_FAILED;
 	}
 
-  log_debug("mem_map_shm (%s:%d)\n", __FILE__, __LINE__);
 	if (exclusive)
 		flags |= IPC_EXCL;
 
 	shmid = shmget(key, len, flags);
 	if (shmid == -1) {
-    log_debug("mem_map_shm (%s:%d) failed. error: %s\n", __FILE__, __LINE__, strerror(errno));
 		return MAP_FAILED;
   }
 
 	addr = shmat(shmid, base, 0);
 	if (addr == MAP_FAILED) {
-    log_debug("mem_map_shm (%s:%d) failed. error: %s\n", __FILE__, __LINE__, strerror(errno));
 		return MAP_FAILED;
   }
 

@@ -34,8 +34,8 @@ summarize_overhead_runs() {
   # For debugging turn this on
   if [ 0 -eq 1 ]; then
     RUNS=1
-    #PREFIX="perf stat -B -e cache-misses -o $DIR/perf_stat_${bench}_th${threads}"
-    #PREFIX="perf stat -o $DIR/perf_stat_${1}_th${threads}"
+    #PREFIX="perf stat -B -e cache-misses -o $DIR/perf_stat_${bench}_th${thread}"
+    #PREFIX="perf stat -o $DIR/perf_stat_${1}_th${thread}"
     PREFIX="perf record --call-graph=dwarf -o $DIR/perf_${bench}_th${threads}_${suffix_conf}"
   fi
 

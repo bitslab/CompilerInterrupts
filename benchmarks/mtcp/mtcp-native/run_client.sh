@@ -23,9 +23,9 @@ print_avg() {
 
 kill_existing_server() {
   # For precaution, kill any existing running process
-  sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
-  #sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
-  pid_present=`sshpass -e ssh ${USERNAME}@$server "pgrep -x epserver"`
+  ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
+  #ssh ${USERNAME}@$server "pgrep -x epserver | awk '{print \"sudo kill -s INT \" \$1}' | sh"
+  pid_present=`ssh ${USERNAME}@$server "pgrep -x epserver"`
   if [ ! -z $pid_present ]; then
     echo "Could not kill epserver. Exiting."
     exit
@@ -50,7 +50,7 @@ run_server() {
   echo "Running server for mode $1"
   run_str="cd $server_app_path; sudo nohup ./run_server.sh $THREADS"
   echo $run_str
-  sshpass -e ssh ${USERNAME}@$server "$run_str" &
+  ssh ${USERNAME}@$server "$run_str" &
   sleep_time=15
   echo "Will sleep for $sleep_time sec for server to start running"
   sleep $sleep_time
@@ -60,7 +60,7 @@ build_server() {
   echo "Building server for mode $1"
   build_str="cd $server_app_path; sudo nohup ./build.sh $1"
   echo $build_str
-  sshpass -e ssh ${USERNAME}@$server "$build_str"
+  ssh ${USERNAME}@$server "$build_str"
 }
 
 build_client() {
@@ -80,11 +80,6 @@ if [ -z "$USERNAME" ]; then
   exit
 fi
 
-if [ -z "$SSHPASS" ]; then 
-  echo "User $USERNAME's password is not set in SSHPASS variable. E.g. export SSHPASS=\"password\". Aborting."
-  exit
-fi
-
 RUNS="${RUNS:-10}"
 EXP_DIR="${PWD}/../exp_results/"
 echo "Running mtcp experiment for $RUNS runs & results will be exported in $EXP_DIR"
@@ -101,7 +96,7 @@ else
   exit
 fi
 
-sshpass -e ssh ${USERNAME}@${server} "pwd" > /dev/null
+ssh ${USERNAME}@${server} "pwd" > /dev/null
 cmd_status=`echo $?`
 if [ $cmd_status -ne 0 ]; then
   echo "Remote access to server $server is not setup for user $USERNAME. Aborting."
@@ -120,7 +115,7 @@ if [ $? -ne 0 ]; then
 fi
 # unbinding dpdk-ports at server
 run_str="cd $server_app_path/../; sudo ./setup.sh 0"
-sshpass -e ssh ${USERNAME}@$server "$run_str"
+ssh ${USERNAME}@$server "$run_str"
 popd
 
 CONCURRENCY="16 32 64 128 256 512"

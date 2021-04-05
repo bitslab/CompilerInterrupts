@@ -328,7 +328,7 @@ void heapSort(long arr[], int n)
     attr.pinned = 1;
     attr.exclude_idle = 1;
     attr.exclude_kernel = 1;
-    int perf_fds = perf_event_open(&attr, getpid(), -1, -1, 0);
+    int perf_fds = perf_event_open(&attr, 0, -1, -1, 0);
     ioctl(perf_fds, PERF_EVENT_IOC_RESET, 0); // Resetting counter to zero
     ioctl(perf_fds, PERF_EVENT_IOC_ENABLE, 0); // Start counters
 

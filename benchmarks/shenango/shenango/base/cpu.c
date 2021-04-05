@@ -53,22 +53,6 @@ static int cpu_scan_topology(void)
 	if (sysfs_parse_bitlist("/sys/devices/system/cpu/online",
 			        cpu_mask, NCPU))
 		return -EIO;
-
-#if 0
-  printf("BitMap of CPUs initially\n");
-  for(i=0;i<NCPU;i++) {
-    printf("Bit for %d: %d\n", i, bitmap_test(cpu_mask,i));
-  }
-  /* reserve 60-63 for cpuminer */
-  for(i=56;i<64;i++) {
-    bitmap_clear(cpu_mask, i);
-  }
-  printf("BitMap of CPUs after clearing bits for cpuminer\n");
-  for(i=0;i<NCPU;i++) {
-    printf("Bit for %d: %d\n", i, bitmap_test(cpu_mask,i));
-  }
-#endif
-
 	bitmap_for_each_set(cpu_mask, NCPU, i) {
 		cpu_count++;
 		if (cpu_count <= i) {
@@ -76,7 +60,6 @@ static int cpu_scan_topology(void)
 			return -EINVAL;
 		}
 	}
-  printf("CPU Count: %d\n", cpu_count);
 
 	if (cpu_count <= 0 || cpu_count > NCPU) {
 		log_err("cpu: detected %d CPUs, unsupported count.",
@@ -105,10 +88,8 @@ static int cpu_scan_topology(void)
 		if (sysfs_parse_bitlist(path,
 			cpu_info_tbl[i].thread_siblings_mask, cpu_count))
 			return -EIO;
-    //printf("Checking physical_package_id for cpu %d\n", i);
 	}
 
-  printf("Finished cpu_scan_topology with cpu count: %d\n", cpu_count);
 	return 0;
 }
 

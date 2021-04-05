@@ -20,8 +20,8 @@ mnt_hugetlb() {
     script_path=`pwd`
     USERNAME=`logname`
     run_str="cd $script_path; sudo ./shenango/scripts/setup_huge_pages.sh"
-    sshpass -e ssh ${USERNAME}@lines "$run_str"
-    sshpass -e ssh ${USERNAME}@pages "$run_str"
+    ssh ${USERNAME}@lines "$run_str"
+    ssh ${USERNAME}@pages "$run_str"
   fi
 }
 

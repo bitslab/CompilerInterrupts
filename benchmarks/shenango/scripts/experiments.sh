@@ -763,8 +763,8 @@ send_int_sig_local() {
 }
 
 #send_usr_sig() {
-  #sshpass -e ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
-#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
+  #ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
+#sudo -H -u ${USER_NAME} ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR2 \" \$1}' | sh"
 #echo "Sent user signal to cpuminer"
   #sudo bash
 #}
@@ -772,16 +772,16 @@ send_int_sig_local() {
 #send_kill_sig() {
 #app=$1
   #su ${USER_NAME} 
-  #sshpass -e ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
-#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x $app | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
+  #ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
+#sudo -H -u ${USER_NAME} ssh ${USER_NAME}@frames "pgrep -x $app | awk '{print \"sudo kill -s KILL \" \$1}' | sh"
 #echo "Sent kill signal to $app"
   #sudo bash
 #}
 
 #send_int_sig() {
 #app=$1
-  #sshpass -e ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
-#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x $app | awk '{print \"sudo kill -s INT \" \$1}' | sh"
+  #ssh ${USER_NAME}@frames "pgrep -x cpuminer | awk '{print \"sudo kill -s USR1 \" \$1}' | sh"
+#sudo -H -u ${USER_NAME} ssh ${USER_NAME}@frames "pgrep -x $app | awk '{print \"sudo kill -s INT \" \$1}' | sh"
 #echo "Sent int signal to $app"
   #sudo bash
 #}
@@ -817,11 +817,6 @@ run_client_for_orig()
   if [ $# -ge 4 ]; then
     SSHPASS="$4"
   fi
-  if [ -z "$SSHPASS" ]; then 
-    echo "SSHPASS needs to be set. Aborting."
-    exit
-  fi
-
   create_shenango_env
   #read -p "Done??" ans
 
@@ -895,12 +890,7 @@ run_client()
   if [ $# -ge 4 ]; then
     SSHPASS="$4"
   fi
-  if [ -z "$SSHPASS" ]; then 
-    echo "SSHPASS needs to be set. Aborting."
-    exit
-  fi
-
-  cpuminer_server=`sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@frames "pgrep -x cpuminer"`
+  cpuminer_server=`sudo -H -u ${USER_NAME} ssh ${USER_NAME}@frames "pgrep -x cpuminer"`
 
   if [ ! -z $cpuminer_server ]; then
     if [ 1 -eq 0 ]; then
@@ -988,19 +978,14 @@ run_observer()
 run_remote_client_deprecated()
 {
   echo "Running remote client"
-  if [ -z "$SSHPASS" ]; then
-    echo "SSHPASS needs to be set. Aborting."
-    exit
-  fi
-  CURR_DIR=`pwd`
-  parallel  "sshpass -e ssh ${USER_NAME}@{}.cs.uic.edu 'mkdir -p $CURR_DIR/scripts-{}'" ::: lines frames
-  parallel  "sshpass -e scp experiment.py ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/shenango/apps/synthetic/target/release/synthetic ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/config.json ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
-  parallel  "sshpass -e scp $CURR_DIR/shenango/scripts/rstat.go ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "ssh ${USER_NAME}@{}.cs.uic.edu 'mkdir -p $CURR_DIR/scripts-{}'" ::: lines frames
+  parallel  "scp experiment.py ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "scp $CURR_DIR/shenango/apps/synthetic/target/release/synthetic ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "scp $CURR_DIR/config.json ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
+  parallel  "scp $CURR_DIR/shenango/scripts/rstat.go ${USER_NAME}@{}.cs.uic.edu:$CURR_DIR/scripts-{}/" ::: lines frames
 
   echo "Starting client on lines"
-  parallel --halt now,fail=1 "sshpass -e ssh ${USER_NAME}@{}.cs.uic.edu 'ulimit -S -c unlimited; python $CURR_DIR/scripts-{}/experiment.py client $CURR_DIR/scripts-{} > $CURR_DIR/scripts-{}/py.{}.log 2>&1'" ::: lines
+  parallel --halt now,fail=1 "ssh ${USER_NAME}@{}.cs.uic.edu 'ulimit -S -c unlimited; python $CURR_DIR/scripts-{}/experiment.py client $CURR_DIR/scripts-{} > $CURR_DIR/scripts-{}/py.{}.log 2>&1'" ::: lines
 
   echo "Starting local observer"
   python scripts/experiment.py observer scripts/ > ./py.frames.log 2>&1
@@ -1009,7 +994,7 @@ run_remote_client_deprecated()
   cp $CURR_DIR/scripts-lines/*.out $CURR_DIR/scripts-frames/
   cp $CURR_DIR/scripts-lines/*.err $CURR_DIR/scripts-frames/
 #rm -rf $CURR_DIR/scripts-lines
-  #parallel "sshpass -e ssh ${USER_NAME}@{}.cs.uic.edu 'date +%s'" ::: lines frames
+  #parallel "ssh ${USER_NAME}@{}.cs.uic.edu 'date +%s'" ::: lines frames
 }
 
 run_remote_client()
@@ -1022,11 +1007,6 @@ run_remote_client()
   target_mpps=$2
   samples=$3
   client_opt=$4
-  if [ -z "$SSHPASS" ]; then
-    echo "SSHPASS needs to be set. Aborting."
-    exit
-  fi
-
 #return
 
   if [ $# -lt 5 ]; then
@@ -1034,27 +1014,27 @@ run_remote_client()
     client="lines"
     #client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+    sudo -H -u ${USER_NAME} ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
     sleep 5
   else
     # run multiple clients
     client="lines"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
+    sudo -H -u ${USER_NAME} ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1" &
     sleep 5
 
     client="pages"
     echo "Running remote client $client with start mpps: $start_mpps, target mpps: $target_mpps, samples: $samples"
-    sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
+    sudo -H -u ${USER_NAME} ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '$target_mpps' '$samples' '$SSHPASS' 1"
 
 #echo "Running remote client $client with start mpps: $start_mpps, target mpps: 0.5, samples: $samples"
-#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
+#sudo -H -u ${USER_NAME} ssh ${USER_NAME}@$client "cd ${CUR_PATH}/../../shenango-${client}/scripts; sudo ./experiments.sh $client_opt '$start_mpps' '0.5' '$samples' '$SSHPASS' 1"
   fi
 
   echo "Done with clients"
 #send_usr_sig_local 0 # send user signal to cpuminer after all clients are done
 
-#sudo -H -u ${USER_NAME} sshpass -p $SSHPASS ssh ${USER_NAME}@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./experiments.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
+#sudo -H -u ${USER_NAME} ssh ${USER_NAME}@lines "cd ${CUR_PATH}/../../shenango-lines/scripts; sudo ./experiments.sh 3 '$start_mpps' '$target_mpps' '$samples' '$SSHPASS'"
 }
 
 copy_files() {

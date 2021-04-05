@@ -145,6 +145,8 @@ process_data() {
     NR==1 {print} {line[$1]=$0} END {for(n in names){print line[names[n]];}}' $accerr_file > tmp;
   mv tmp $accerr_file
 
+  sed -i 's/ci/CI/g; s/coredet/Coredet/g; s/cnb/CnB/g; s/naive/Naive/g' $accerr_file
+
   gnuplot -e "ofile='$plot_file'" -e "ifile='$accerr_file'" plot_accuracy.gp
   printf "${GREEN}Accuracy data plotted in $plot_file\n${NC}"
 }

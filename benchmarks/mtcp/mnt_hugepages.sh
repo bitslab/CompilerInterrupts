@@ -68,5 +68,5 @@ if [ "$server" == "lines" ]; then
   script_path=`pwd`
   USERNAME=`logname`
   run_str="cd $script_path; sudo ./mnt_hugepages.sh"
-  sshpass -e ssh ${USERNAME}@frames "$run_str"
+  ssh ${USERNAME}@frames "$run_str"
 fi

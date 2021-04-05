@@ -355,8 +355,13 @@ int page_init(void)
 
 	//log_debug("page_init(): Reserving %d bytes space for page table\n", LGPAGE_META_LEN * NNUMA + PGSIZE_2MB - 1);
 	/* First reserve address-space for the page table. */
+#ifndef CLIENT
 	addr = mmap(NULL, LGPAGE_META_LEN * NNUMA + PGSIZE_2MB - 1, PROT_NONE,
 		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#else
+	addr = mmap(NULL, LGPAGE_META_LEN * NNUMA + PGSIZE_2MB - 1, PROT_NONE,
+		    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE, -1, 0);
+#endif
 	if (addr == MAP_FAILED)
 		return -ENOMEM;
 

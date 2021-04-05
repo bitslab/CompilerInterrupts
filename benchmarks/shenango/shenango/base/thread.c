@@ -65,9 +65,13 @@ int thread_init_perthread(void)
 	thread_id = thread_count++;
 	spin_unlock(&thread_lock);
 
+#ifndef CLIENT
 	/* TODO: figure out how to support NUMA */
 	thread_numa_node = 3;
   printf("NUMA Node hardcoded: %d\n", thread_numa_node);
+#else
+	thread_numa_node = 3;
+#endif
 
 	ret = thread_alloc_perthread();
 	if (ret)

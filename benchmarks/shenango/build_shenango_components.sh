@@ -77,11 +77,6 @@ check_all_builds() {
   fi
 }
 
-if [[ $EUID -ne 0 ]]; then
-   echo "This script must be run as root"
-   exit 1
-fi
-
 if [ $# -eq 1 ]; then
   echo "Cleaning all components"
   ./build_all.sh 1

@@ -48,15 +48,16 @@ using namespace llvm;
 namespace {
 
 /*
+// Terminology: Logical Clock refers to the runtime instruction counter
 #define ACCURACY // For printing logical clock per function or per block
 #define PRINT_LC_DEBUG_INFO // For printing function name or basic block name at the time of printing Logical clock value
-#define INTERVAL_ACCURACY
+#define INTERVAL_ACCURACY // For printing everytime a CI is called 
 #define ADD_RUNTIME_PRINTS // adds prints at runtime for debugging
 #define ALL_DEBUG // directive for all debug statements. Use this instead of #if 0
 #define LC_DEBUG // directive for current debug
 #define PROFILING // Collect stats about the probes added, & the ones executed at runtime
 #define CRNT_DEBUG // directive for current debug
-#define SHIFT
+#define SHIFT // For CI-cycles, reset the logical clock by the remaining interval left in cycles, after translating it to IR in 4:1 IR:cycles ratio
 */
 
 #define PRINT_LC_DEBUG_INFO // required for phoenix for benchmarking by finding "main" name
@@ -78,21 +79,21 @@ namespace {
 #define ALLOWED_DEVIATION 100
 
   /******************************************* Section: Structure & Class Definitions ******************************************/
-  /* Contains list of different types of instrumentation levels */
+  /* Contains list of different types of instrumentation types */
   enum instrumentationLevel {
-    OPTIMIZE_HEURISTIC = 1,
+    OPTIMIZE_HEURISTIC = 1, /* deprecated */
     OPTIMIZE_HEURISTIC_WITH_TL = 2, /* 2 - CI */
-    NAIVE = 3, /* 3 */
+    NAIVE = 3, /* deprecated */
     NAIVE_TL = 4, /* 4 - Naive */
-    LEGACY_HEURISTIC = 5, /* 5 */
+    LEGACY_HEURISTIC = 5, /* deprecated */
     COREDET_HEURISTIC_TL = 6, /* 6 - CoreDet */
-    COREDET_HEURISTIC = 7, /* 7 */
+    COREDET_HEURISTIC = 7, /* deprecated */
     LEGACY_ACCURATE = 8, /* 8 */
     OPTIMIZE_ACCURATE = 9, /* 9 */
     LEGACY_HEURISTIC_TL = 10, /* 10 - CnB */
     NAIVE_ACCURATE = 11, /* 11 */
     OPTIMIZE_INTERMEDIATE = 12, /* 12 - CI-Cycles */
-    NAIVE_INTERMEDIATE = 13, /* 13 */
+    NAIVE_INTERMEDIATE = 13, /* 13 - Naive-Cycles */
     OPTIMIZE_HEURISTIC_FIBER = 14, /* 14 - for fiber, interrupts are not disabled */
     OPTIMIZE_HEURISTIC_INTERMEDIATE_FIBER = 15, /* 15 - for fiber, interrupts are not disabled */
     NAIVE_HEURISTIC_FIBER = 16, /* 16 - for fiber, interrupts are not disabled */
@@ -100,12 +101,18 @@ namespace {
     NAIVE_CYCLES = 18 /* 18 - instrument based on IR, but check cycles at runtime */
   };
 
+
+  /* instrType: ALL_IR(0) - increment logical clock & call CI based on IR instruction count
+   * instrType: PUSH_ON_CYCLES(1) - increment logical clock based on IR instruction count & call CI based on cycles read using llvm.readcyclecounter
+   * instrType: INCR_ON_CYCLES(2) - increment logical clock & call CI based on cycles read using llvm.readcyclecounter
+   */
   typedef enum instrumentType {
     ALL_IR = 0,
     PUSH_ON_CYCLES = 1,
     INCR_ON_CYCLES = 2
   } eInstrumentType;
 
+  /* Structure to track different probe statistics */
   struct fstats {
     int blocks = 0;
     int unit_lcc = 0;
@@ -134,10 +141,11 @@ namespace {
   };
 
   enum eClockType {
-    PREDICTIVE = 0,
-    INSTANTANEOUS
+    PREDICTIVE = 0, /* (deprecated) predicted & instrumented logical clock updates prior to the execution of the instructions */
+    INSTANTANEOUS /* (default) instruments logical clock updates after the instructions (which were being counted & added as increments to the logical clock) have been executed */
   };
 
+  /* Structure to capture, store & interpret SCEVs received from ScalarEvolution pass */
   struct InstructionCost {
     enum type {ADD=scAddExpr, MUL=scMulExpr, UDIV=scUDivExpr, SMAX=scSMaxExpr, SMIN=scSMinExpr, UMAX=scUMaxExpr, UMIN=scUMinExpr, CONST=scConstant, ADD_REC_EXPR=scAddRecExpr, ZERO_EXT=scZeroExtend, SIGN_EXT=scSignExtend, TRUNC=scTruncate, CALL=15, UNKNOWN, ARG} _type;
     typedef std::vector<const struct InstructionCost*> opvector;
@@ -206,7 +214,7 @@ namespace {
     InstructionCost* cost;
   };
 
-  /*********************************************** Section: Global Definitions *********************************************/
+  /************************************* Section: Command line configuration parameters ***********************************/
   static cl::opt<int> InstGranularity("inst-gran", cl::desc("Select instrumentation granularity. 0: Per instruction, 1: Optimized instrumentation 2. Optimized instrumentation with statistics collection, 3. Per basic block, 4: Per Function"), cl::value_desc("0/1/2/3/4"), cl::init(1), cl::Optional);
   static cl::opt<int> Configuration("config", cl::desc("Select configuration type. 0: Single-threaded thread-local logical clock, 1: Single-threaded passed logical clock 2. Multithreaded thread-local logical clock, 3. Multithreaded passed logical clock"), cl::value_desc("0/1/2/3/4"), cl::init(2), cl::Optional);
   static cl::opt<bool> DefineClock("defclock", cl::desc("Choose whether to define clock in the pass. true: Yes, false: No"), cl::value_desc("true/false"), cl::init(true), cl::Optional);
@@ -220,6 +228,8 @@ namespace {
   static cl::opt<std::string> InCostFilePath("in-cost-file", cl::desc("Cost file from where cost of library functions will be imported"), cl::value_desc("filepath"), cl::Optional);
   static cl::opt<std::string> OutCostFilePath("out-cost-file", cl::desc("Cost file where cost of library functions will be exported"), cl::value_desc("filepath"), cl::Optional);
   static cl::opt<int> FiberConfig("fiber-config", cl::desc("Select percentage n for threshold for push interval"), cl::value_desc("25/50/75"), cl::init(50), cl::Optional);
+
+  /*********************************************** Section: Global Definitions *********************************************/
   LLVMContext *LLVMCtx;
   PostDominatorTree *PDT;
   DominatorTree *DT;
@@ -241,6 +251,8 @@ namespace {
   StringMap<unsigned char> ciFuncInApp; // list of functions used as compiler interrupt in application code 
   std::map<Function *, AllocaInst*> gLocalCounter;
   std::map<Function *, AllocaInst*> gLocalFLag;
+  int func_opts = 0; /* stat for number of functions which has fixed numeric cost & can be optimized */
+  int preprocessing=0; /* stat on the number of times the graph has been transformed in the preprocessing phase */
   int lccIDGen = 0; /* Adds an ID for every LCC made. Helps in debugging*/
   int applyrule1 = 0; /* Signifies path rule */
   int applycontrule1 = 0; /* Signifies path container rule */
@@ -268,6 +280,8 @@ namespace {
   bool gUseReadCycles = false;
 
   /*********************************************** Section: Utility Functions *********************************************/
+
+  // for printing InstructionCost struct directly to stream
   raw_ostream& operator<<(raw_ostream &os, InstructionCost const &fc) {
     switch(fc._type) {
     case InstructionCost::CONST:
@@ -330,7 +344,7 @@ namespace {
     return exitBB;
   }
 
-  /* 0 is a valid value */
+  /* checks if InstructionCost structure can be translated to a constant numeric value. 0 is a valid value */
   long hasConstCost(const InstructionCost *fc) {
     if (fc && fc->_type == InstructionCost::CONST)
       return fc->_value;
@@ -355,6 +369,7 @@ namespace {
     return numCost;
   }
 
+  /* Convert SCEV to Instruction Cost structure */
   InstructionCost* scevToCost(const SCEV* scev) {
     switch(scev->getSCEVType()) {
     case scConstant:
@@ -455,6 +470,7 @@ namespace {
     }
   }
 
+  /* Convert InstructionCost structure to SCEV structure */
   const SCEV* costToSCEV(const InstructionCost* cost, std::vector<const SCEV*> args) {
     if(!cost) return nullptr;
     switch(cost->_type) {
@@ -712,12 +728,13 @@ namespace {
     }
   }
 
+  /* Convert numeric constant to InstructionCost structure */
   InstructionCost* getConstantInstCost(long numCost) {
     return new InstructionCost(InstructionCost::CONST, numCost);
   }
 
-  /* Simplifies the cost expression & returns it. doNotAssert is the special flag to explicitly turn off assertion 
-   * - should always check against null return when turned off */
+  /* Simplifies the cost expression using SCEV & returns it. 
+   * doNotAssert is the special flag to explicitly turn off assertion  - should always check against null return when turned off */
   InstructionCost* simplifyCost(Function* F, InstructionCost* complexCost, bool doNotAssert = false) {
     if(!complexCost) return nullptr;
     std::vector<const SCEV*> funcArgs;
@@ -752,6 +769,7 @@ namespace {
     return nullptr;
   }
 
+  /* used for deprecated sections of code */
   bool isThreadFunc(Function *F) {
     for(auto threadFNames : threadFunc) {
       if (F->getName().compare(threadFNames)==0) {
@@ -761,6 +779,7 @@ namespace {
     return false;
   }
 
+  /* used for deprecated sections of code */
   bool isFenceFunc(Function *F) {
     for(auto fence : fenceList) {
       if(F->getName().compare(fence)==0) {
@@ -770,18 +789,7 @@ namespace {
     return false;
   }
 
-  inline bool isSuffix(std::string value, std::string ending)
-  {
-    if (ending.size() > value.size()) return false;
-    int pos = value.size() - ending.size();
-    std::string suffix = value.substr(pos, ending.size());
-    if(suffix.compare(ending) == 0)
-      return true;
-    else
-      return false;
-  }
-
-  /* Finds the cost of a particular instruction */
+  /* (For PREDICTIVE CI - deprecated) Finds the cost of a particular instruction */
   InstructionCost* getInstCostForPC(Instruction* I) {
     Function *F = I->getFunction();
     if (isa<PHINode>(I)) {
@@ -850,6 +858,7 @@ namespace {
     return nullptr; /* Control would & should never reach here */
   }
 
+  /* check if the function called in the instruction is defined outside the module */
   bool checkIfExternalLibraryCall(Instruction* I) {
     if (CallInst *ci = dyn_cast<CallInst>(I)) {
       Function* calledFunction = ci->getCalledFunction();
@@ -873,7 +882,7 @@ namespace {
     return false;
   }
 
-  /* only for debugging */
+  /* only for debugging - find all external library calls */
   void findAllLibraryCalls(Module &M) {
     errs() << "Finding all library calls\n";
     for(auto &F : M) {
@@ -885,6 +894,7 @@ namespace {
     }
   }
 
+  /* Instruction count estimate of external library calls for different types of CI */
   int getLibCallCost() {
     if(InstGranularity == NAIVE_ACCURATE || InstGranularity == OPTIMIZE_ACCURATE) 
       return 50; /* 25*2 for 2 readcycle calls */
@@ -894,9 +904,7 @@ namespace {
 
   /* Finds the cost of a particular instruction */
   InstructionCost* getInstCostForIC(Instruction* I) {
-
     long newCost = 0;
-
     if (isa<PHINode>(I)) {
       /***************************** For Phi instructions ***************************/
       return getConstantInstCost(0);
@@ -954,6 +962,7 @@ namespace {
     return getConstantInstCost(newCost); /* Control would & should never reach here */
   }
 
+  /* Finds the first non-phi instruction after I */
   Instruction* checkForPhi(Instruction *I) {
     Instruction* returnI = I;
     while(isa<PHINode>(returnI)) {
@@ -1029,20 +1038,17 @@ namespace {
   }
 
   /*********************************************** Section: Container class definition *********************************************/
-
-  /* A Logical Clock container node */
+  /* A Logical Clock container (LCC) - used for encapsulating CFG components, hierarchically, for cost analysis later */
   class LCCNode {
     /* set & map is used to keep avoid duplicate entries, vector is used to keep order of insertion intact */
   public:
+    /* types of graph structures encapsulated */
     typedef enum LCCTypes {
       UNIT_LCC = 0,
       PATH_LCC,
       BRANCH_LCC,
       COMPLEX_BRANCH_LCC,
       LOOP_LCC,
-      INVERTEDV_LCC,
-      V_LCC,
-      UNKNOWN_LCC
     } LCCTypes;
     typedef std::pair<LCCNode*, LCCNode*> lccEdge;  /* first element is pred LCC or succ LCC, second element is connected LCC */
 
@@ -1462,6 +1468,7 @@ namespace {
 
   };
 
+  /* Unit of the hierarchical LCC structure - encapsulates a basic block or part of it */
   class UnitLCC : public LCCNode {
     BasicBlock* _currentBlock; 
     Instruction* _firstInst = nullptr; 
@@ -1844,6 +1851,7 @@ namespace {
     }
   };
 
+  /* Print all unitLCC's inside given LCC structure */
   void getSingleLCCRep(LCCNode* currLCC) {
     auto innerLCCs = currLCC->getAllInnerMostEntryLCC();
     auto innerLCCIt = innerLCCs.begin();
@@ -1856,6 +1864,7 @@ namespace {
     }
   }
 
+  /* same as getSingleLCCRep() but prints internally generated ID as well, for debugging purpose */
   void printUnitLCCSet(LCCNode* currLCC) {
     auto innerLCCs = currLCC->getAllInnerMostEntryLCC();
     auto innerLCCIt = innerLCCs.begin();
@@ -1870,6 +1879,18 @@ namespace {
     }
   }
 
+  /* LCC that encapsulates a sequence of consecutive LCCs connected by a single edge, without any branches or loops
+   *                  StartLCC
+   *                    |
+   *                   LCC2
+   *                    |
+   *                    .
+   *                    .
+   *                    |
+   *                   LCCn
+   *                    |
+   *                  EndLCC
+   */
   class PathLCC : public LCCNode {
     LCCNode* _entryLCC;
     LCCNode* _exitLCC;
@@ -1982,6 +2003,13 @@ namespace {
     }
   };
 
+  /* LCC that encapsulates a sequence of a branch structure of LCCs 
+   *                  StartLCC
+   *              /             \
+   *   BranchLCC1    BranchLCC2  ...   BranchLCCn
+   *              \             /
+   *                  EndLCC
+   */
   class BranchLCC : public LCCNode {
     LCCNode* _entryLCC;
     LCCNode* _exitLCC;
@@ -2254,207 +2282,39 @@ namespace {
     }
   };
 
-  class ComplexBranchLCC : public LCCNode {
-
-    LCCNode* _entryLCC;
-    LCCNode* _exitLCC;
-    std::map<std::list<LCCNode*> *, double> _branchPathLCCInfo; // The paths may have overlap. It should always include the entry & exit of the branch in every path
-    std::list<LCCNode*> _innerLCCs; // used when every node of every path has to be instrumented, must have unique elements
-    BasicBlock* _domBlock;
-    BasicBlock* _postdomBlock;
-    
-    //BasicBlock *postDom; // Kept for new rule to match smallest SESE region
-  public:
-    /* ----------------- Constructor ---------------------*/
-    ComplexBranchLCC(int id, LCCNode* entryLCC, LCCNode* exitLCC, std::map<std::list<LCCNode*> *, double> branchPathLCCInfo, std::list<LCCNode*> innerLCCs, BasicBlock* domBlock, BasicBlock* postdomBlock) : LCCNode(LCCNode::COMPLEX_BRANCH_LCC, id), _entryLCC(entryLCC), _exitLCC(exitLCC), _branchPathLCCInfo(branchPathLCCInfo), _innerLCCs(innerLCCs), _domBlock(domBlock), _postdomBlock(postdomBlock) {
-      assert(entryLCC && exitLCC && "entry or exit LCCs cannot be null for a Branch Container");
-      assert(!branchPathLCCInfo.empty() && "there should be at least one concrete branch for Branch Container");
-      _innerLCCs.unique();
-      _entryLCC->setParentLCC(this);
-      _exitLCC->setParentLCC(this);
-      for(auto pathLCCIt = _branchPathLCCInfo.begin(); pathLCCIt != _branchPathLCCInfo.end(); pathLCCIt++) {
-        auto pathLCCList = pathLCCIt->first;
-        for(auto midLCCIt = pathLCCList->begin(); midLCCIt != pathLCCList->end(); midLCCIt++) {
-          (*midLCCIt)->setParentLCC(this);
-        }
-      }
-    }
-
-    /* -------- Implementation of virtual functions -------*/
-
-    Function* getFunction() {
-      return _entryLCC->getFunction();
-    }
-
-    LCCNode* getInnerMostEntryLCC() {
-      return _entryLCC->getInnerMostEntryLCC();
-    }
-
-    LCCNode* getOneInnerMostEntryLCC() {
-      return _entryLCC->getOneInnerMostEntryLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostEntryLCC() {
-      auto innerLCCs = _entryLCC->getAllInnerMostEntryLCC();
-      return innerLCCs;
-    }
-
-    LCCNode* getInnerMostExitLCC() {
-      return _exitLCC->getInnerMostExitLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostExitLCC() {
-      auto innerLCCs = _exitLCC->getAllInnerMostExitLCC();
-      return innerLCCs;
-    }
-
-    Loop* getLoop() {
-      return nullptr; /* not a loop container */
-    }
-
-    LCCTypes getType() {
-      return COMPLEX_BRANCH_LCC;
-    }
-
-    InstructionCost* getCostForPC(bool toInstrument) {
-    
-      errs() << "Not implemented for Complex branch. Exiting.";
-      exit(1);
-      return getConstantInstCost(0); /* Initial cost for any top level container is 0 */
-    }
-
-    InstructionCost* getCostForIC(bool toInstrument, InstructionCost* initialCost) {
-
-      /* Sanity checks */
-      long initialNumCost = getConstCost(initialCost);
-#ifdef LC_DEBUG
-      errs() << "Complex Branch LCC id: " << getID() << " --> initial cost: " << initialNumCost << "\n";
-#endif
-
-      assert((initialNumCost != -1) && "Initial cost cannot be unknown!");
-      assert((initialNumCost <= CommitInterval) && "Initial cost cannot be greater than the commit cost interval!");
-
-      bool instrumentBranch = false;
-      long avgBranchCost = 0, maxCost = 0, minCost = 0;
-      long double avgFloatingBranchCost = 0;
-      InstructionCost *nodeEntryZeroCost = getConstantInstCost(0);
-      std::map<LCCNode*, InstructionCost*> branchToCostMap;
-
-      InstructionCost *entryCost = _entryLCC->getCostForIC(false, nodeEntryZeroCost);
-      InstructionCost *exitCost = _exitLCC->getCostForIC(false, nodeEntryZeroCost);
-      auto numEntryCost = getConstCost(entryCost);
-      auto numExitCost = getConstCost(exitCost);
-      //errs() << "For LCC (" << getID() << ") := Entry cost: " << numEntryCost << ", Exit cost: " << numExitCost << "\n";
-
-      /* For each path */
-      bool first = true;
-      for(auto branchPathInfo : _branchPathLCCInfo) {
-         /* entry & exit LCC will be evaluated as part of each path. Every node will be instrumented with zero cost because of overlapping paths */
-        auto branchPathList = branchPathInfo.first;
-        double branchProb = branchPathInfo.second;
-        InstructionCost *nodeCost = nullptr;
-        long numTotalPathCost = (numEntryCost + numExitCost);
-
-        /* For each node of the path */
-        for(auto branchLCC : *branchPathList) {
-          if (branchLCC == _entryLCC || branchLCC == _exitLCC) {
-            //errs() << "Entry & exit cost has already been checked. Entry cost: " << numEntryCost << ", Exit cost: " << numExitCost << "\n";
-            continue;
-          }
-          nodeCost = branchLCC->getCostForIC(false, nodeEntryZeroCost);
-          branchToCostMap[branchLCC] = nodeCost;
-          long numNodeCost = getConstCost(nodeCost);
-          numTotalPathCost += numNodeCost;
-          //errs() << "For LCC (" << getID() << ") := Entry cost: " << numEntryCost << ", Exit cost: " << numExitCost << ", Branch cost: " << numNodeCost << "\n";
-        }
-
-        if(first) {
-          maxCost = numTotalPathCost;
-          minCost = numTotalPathCost;
-          first = false;
-        }
-        else {
-          if(numTotalPathCost > maxCost)
-            maxCost = numTotalPathCost;
-          if(numTotalPathCost < minCost)
-            minCost = numTotalPathCost;
-        }
-
-        long double weightedBranchCost = branchProb * numTotalPathCost;
-        avgFloatingBranchCost += weightedBranchCost;
-      }
-
-      avgBranchCost = (long)avgFloatingBranchCost;
-        
-      long diffCost = maxCost - minCost;
-      if(diffCost > ALLOWED_DEVIATION) {
-        instrumentBranch = true;
-      }
-#ifdef CRNT_DEBUG
-      errs() << "Max: " << maxCost << ", Min: " << minCost << ", Diff: " << diffCost << ", Avg: " << avgBranchCost << ", to be instrumented: " << instrumentBranch << "\n";
-#endif
-
-      InstructionCost* exitLCCCost;
-      if(instrumentBranch) {
-        /* Only dom & post dom cost are returned, every branch is instrumented */
-        for(auto branchLCC : _innerLCCs) {
-          auto mapIt = branchToCostMap.find(branchLCC);
-          assert((mapIt != branchToCostMap.end()) && "Complex Branch inner IC cost not found!");
-          InstructionCost* branchCost = mapIt->second;
-          branchLCC->instrumentForIC(branchCost);
-        }
-
-        exitLCCCost = exitCost;
-			  auto entryInstCost = getConstantInstCost(initialNumCost + numEntryCost);
-        _entryLCC->instrumentForIC(entryInstCost);
-        _exitLCC->instrumentForIC(exitLCCCost);
-        exitLCCCost = getConstantInstCost(0); 
-      }
-      else {
-        /*********************** Update statistics ***********************/
-        avgBranchCost += initialNumCost; // add the initial cost to all paths average
-        applyrule7++;
-        rule7savedInst+=_innerLCCs.size() + 1; /* For the child containers that are not the post dominator & +1 for the entry LCC */ 
-
-        exitLCCCost = getConstantInstCost(avgBranchCost);
-        if(toInstrument || (avgBranchCost > CommitInterval)) {
-#ifdef LC_DEBUG
-          errs() << "Instrumenting complex branch exit block with " << *exitLCCCost << "\n";
-#endif
-          _exitLCC->instrumentForIC(exitLCCCost);
-          exitLCCCost = getConstantInstCost(0); 
-        }
-      }
-
-#ifdef LC_DEBUG
-      errs() << "Complex branch LCC id: " << getID() << " --> initial cost: " << initialNumCost << "\n";
-      errs() << "Complex branch LCC id: " << getID() << " --> final cost: " << *exitLCCCost << "\n";
-      errs() << "Avg complex branch cost: " << *exitLCCCost << "\n";
-#endif
-      return exitLCCCost;
-    }
-
-    void instrumentForPC(InstructionCost* cost) {
-      /* Not implemented
-      _entryLCC->instrumentForPC(cost);
-      */
-    }
-
-    void instrumentForIC(InstructionCost* cost) {
-      _exitLCC->instrumentForIC(cost);
-    }
-
-    /* return true if any of its child containers are instrumented */
-    bool isInstrumented() {
-      bool ret;
-      ret = _entryLCC->isInstrumented() || _exitLCC->isInstrumented();
-      for(auto innerLCC : _innerLCCs) {
-        ret = ret || innerLCC->isInstrumented();
-      }
-      return ret;
-    }
-  };
-
+  /* LCC that encapsulates a loop of LCCs. There are 3 basic types identified that are good for cost estimation:
+   * Type 1: SELF_LOOP
+   *            LoopPreheaderLCC
+   *                    |
+   *                    |    _____
+   *                    |   /     \
+   *                HeaderLCC     |
+   *                    |   \_____/
+   *                    |
+   *                   ExitLCC
+   * Type 3: HEADER_COLOCATED_EXIT 
+   *            LoopPreheaderLCC
+   *                    |
+   *                HeaderLCC ------- ExitLCC
+   *              /          \
+   *         BodyLCC1         \
+   *             ...           ..
+   *              \            /
+   *               \          /
+   *                 LatchLCC
+   * Type 3: HEADER_NONCOLOCATED_EXIT
+   *            LoopPreheaderLCC
+   *                    |
+   *                HeaderLCC
+   *              /          \
+   *         BodyLCC1         \
+   *             ...           ..
+   *              \            /
+   *               \          /
+   *              Latch&ExitingLCC
+   *                    |
+   *                   ExitLCC
+   */
   class LoopLCC : public LCCNode {
     LCCNode* _headerLCC;
     LCCNode* _bodyLCC; /* only with header-non-colocated-exit */
@@ -2830,464 +2690,15 @@ namespace {
     }
   };
 
-  class InvertedVLCC : public LCCNode {
-    LCCNode* _entryLCC;
-    std::map<LCCNode*,double> _childLCCInfo;
-  public:
-    /* ----------------- Constructor ---------------------*/
-
-    InvertedVLCC(int id, LCCNode* entryLCC, std::map<LCCNode*, double> childLCCInfo) : LCCNode(LCCNode::INVERTEDV_LCC, id), _entryLCC(entryLCC), _childLCCInfo(childLCCInfo) {
-      assert(entryLCC && "entry LCC cannot be null for a InvertedV Container");
-      _entryLCC->setParentLCC(this);
-      for(auto childLCCIt = _childLCCInfo.begin(); childLCCIt != _childLCCInfo.end(); childLCCIt++) {
-        auto childLCC = childLCCIt->first;
-        childLCC->setParentLCC(this);
-      }
-    }
-
-    /* -------- Implementation of virtual functions -------*/
-
-    Function* getFunction() {
-      return _entryLCC->getFunction();
-    }
-
-    LCCNode* getInnerMostEntryLCC() {
-      return _entryLCC->getInnerMostEntryLCC();
-    }
-
-    LCCNode* getOneInnerMostEntryLCC() {
-      return _entryLCC->getOneInnerMostEntryLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostEntryLCC() {
-      auto innerLCCs = _entryLCC->getAllInnerMostEntryLCC();
-      return innerLCCs;
-    }
-
-    LCCNode* getInnerMostExitLCC() {
-      return nullptr; 
-    }
-
-    std::set<LCCNode*> getAllInnerMostExitLCC() {
-      std::set<LCCNode*> innerLCCs;
-      for(auto childInfo = _childLCCInfo.begin(); childInfo != _childLCCInfo.end(); childInfo++) {
-        auto childLCC = childInfo->first;
-        auto childInnerLCCs = childLCC->getAllInnerMostExitLCC();
-        for(auto childInnerLCC = childInnerLCCs.begin(); childInnerLCC != childInnerLCCs.end(); childInnerLCC++) {
-          if(innerLCCs.find(*childInnerLCC) == innerLCCs.end()) {
-            innerLCCs.insert(*childInnerLCC);
-          }
-          else {
-            errs() << "WARNING: In InvertedV->getAllInnerMostExitLCC(), non-unique inner LCCs turned up!\n";
-          }
-        }
-      }
-      return innerLCCs;
-    }
-
-    Loop* getLoop() {
-      return nullptr; /* not a loop container */
-    }
-
-    LCCTypes getType() {
-      return INVERTEDV_LCC;
-    }
-
-    InstructionCost* getCostForPC(bool toInstrument) {
-
-      InstructionCost::opvector costs;
-      std::map<LCCNode*, InstructionCost*> childToCostMap;
-      bool instrumentChild = false;
-      auto entryLCCCost = _entryLCC->getCostForPC(false);
-      if(entryLCCCost) costs.push_back(entryLCCCost);
-
-      long avgChildCost = 0, maxCost = 0, minCost = 0;
-
-      for(auto childInfo : _childLCCInfo) {
-        LCCNode* childLCC = childInfo.first;
-        double childProb = childInfo.second;
-        InstructionCost* childCost = childLCC->getCostForPC(false);
-        long numChildCost = hasConstCost(childCost);
-        if(numChildCost == -1) {
-          instrumentChild = true;
-          break;
-        }
-        else {
-          long weightedChildCost = childProb * numChildCost;
-          avgChildCost += weightedChildCost;
-          if(numChildCost > maxCost)
-            maxCost = numChildCost;
-          if(numChildCost < minCost)
-            minCost = numChildCost;
-        }
-        childToCostMap[childLCC] = childCost;
-      }
-
-      long diffCost = maxCost - minCost;
-      if(diffCost > ALLOWED_DEVIATION)
-        instrumentChild = true;
-
-      if(instrumentChild) {
-        /* Only dom & post dom cost are returned, every child is instrumented */
-        for(auto childInfo : _childLCCInfo) {
-          LCCNode* childLCC = childInfo.first;
-          auto mapIt = childToCostMap.find(childLCC);
-          assert((mapIt != childToCostMap.end()) && "Child PC cost not found!");
-          InstructionCost* childCost = mapIt->second; 
-          childLCC->instrumentForPC(childCost);
-        }
-      }
-      else {
-        auto avgChildLCCCost = getConstantInstCost(avgChildCost);
-        if(avgChildLCCCost) costs.push_back(avgChildLCCCost);
-      }
-
-      InstructionCost* newCost = new InstructionCost(InstructionCost::ADD, costs);
-      InstructionCost* simplifiedNewCost = simplifyCost(getFunction(), newCost);
-      if(!simplifiedNewCost) errs() << "Cost that could not be simplified : " << *newCost << "\n";
-      assert(simplifiedNewCost && "Simplified invertedV cost cannot be null!");
-      if(toInstrument)
-        instrumentForPC(simplifiedNewCost);
-      return simplifiedNewCost;
-    }
-
-    InstructionCost* getCostForIC(bool toInstrument, InstructionCost* initialCost) {
-
-      /* Sanity checks */
-      long initialNumCost = getConstCost(initialCost);
-#ifdef LC_DEBUG
-      errs() << "Inverted-V LCC id: " << getID() << " --> initial cost: " << initialNumCost << "\n";
-#endif
-
-      assert((initialNumCost != -1) && "Initial cost cannot be unknown!");
-      assert((initialNumCost <= CommitInterval) && "Initial cost cannot be greater than the commit cost interval!");
-
-      auto entryLCCCost = _entryLCC->getCostForIC(false, initialCost);
-
-      for(auto childInfo : _childLCCInfo) {
-        /* Every child is instrumented */
-        LCCNode* childLCC = childInfo.first;
-        InstructionCost* childCost = childLCC->getCostForIC(false, entryLCCCost);
-        childLCC->instrumentForIC(childCost);
-      }
-
-      return nullptr; /* Inverted-V LCC is demarcated by a fence at the bottom */
-    }
-
-    void instrumentForPC(InstructionCost* cost) {
-      _entryLCC->instrumentForPC(cost);
-    }
-
-    void instrumentForIC(InstructionCost* cost) {
-      for(auto childInfo = _childLCCInfo.begin(); childInfo != _childLCCInfo.end(); childInfo++) {
-        auto childLCC = childInfo->first;
-        childLCC->instrumentForIC(cost);
-      }
-    }
-
-    /* return true if any of its child containers are instrumented */
-    bool isInstrumented() {
-      bool ret = _entryLCC->isInstrumented();
-      for(auto childInfo = _childLCCInfo.begin(); childInfo != _childLCCInfo.end(); childInfo++) {
-        auto childLCC = childInfo->first;
-        ret = ret || childLCC->isInstrumented();
-      }
-      return ret;
-    }
-  };
-
-  class VLCC : public LCCNode {
-    std::map<LCCNode*,double> _parentLCCInfo;
-    LCCNode* _exitLCC;
-  public:
-    /* ----------------- Constructor ---------------------*/
-
-    VLCC(int id, LCCNode* exitLCC, std::map<LCCNode*, double> parentLCCInfo) : LCCNode(LCCNode::V_LCC, id), _parentLCCInfo(parentLCCInfo), _exitLCC(exitLCC) {
-      assert(exitLCC && "exit LCC cannot be null for a V Container");
-      _exitLCC->setParentLCC(this);
-      for(auto parentLCCIt = _parentLCCInfo.begin(); parentLCCIt != _parentLCCInfo.end(); parentLCCIt++) {
-        auto parentLCC = parentLCCIt->first;
-        parentLCC->setParentLCC(this);
-      }
-    }
-
-    /* -------- Implementation of virtual functions -------*/
-
-    Function* getFunction() {
-      return _exitLCC->getFunction();
-    }
-
-    LCCNode* getInnerMostEntryLCC() {
-      return nullptr;
-    }
-
-    LCCNode* getOneInnerMostEntryLCC() {
-      LCCNode* firstParent = _parentLCCInfo.begin()->first;
-      return firstParent->getOneInnerMostEntryLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostEntryLCC() {
-      std::set<LCCNode*> innerLCCs;
-      for(auto parentInfo = _parentLCCInfo.begin(); parentInfo != _parentLCCInfo.end(); parentInfo++) {
-        auto parentLCC = parentInfo->first;
-        auto parentInnerLCCs = parentLCC->getAllInnerMostEntryLCC();
-        for(auto parentInnerLCC = parentInnerLCCs.begin(); parentInnerLCC != parentInnerLCCs.end(); parentInnerLCC++) {
-          if(innerLCCs.find(*parentInnerLCC) == innerLCCs.end()) {
-            innerLCCs.insert(*parentInnerLCC);
-          }
-          else {
-            errs() << "WARNING: In VLCC->getAllInnerMostEntryLCC(), non-unique inner LCCs turned up!\n";
-          }
-        }
-      }
-      return innerLCCs;
-    }
-
-    LCCNode* getInnerMostExitLCC() {
-      return _exitLCC->getInnerMostExitLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostExitLCC() {
-      auto innerLCCs = _exitLCC->getAllInnerMostExitLCC();
-      return innerLCCs;
-    }
-
-    Loop* getLoop() {
-      return nullptr; /* not a loop container */
-    }
-
-    LCCTypes getType() {
-      return V_LCC;
-    }
-
-    InstructionCost* getCostForPC(bool toInstrument) {
-
-      for(auto parentInfo = _parentLCCInfo.begin(); parentInfo != _parentLCCInfo.end(); parentInfo++) {
-        InstructionCost::opvector costs;
-        auto parentLCC = parentInfo->first;
-
-        auto parentLCCCost = parentLCC->getCostForPC(false);
-        auto exitLCCCost = _exitLCC->getCostForPC(false);
-        if(parentLCCCost) costs.push_back(parentLCCCost);
-        if(exitLCCCost) costs.push_back(exitLCCCost);
-        InstructionCost* newCost = new InstructionCost(InstructionCost::ADD, costs);
-        InstructionCost* simplifiedNewCost = simplifyCost(getFunction(), newCost);
-        if(!simplifiedNewCost) errs() << "Cost that could not be simplified : " << *newCost << "\n";
-        assert(simplifiedNewCost && "Simplified V-LCC cost cannot be null!");
-        if(toInstrument)
-          instrumentForPC(simplifiedNewCost);
-      }
-      return nullptr; /* V_LCC is demarcated by a fence on the top */
-    }
-
-    InstructionCost* getCostForIC(bool toInstrument, InstructionCost* initialCost) {
-
-      /* Sanity checks */
-      long initialNumCost = getConstCost(initialCost);
-#ifdef LC_DEBUG
-      errs() << "VLCC id: " << getID() << " --> initial cost: " << initialNumCost << "\n";
-#endif
-
-      assert((initialNumCost != -1) && "Initial cost cannot be unknown!");
-      assert((initialNumCost <= CommitInterval) && "Initial cost cannot be greater than the commit cost interval!");
-
-      bool instrumentParent = false;
-      long avgParentCost = 0, maxCost = 0, minCost = 0;
-      std::map<LCCNode*, InstructionCost*> parentToCostMap;
-
-      for(auto parentInfo : _parentLCCInfo) {
-        LCCNode* parentLCC = parentInfo.first;
-        double parentProb = parentInfo.second;
-        InstructionCost* parentCost = parentLCC->getCostForIC(false, initialCost);
-        long numParentCost = getConstCost(parentCost);
-        long weightedParentCost = parentProb * numParentCost;
-        avgParentCost += weightedParentCost;
-        if(numParentCost > maxCost)
-          maxCost = numParentCost;
-        if(numParentCost < minCost)
-          minCost = numParentCost;
-        parentToCostMap[parentLCC] = parentCost;
-      }
-
-      long diffCost = maxCost - minCost;
-      if(diffCost > ALLOWED_DEVIATION)
-        instrumentParent = true;
-
-      if(instrumentParent) {
-        /* Only exit cost are returned, every parent is instrumented */
-        for(auto parentInfo : _parentLCCInfo) {
-          LCCNode* parentLCC = parentInfo.first;
-          auto mapIt = parentToCostMap.find(parentLCC);
-          assert((mapIt != parentToCostMap.end()) && "Parent IC cost not found!");
-          InstructionCost* parentCost = mapIt->second; 
-          parentLCC->instrumentForIC(parentCost);
-        }
-        avgParentCost = 0;
-      }
-
-      auto avgParentLCCCost = getConstantInstCost(avgParentCost);
-      auto exitLCCCost = _exitLCC->getCostForIC(false, avgParentLCCCost);
-      long remCost = getConstCost(exitLCCCost);
-
-      if(toInstrument || (remCost > CommitInterval)) {
-        instrumentForIC(exitLCCCost);
-        exitLCCCost = getConstantInstCost(0); 
-      }
-      return exitLCCCost;
-
-    }
-
-    void instrumentForPC(InstructionCost* cost) {
-      for(auto parentInfo = _parentLCCInfo.begin(); parentInfo != _parentLCCInfo.end(); parentInfo++) {
-        auto parentLCC = parentInfo->first;
-        parentLCC->instrumentForPC(cost);
-      }
-    }
-
-    void instrumentForIC(InstructionCost* cost) {
-      _exitLCC->instrumentForIC(cost);
-    }
-
-    /* return true if any of its child containers are instrumented */
-    bool isInstrumented() {
-      bool ret = _exitLCC->isInstrumented();
-      for(auto parentInfo = _parentLCCInfo.begin(); parentInfo != _parentLCCInfo.end(); parentInfo++) {
-        auto parentLCC = parentInfo->first;
-        ret = ret || parentLCC->isInstrumented();
-      }
-      return ret;
-    }
-  };
-
-  class UnknownLCC : public LCCNode {
-    LCCNode* _entryLCC; /* Should be dominator for branch & preheader for loop */
-    std::set<LCCNode*> _childLCCs;
-    /* either will have a exit LCC or a loop */
-    LCCNode* _exitLCC; /* Should be postdominator for branch & loop */
-    Loop* _loop;
-  public:
-    /* ----------------- Constructor ---------------------*/
-
-    UnknownLCC(int id, LCCNode* entryLCC, std::set<LCCNode*> childLCCs, LCCNode* exitLCC, Loop* loop) : LCCNode(LCCNode::UNKNOWN_LCC, id), _entryLCC(entryLCC), _childLCCs(childLCCs), _exitLCC(exitLCC), _loop(loop) {
-      assert(entryLCC && exitLCC && "entry & exit LCCs cannot be null for a Unknown Container");
-      _entryLCC->setParentLCC(this);
-      _exitLCC->setParentLCC(this);
-      for(auto childLCCIt = _childLCCs.begin(); childLCCIt != _childLCCs.end(); childLCCIt++) {
-        auto childLCC = *childLCCIt;
-        childLCC->setParentLCC(this);
-      }
-    }
-
-    /* -------- Implementation of virtual functions -------*/
-
-    Function* getFunction() {
-      return _entryLCC->getFunction();
-    }
-
-    LCCNode* getInnerMostEntryLCC() {
-      return _entryLCC->getInnerMostEntryLCC();
-    }
-
-    LCCNode* getOneInnerMostEntryLCC() {
-      return _entryLCC->getOneInnerMostEntryLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostEntryLCC() {
-      auto innerLCCs = _entryLCC->getAllInnerMostEntryLCC();
-      return innerLCCs;
-    }
-
-    LCCNode* getInnerMostExitLCC() {
-      return _exitLCC->getInnerMostExitLCC();
-    }
-
-    std::set<LCCNode*> getAllInnerMostExitLCC() {
-      auto innerLCCs = _exitLCC->getAllInnerMostExitLCC();
-      return innerLCCs;
-    }
-
-    Loop* getLoop() {
-      return _loop;
-    }
-
-    LCCTypes getType() {
-      return UNKNOWN_LCC;
-    }
-
-    InstructionCost* getCostForPC(bool toInstrument) {
-      InstructionCost::opvector costs;
-      auto entryLCCCost = _entryLCC->getCostForPC(false);
-      auto exitLCCCost = _exitLCC->getCostForPC(false);
-      if(entryLCCCost) costs.push_back(entryLCCCost);
-      if(exitLCCCost) costs.push_back(exitLCCCost);
-
-      for(auto childLCC : _childLCCs) {
-        InstructionCost* childCost = childLCC->getCostForPC(false);
-        childLCC->instrumentForPC(childCost);
-      }
-
-      InstructionCost* newCost = new InstructionCost(InstructionCost::ADD, costs);
-      InstructionCost* simplifiedNewCost = simplifyCost(getFunction(), newCost);
-      if(!simplifiedNewCost) errs() << "Cost that could not be simplified : " << *newCost << "\n";
-      assert(simplifiedNewCost && "Simplified path cost cannot be null!");
-      if(toInstrument)
-        instrumentForPC(simplifiedNewCost);
-      return simplifiedNewCost;
-    }
-
-    InstructionCost* getCostForIC(bool toInstrument, InstructionCost* initialCost) {
-
-      /* Sanity checks */
-      long initialNumCost = getConstCost(initialCost);
-#ifdef LC_DEBUG
-      errs() << "Unknown LCC id: " << getID() << " --> initial cost: " << initialNumCost << "\n";
-#endif
-
-      assert((initialNumCost != -1) && "Initial cost cannot be unknown!");
-      assert((initialNumCost <= CommitInterval) && "Initial cost cannot be greater than the commit cost interval!");
-
-      InstructionCost *zeroCost = getConstantInstCost(0); /* Initial cost for any top level container is 0 */
-
-      _entryLCC->getCostForIC(true, initialCost); /* entryLCC should be fully instrumented */
-
-      for(auto childLCC : _childLCCs) {
-        childLCC->getCostForIC(true, zeroCost); /* the interconnection between children & entry & exit are unknown, so each child is fully instrumented */
-      }
-
-      auto exitLCCCost = _exitLCC->getCostForIC(false, zeroCost);
-      long remCost = getConstCost(exitLCCCost);
-
-      if(toInstrument || (remCost > CommitInterval)) {
-        instrumentForIC(exitLCCCost);
-        exitLCCCost = getConstantInstCost(0); 
-      }
-      return exitLCCCost;
-    }
-
-    void instrumentForPC(InstructionCost* cost) {
-      _entryLCC->instrumentForPC(cost);
-    }
-
-    void instrumentForIC(InstructionCost* cost) {
-      _exitLCC->instrumentForIC(cost);
-    }
-
-    /* return true if any of its child containers are instrumented */
-    bool isInstrumented() {
-      return true; /* Since all are instrumented */
-    }
-  };
-
   /*********************************************** Section: Logical Clock Pass *********************************************/
-
   struct CompilerInterrupt : public ModulePass {
 
     static char ID;
     SmallVector<StringRef,100> funcUsedAsPointers; // contains list of all functions that begin a thread & main()
-    //std::set<std::string> instrumentedFuncs; // contains list of functions that have unresolvable arguments in function calls
     std::map<Function*,Value*> localClock; // list of local variables to be passed as parameter, corresponding to each function in threadFunc 
     std::map<std::string,bool> isRecursiveFunc;
-    /* Basic block may have fence instructions, which will require multiple containers for a single block. Order of blocks must be preserved for which vector is used */
+    /* Fence instructions are those where a probe is necessary - like a function call or an exit call etc.
+     * Basic block may have fence instructions inside it, which will require multiple containers for a single block. Order of blocks must be preserved for which vector is used */
     std::map<BasicBlock*,std::vector<LCCNode*>> bbToContainersMap; 
     /* Contains the final set of outer most containers after the last reduction */
     std::map<Function*,std::vector<LCCNode*>> globalOuterLCCList;
@@ -3339,7 +2750,6 @@ namespace {
     }
 
     /*************************************** Sub Section: Logical Clock Utility Functions ***************************************/
-
     bool presentInGlobalLCCList(LCCNode* depricatedLCC) {
       Function* F = depricatedLCC->getFunction();
       assert(globalOuterLCCList.count(F) && "Function has no containers to be removed");
@@ -3368,7 +2778,7 @@ namespace {
 
     /*************************************** Sub Section: Production Rule System ***************************************/
 
-    /* Check & create simple path container - LCC1==>LCC2 (LCC1->exitBlock==>LCC2->entryBlock) */
+    /* Check CFG & create path LCC if pattern matches */
     bool checkNCreatePathLCC(LCCNode* currentLCC) {
 
       /*********************** Check for path *************************/
@@ -3407,8 +2817,424 @@ namespace {
       return true;
     }
 
+    /* Check CFG & create branch LCC if pattern matches */
+    bool checkNCreateBranchLCC(LCCNode* currentLCC) {
 
-    /********************************************* Copied from BasicBlockUtils.cpp ********************************************/
+      /*********************** Check for branch *************************/
+      LCCNode* exitLCC = currentLCC->getInnerMostExitLCC();
+      if(!exitLCC) return false; /* when the current container is a invertedV container */
+
+      int numSuccLCC = currentLCC->getNumOfSuccLCC(); /* Number of branches */
+      assert((numSuccLCC == exitLCC->getNumOfSuccLCC()) && "Inner most exiting LCC & current LCC has different number of successors!"); /* Sanity check */
+      if(numSuccLCC <= 1) return false; /* Cannot be a branch */
+      
+      auto exitBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
+      LCCNode* exitLCCForCheck = getLastLCCofBB(exitBlock);
+      assert((exitLCC == exitLCCForCheck) && "exit LCC check failed"); /* Sanity check : only the last lcc of a basic block can have multiple branches coming out of it */
+
+      //errs() << "checkNCreateBranchLCC(): checking for block " << exitBlock->getName() << "\n";
+
+      auto termInst = exitBlock->getTerminator();
+      if(!isa<BranchInst>(termInst) && !isa<SwitchInst>(termInst)) {
+        if(!isa<UnreachableInst>(termInst) && !isa<ReturnInst>(termInst)) {/* TODO: add extra checks for fences that are instructions & not called functions like pthread_mutex_lock */
+          errs() << "Unhandled instruction: " << *termInst << "\n";
+          assert("This type of branching instruction is not handled");
+        }
+        /* This check is not valid since unreachable instruction may not have branches?? */
+        else
+          return false; /* Its a fence */
+      }
+      else { /* When its a proper branch */
+
+        /* Check for a single entry single exit branch */
+        DomTreeNode *currentPDNode = PDT->getNode(exitBlock);
+        if(!currentPDNode) return false;
+        DomTreeNode *postDomNode = currentPDNode->getIDom();
+        if(!postDomNode) return false;
+        BasicBlock* postDomBB = postDomNode->getBlock();
+        if(!postDomBB) return false;
+
+        DomTreeNode *postDomDNode = DT->getNode(postDomBB);
+        if(!postDomDNode) return false;
+        DomTreeNode *domNode = postDomDNode->getIDom();
+        if(!domNode) return false;
+        BasicBlock* domBB = domNode->getBlock();
+        if(!domBB) return false;
+
+        if(domBB != exitBlock) return false; /* This is not a single entry single exit branch */
+
+        /* Check all the blocks belong to the same loop */
+        auto L1 = LI->getLoopFor(domBB);
+        auto L2 = LI->getLoopFor(postDomBB);
+        if(L1 != L2)
+          return false;
+
+        /* Branch exit cannot be a loop header */
+        if(LI->isLoopHeader(postDomBB)) 
+          return false;
+        
+        /* Branch cannot be the loop latch or exiting IR level branch of the enclosing loop 
+         * Latch, although could have been handled. But the post dominator then will be the 
+         * loop header, which might be tricky to instrument. */
+        if(L1 && (L1->isLoopLatch(domBB) || L1->isLoopExiting(domBB))) 
+          return false;
+
+        /* Sanity check */
+        int numBranchSucc = termInst->getNumSuccessors();
+        if(numSuccLCC != numBranchSucc) {
+          errs() << "WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.\n";
+          errs() << "#branches: " << numBranchSucc << ", #successors: " << numSuccLCC << "\n";
+          auto succSetOfEntryLCC = currentLCC->getSuccSet();
+          for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
+            errs() << "Succs are:- ";
+            printUnitLCCSet(succIt->first);
+            errs() << "\n";
+          }
+          /* will not handle this case */
+          return false;
+        }
+
+        /* Check if there is at most one container between the dom container & postdom container */
+        LCCNode* postDomUnitLCC = getFirstLCCofBB(postDomBB);
+        if(!postDomUnitLCC) 
+          errs() << "Post dom block whose LCC is not found: " << postDomBB->getName() << "\n";
+
+        LCCNode* postDomLCC = postDomUnitLCC->getOuterMostEnclosingLCC();
+
+        auto succSetOfEntryLCC = currentLCC->getSuccSet();
+        bool directEdge = false; /* True if at least one direct edge is present */
+				double directEdgeProb = 0;
+        std::map<LCCNode*, double> middleLCCInfo;
+
+        /* Iterate over all the successors */
+        for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
+          /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
+          auto succLCC = succIt->first;
+
+          if(!currentLCC->isSimpleSuccEdge(succLCC, succIt->second))
+            return false;
+
+          /* When the successor is the post dominator, it is a direct edge */
+          if(succLCC == postDomLCC) {
+            directEdge = true;
+						BranchProbability bp = BPI->getEdgeProbability(domBB, postDomBB);
+						uint32_t numeratorBP = bp.getNumerator();
+						uint32_t denominatorBP = bp.getDenominator();
+						directEdgeProb = ((double)numeratorBP/denominatorBP);
+            continue;
+          }
+
+          auto succSetOfSuccLCC = succLCC->getSuccSet();
+
+          /* The middle containers may not have been reduced yet */
+          if(succSetOfSuccLCC.size() != 1)
+            return false;
+
+          /* The middle containers may not have been reduced yet */
+          auto succLCCOfSucc = succSetOfSuccLCC.begin()->first;
+          if(succLCCOfSucc != postDomLCC)
+            return false;
+
+          /* Check edge between middle container & post dom container */
+          if(!succLCC->isSimpleSuccEdge(postDomLCC, succSetOfSuccLCC.begin()->second))
+            return false;
+
+          auto succUnitLCC = succLCC->getInnerMostEntryLCC();
+          BasicBlock* middleEnBlock = (static_cast<UnitLCC *>(succUnitLCC))->getBlock();
+          BranchProbability bp = BPI->getEdgeProbability(domBB, middleEnBlock);
+          uint32_t numeratorBP = bp.getNumerator();
+          uint32_t denominatorBP = bp.getDenominator();
+          double numBP = ((double)numeratorBP/denominatorBP);
+          middleLCCInfo[succLCC] = numBP;
+        }
+
+        /********************* Create new container *********************/
+        LCCNode* newLCC = new BranchLCC(lccIDGen++, currentLCC, postDomLCC, middleLCCInfo, directEdge, directEdgeProb, domBB, postDomBB, false);
+
+        /******************** Create new connections *********************/
+        newLCC->makeNewSuccConnections(postDomLCC); /* succLCC is the exit LCC for newLCC */
+        newLCC->makeNewPredConnections(currentLCC); /* currentLCC is the entry LCC for newLCC */
+
+#ifdef ALL_DEBUG
+        errs() << "\n\n\n*************************** Matched Branch header: ****************************\n";
+        printUnitLCCSet(currentLCC);
+        /* Iterate over all the successors */
+        for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
+          /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
+          auto succLCC = succIt->first;
+          errs() << "\nBranch succ: ";
+          printUnitLCCSet(succLCC);
+          if(succIt->second.size()==1) {
+            errs() << ", connected LCC: ";
+            LCCNode* connLCC = *(succIt->second.begin());
+            printUnitLCCSet(connLCC);
+            errs() << "\n";
+          }
+        }
+        errs() << "\n";
+
+        errs() << "\nNew Succ for New Branch container: ";
+        printUnitLCCSet(currentLCC);
+        errs() << " --> ";
+        auto newSuccSetOfEntryLCC = newLCC->getSuccSet();
+        for(auto succIt = newSuccSetOfEntryLCC.begin(); succIt != newSuccSetOfEntryLCC.end(); succIt++) {
+          auto succLCC = succIt->first;
+          printUnitLCCSet(succLCC);
+          errs() << "\t";
+        }
+        errs() << "\n";
+#endif
+
+        /******************** Update global LCC list *********************/
+        auto F = currentLCC->getFunction();
+        auto position = eraseFromGlobalLCCList(currentLCC);
+        globalOuterLCCList[F].insert(position, newLCC);
+#ifdef ALL_DEBUG
+        errs() << "Adding ";
+        printUnitLCCSet(newLCC);
+        errs() << " to the global list of outer LCCs\n";
+#endif
+        eraseFromGlobalLCCList(postDomLCC);
+        for(auto middleLCCIt = middleLCCInfo.begin(); middleLCCIt != middleLCCInfo.end(); middleLCCIt++)
+          eraseFromGlobalLCCList(middleLCCIt->first);
+
+        /************************ Test Printing **************************/
+#ifdef LC_DEBUG
+        errs() << "\nBranch Container(" << newLCC->getID() << "):- ";
+        errs() << "Entry LCC(" << currentLCC->getID() << "): (";
+        printUnitLCCSet(currentLCC);
+        errs() << "), Middle LCC( ";
+        for(auto middleLCCIt = middleLCCInfo.begin(); middleLCCIt != middleLCCInfo.end(); middleLCCIt++) {
+          printUnitLCCSet(middleLCCIt->first);
+          errs() << "(" << middleLCCIt->first->getID() << ")\t";
+        }
+        errs() << "), Exit LCC(" << postDomLCC->getID() << "): (";
+        printUnitLCCSet(postDomLCC);
+        errs() << ")\n";
+#endif
+
+        applycontrule2++;
+        return true;
+      }
+
+      return false;
+    }
+
+    /* Check CFG & create loop LCC if pattern matches */
+    bool checkNCreateLoopLCC(LCCNode* currentLCC) {
+
+      /************************ Check for loop **************************/
+
+      /* Header of a loop will not be combined by any rule as an exiting container, until the loop has already been reduced */
+      LCCNode* entryLCC = currentLCC->getInnerMostEntryLCC();
+      if(!entryLCC) return false; /* when the current container is a invertedV container */
+      auto entryBlock = (static_cast<UnitLCC *>(entryLCC))->getBlock();
+      Loop* currentLoop = LI->getLoopFor(entryBlock);
+
+      /* Proceed only if inside a loop */
+      if(!currentLoop) return false;
+
+      /* Proceed only if currentLCC is the header of a loop */
+      if(!LI->isLoopHeader(entryBlock)) return false;
+      
+      /* Proceed only if entry block does not have a fence inside it */
+      if(getNumLCCofBB(entryBlock) > 1) return false; /* Header cannot have a fence inside */
+      
+      BasicBlock* currLoopLatch = currentLoop->getLoopLatch();
+      BasicBlock* currLoopExBlock = currentLoop->getExitingBlock();
+      const SCEV* backEdgeTakenCount = SE->getBackedgeTakenCount(currentLoop);
+      InstructionCost* simplifiedBackEdges = nullptr;
+
+      /* Proceed only if loop is simple, that is, has single latch, and single exiting block */
+      if(!currLoopLatch || !currLoopExBlock) return false;
+      //errs() << entryBlock->getParent()->getName() << "(): Checking if simple for Loop " << *currentLoop << ". Latch: " << currLoopLatch->getName() << ", Exiting block: " << currLoopExBlock->getName() << "\n";
+
+      BasicBlock* loopPredBB = currentLoop->getLoopPreheader();
+      BasicBlock* loopSuccBB = currentLoop->getExitBlock();
+      if(!loopSuccBB || !loopPredBB) {
+#ifdef CRNT_DEBUG
+        errs() << "Function: " << entryBlock->getParent()->getName() << ", loop: " << entryBlock->getName() << " has : \n";
+        if(!loopPredBB)
+          errs() << "\tmultiple predecessor\n";
+        if(!loopSuccBB)
+          errs() << "\tmultiple successor\n";
+#endif
+        return false;
+      }
+      
+      assert(loopPredBB && "Loop having multiple predecessors require extra instrumentation. Support not present yet.");
+      //assert(loopSuccBB && loopPredBB && "Loop having multiple successors & predecessors require extra instrumentation. Support not present yet.");
+
+      LCCNode* loopPredUnitLCC = getLastLCCofBB(loopPredBB);
+      //errs() << "Loop Pred Unit LCC (" << loopPredUnitLCC->getID() << "):- ";
+      //printUnitLCCSet(loopPredUnitLCC);
+
+      LCCNode* loopPredLCC = loopPredUnitLCC->getOuterMostEnclosingLCC();
+      //errs() << " - Outer LCC (" << loopPredLCC->getID() << "): ";
+      //printUnitLCCSet(loopPredLCC);
+      //errs() << "\n";
+
+      LCCNode* loopSuccUnitLCC = getFirstLCCofBB(loopSuccBB);
+      //errs() << "Loop Succ Unit LCC (" << loopSuccUnitLCC->getID() << "):- ";
+      //printUnitLCCSet(loopSuccUnitLCC);
+
+      LCCNode* loopSuccLCC = loopSuccUnitLCC->getOuterMostEnclosingLCC();
+      //errs() << " - Outer LCC (" << loopSuccLCC->getID() << "): ";
+      //printUnitLCCSet(loopSuccLCC);
+      //errs() << "\n";
+
+      if(!loopPredBB || !loopSuccBB) {
+        unhandled_loop++;
+        return false;
+      }
+      
+      /* if the loop has already been reduced */
+      Loop *lccLoop = currentLCC->getLoop();
+      if(lccLoop == currentLoop) return false;
+
+      errs() << entryBlock->getParent()->getName() << "(): Attempting to create LCC for simple loop " << *currentLoop << ". Latch: " << currLoopLatch->getName() << ", Exiting block: " << currLoopExBlock->getName() << "\n";
+
+      /* Find if the exiting block is co-located with the header block */
+      bool isHeaderWithExitBlock = false;
+      int loopType;
+      bool loopBodyReduced = false;
+      auto succOfHeaderLCC = currentLCC->getSuccSet();
+      LCCNode *loopBodyLCC = nullptr;
+      if(currentLoop->isLoopExiting(entryBlock))
+        isHeaderWithExitBlock = true;
+
+      if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
+        InstructionCost* backEdges = scevToCost(backEdgeTakenCount);
+        simplifiedBackEdges = simplifyCost(currentLCC->getFunction(), backEdges, true);
+      }
+
+      if(isHeaderWithExitBlock) {
+        loopType = LoopLCC::HEADER_COLOCATED_EXIT;
+
+        /* Since the header is a branch statement, it couldn't have been reduced earlier */ 
+        /* Trying to find the branch that goes inside the loop */
+        if((succOfHeaderLCC.size() != 1) && ((succOfHeaderLCC.size() != 2))) /* 2 for self loop, 1 for others(as one latch) */
+          return false;
+
+        for(auto succIt = succOfHeaderLCC.begin(); succIt != succOfHeaderLCC.end(); succIt++) {
+          auto succLCC = succIt->first;
+          LCCNode* succInnerLCC = succLCC->getInnerMostEntryLCC();
+          if(!succInnerLCC) return false; /* when the successor container is a invertedV container */
+          BasicBlock *succEnBlock = (static_cast<UnitLCC *>(succInnerLCC))->getBlock();
+
+          /* Ignore the exiting block */
+          if (!currentLoop->contains(succEnBlock)) continue;
+
+          /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
+          if(!currentLCC->isSimpleSuccEdge(succLCC, succIt->second))
+            return false;
+          
+          /* Self loop */
+          if(currentLCC == succLCC) {
+            loopBodyReduced = true;
+            loopType = LoopLCC::SELF_LOOP;
+
+            break;
+          }
+
+          /* To consider the loop body as reduced, the successor of the loop body must be the header LCC, & there must not be any fence */
+          LCCNode* succOfSuccLCC = succLCC->getSingleSuccWOFence();
+          if(succOfSuccLCC && (succOfSuccLCC == currentLCC)) {
+            loopBodyLCC = succLCC;
+            loopBodyReduced = true;
+            break;
+          }
+          else {
+            return false;
+          }
+        }
+      }
+      else {
+        loopType = LoopLCC::HEADER_NONCOLOCATED_EXIT;
+
+        /* Since there is one latch & one exiting block, and header is not exiting, latch & exiting block must be the same. */
+        /* Header & exiting block must be reduced inside one container, with one edge to itself & another outside loop */
+        if(succOfHeaderLCC.size() != 2) return 0;
+
+        for(auto succIt = succOfHeaderLCC.begin(); succIt != succOfHeaderLCC.end(); succIt++) {
+          auto succLCC = succIt->first;
+          LCCNode* succInnerLCC = succLCC->getInnerMostEntryLCC();
+          if(!succInnerLCC) return false; /* when the successor container is a invertedV container */
+          BasicBlock *succEnBlock = (static_cast<UnitLCC *>(succInnerLCC))->getBlock();
+
+          /* Ignore the exiting block */
+          if (!currentLoop->contains(succEnBlock)) continue;
+          
+          if(succLCC == currentLCC) {
+            /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
+            if(!currentLCC->isSimpleSuccEdge(succLCC, succIt->second)) { /* currentLCC has self loop to succLCC */
+              return false;
+            }
+
+            loopBodyReduced = true;
+            break;
+          }
+        }
+      }
+
+      if(!loopBodyReduced) return false;
+
+      /********************* Create new container **********************/
+      LCCNode* newLCC = new LoopLCC(lccIDGen++, currentLCC, loopBodyLCC, loopPredLCC, loopSuccLCC, currentLoop, loopType, simplifiedBackEdges, isHeaderWithExitBlock, false);
+
+      /******************** Create new connections *********************/
+      newLCC->makeNewSuccConnections(loopSuccLCC); /* loopSuccLCC is the exit LCC for newLCC */
+      newLCC->makeNewPredConnections(loopPredLCC); /* loopPredLCC is the entry LCC for newLCC */
+    
+      /******************** Update global LCC list *********************/
+      auto F = currentLCC->getFunction();
+      auto position = eraseFromGlobalLCCList(loopPredLCC);
+      globalOuterLCCList[F].insert(position, newLCC);
+      eraseFromGlobalLCCList(currentLCC);
+      if(loopBodyLCC) eraseFromGlobalLCCList(loopBodyLCC);
+      eraseFromGlobalLCCList(loopSuccLCC);
+
+      /************************ Test Printing **************************/
+#ifdef LC_DEBUG
+      errs() << "\n\n\n************************** Matched Loop Header: ****************************\n";
+      errs() << "\nLoop Container(" << newLCC->getID() << "):- ";
+      errs() << "PreHeader LCC(" << loopPredLCC->getID() << "): (";
+      printUnitLCCSet(loopPredLCC);
+      errs() << "), Header LCC(" << currentLCC->getID() << " ): (";
+      printUnitLCCSet(currentLCC);
+      if(loopBodyLCC) {
+        errs() << "), Body LCC(" << loopBodyLCC->getID() << "): (";
+        printUnitLCCSet(loopBodyLCC);
+      }
+      errs() << "), PostExit LCC(" << loopSuccLCC->getID() << "): (";
+      printUnitLCCSet(loopSuccLCC);
+      errs() << "), New Loop LCC(";
+      printUnitLCCSet(newLCC);
+      errs() << ")\n";
+
+      if(simplifiedBackEdges)
+        errs() << ", Backedge: " << *simplifiedBackEdges << " [ Original SCEV Backedge : " << *backEdgeTakenCount << " ]\n";
+      else {
+        errs() << ", no simplified backedges\n";
+
+        if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
+          InstructionCost* backEdges = scevToCost(backEdgeTakenCount);
+          errs() << "Unsimplified backedge: " << *backEdges << "\n[ Original SCEV Backedge: " << *backEdgeTakenCount << " ]\n";
+        }
+        else {
+          if (backEdgeTakenCount)
+            errs() << "The Backedge that could not be computed: " << *backEdgeTakenCount << "\n";
+          else
+            errs() << "No Backedge info is present to the IR\n";
+        }
+      }
+#endif
+
+      applycontrule3++;
+      return true;
+    }
+
+    /********************************************* The next 4 functions are copied from BasicBlockUtils.cpp ********************************************/
     /// Update DominatorTree, LoopInfo, and LCCSA analysis information.
     void UpdateAnalysisInformation(BasicBlock *OldBB, BasicBlock *NewBB,
                                           ArrayRef<BasicBlock *> Preds,
@@ -3663,471 +3489,11 @@ namespace {
       return NewBB1;
     }
 
-    /* Check & create simple branch container */
-    bool checkNCreateBranchLCC(LCCNode* currentLCC) {
-
-      /*********************** Check for branch *************************/
-      LCCNode* exitLCC = currentLCC->getInnerMostExitLCC();
-      if(!exitLCC) return false; /* when the current container is a invertedV container */
-
-      int numSuccLCC = currentLCC->getNumOfSuccLCC(); /* Number of branches */
-      assert((numSuccLCC == exitLCC->getNumOfSuccLCC()) && "Inner most exiting LCC & current LCC has different number of successors!"); /* Sanity check */
-      if(numSuccLCC <= 1) return false; /* Cannot be a branch */
-      
-      auto exitBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
-      LCCNode* exitLCCForCheck = getLastLCCofBB(exitBlock);
-      assert((exitLCC == exitLCCForCheck) && "exit LCC check failed"); /* Sanity check : only the last lcc of a basic block can have multiple branches coming out of it */
-
-      //errs() << "checkNCreateBranchLCC(): checking for block " << exitBlock->getName() << "\n";
-
-      auto termInst = exitBlock->getTerminator();
-      if(!isa<BranchInst>(termInst) && !isa<SwitchInst>(termInst)) {
-        if(!isa<UnreachableInst>(termInst) && !isa<ReturnInst>(termInst)) {/* TODO: add extra checks for fences that are instructions & not called functions like pthread_mutex_lock */
-          errs() << "Unhandled instruction: " << *termInst << "\n";
-          assert("This type of branching instruction is not handled");
-        }
-        /* This check is not valid since unreachable instruction may not have branches?? */
-        else
-          return false; /* Its a fence */
-      }
-      else { /* When its a proper branch */
-
-        /* Check for a single entry single exit branch */
-        DomTreeNode *currentPDNode = PDT->getNode(exitBlock);
-        if(!currentPDNode) return false;
-        DomTreeNode *postDomNode = currentPDNode->getIDom();
-        if(!postDomNode) return false;
-        BasicBlock* postDomBB = postDomNode->getBlock();
-        if(!postDomBB) return false;
-
-        DomTreeNode *postDomDNode = DT->getNode(postDomBB);
-        if(!postDomDNode) return false;
-        DomTreeNode *domNode = postDomDNode->getIDom();
-        if(!domNode) return false;
-        BasicBlock* domBB = domNode->getBlock();
-        if(!domBB) return false;
-
-        if(domBB != exitBlock) return false; /* This is not a single entry single exit branch */
-
-        /* Check all the blocks belong to the same loop */
-        auto L1 = LI->getLoopFor(domBB);
-        auto L2 = LI->getLoopFor(postDomBB);
-        if(L1 != L2)
-          return false;
-
-        /* Branch exit cannot be a loop header */
-        if(LI->isLoopHeader(postDomBB)) 
-          return false;
-        
-        /* Branch cannot be the loop latch or exiting IR level branch of the enclosing loop 
-         * Latch, although could have been handled. But the post dominator then will be the 
-         * loop header, which might be tricky to instrument. */
-        if(L1 && (L1->isLoopLatch(domBB) || L1->isLoopExiting(domBB))) 
-          return false;
-
-        /* Sanity check */
-        int numBranchSucc = termInst->getNumSuccessors();
-        if(numSuccLCC != numBranchSucc) {
-          errs() << "WARNING: Number of successor branches & containers should be same! This can happen when two cases of a switch point to the same code.\n";
-          errs() << "#branches: " << numBranchSucc << ", #successors: " << numSuccLCC << "\n";
-          auto succSetOfEntryLCC = currentLCC->getSuccSet();
-          for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-            errs() << "Succs are:- ";
-            printUnitLCCSet(succIt->first);
-            errs() << "\n";
-          }
-          /* will not handle this case */
-          return false;
-        }
-
-        /* Check if there is at most one container between the dom container & postdom container */
-        LCCNode* postDomUnitLCC = getFirstLCCofBB(postDomBB);
-        if(!postDomUnitLCC) 
-          errs() << "Post dom block whose LCC is not found: " << postDomBB->getName() << "\n";
-
-        LCCNode* postDomLCC = postDomUnitLCC->getOuterMostEnclosingLCC();
-
-        auto succSetOfEntryLCC = currentLCC->getSuccSet();
-        bool directEdge = false; /* True if at least one direct edge is present */
-				double directEdgeProb = 0;
-        std::map<LCCNode*, double> middleLCCInfo;
-
-        /* Iterate over all the successors */
-        for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-          /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-          auto succLCC = succIt->first;
-
-          if(!currentLCC->isSimpleSuccEdge(succLCC, succIt->second))
-            return false;
-
-          /* When the successor is the post dominator, it is a direct edge */
-          if(succLCC == postDomLCC) {
-            directEdge = true;
-						BranchProbability bp = BPI->getEdgeProbability(domBB, postDomBB);
-						uint32_t numeratorBP = bp.getNumerator();
-						uint32_t denominatorBP = bp.getDenominator();
-						directEdgeProb = ((double)numeratorBP/denominatorBP);
-            continue;
-          }
-
-          auto succSetOfSuccLCC = succLCC->getSuccSet();
-
-          /* The middle containers may not have been reduced yet */
-          if(succSetOfSuccLCC.size() != 1)
-            return false;
-
-          /* The middle containers may not have been reduced yet */
-          auto succLCCOfSucc = succSetOfSuccLCC.begin()->first;
-          if(succLCCOfSucc != postDomLCC)
-            return false;
-
-          /* Check edge between middle container & post dom container */
-          if(!succLCC->isSimpleSuccEdge(postDomLCC, succSetOfSuccLCC.begin()->second))
-            return false;
-
-          auto succUnitLCC = succLCC->getInnerMostEntryLCC();
-          BasicBlock* middleEnBlock = (static_cast<UnitLCC *>(succUnitLCC))->getBlock();
-          BranchProbability bp = BPI->getEdgeProbability(domBB, middleEnBlock);
-          uint32_t numeratorBP = bp.getNumerator();
-          uint32_t denominatorBP = bp.getDenominator();
-          double numBP = ((double)numeratorBP/denominatorBP);
-          middleLCCInfo[succLCC] = numBP;
-        }
-
-        /********************* Create new container *********************/
-        LCCNode* newLCC = new BranchLCC(lccIDGen++, currentLCC, postDomLCC, middleLCCInfo, directEdge, directEdgeProb, domBB, postDomBB, false);
-
-        /******************** Create new connections *********************/
-        newLCC->makeNewSuccConnections(postDomLCC); /* succLCC is the exit LCC for newLCC */
-        newLCC->makeNewPredConnections(currentLCC); /* currentLCC is the entry LCC for newLCC */
-
-#ifdef ALL_DEBUG
-        errs() << "\n\n\n*************************** Matched Branch header: ****************************\n";
-        printUnitLCCSet(currentLCC);
-        /* Iterate over all the successors */
-        for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-          /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-          auto succLCC = succIt->first;
-          errs() << "\nBranch succ: ";
-          printUnitLCCSet(succLCC);
-          if(succIt->second.size()==1) {
-            errs() << ", connected LCC: ";
-            LCCNode* connLCC = *(succIt->second.begin());
-            printUnitLCCSet(connLCC);
-            errs() << "\n";
-          }
-        }
-        errs() << "\n";
-
-        errs() << "\nNew Succ for New Branch container: ";
-        printUnitLCCSet(currentLCC);
-        errs() << " --> ";
-        auto newSuccSetOfEntryLCC = newLCC->getSuccSet();
-        for(auto succIt = newSuccSetOfEntryLCC.begin(); succIt != newSuccSetOfEntryLCC.end(); succIt++) {
-          auto succLCC = succIt->first;
-          printUnitLCCSet(succLCC);
-          errs() << "\t";
-        }
-        errs() << "\n";
-#endif
-
-        /******************** Update global LCC list *********************/
-        auto F = currentLCC->getFunction();
-        auto position = eraseFromGlobalLCCList(currentLCC);
-        globalOuterLCCList[F].insert(position, newLCC);
-#ifdef ALL_DEBUG
-        errs() << "Adding ";
-        printUnitLCCSet(newLCC);
-        errs() << " to the global list of outer LCCs\n";
-#endif
-        eraseFromGlobalLCCList(postDomLCC);
-        for(auto middleLCCIt = middleLCCInfo.begin(); middleLCCIt != middleLCCInfo.end(); middleLCCIt++)
-          eraseFromGlobalLCCList(middleLCCIt->first);
-
-        /************************ Test Printing **************************/
-#ifdef LC_DEBUG
-        errs() << "\nBranch Container(" << newLCC->getID() << "):- ";
-        errs() << "Entry LCC(" << currentLCC->getID() << "): (";
-        printUnitLCCSet(currentLCC);
-        errs() << "), Middle LCC( ";
-        for(auto middleLCCIt = middleLCCInfo.begin(); middleLCCIt != middleLCCInfo.end(); middleLCCIt++) {
-          printUnitLCCSet(middleLCCIt->first);
-          errs() << "(" << middleLCCIt->first->getID() << ")\t";
-        }
-        errs() << "), Exit LCC(" << postDomLCC->getID() << "): (";
-        printUnitLCCSet(postDomLCC);
-        errs() << ")\n";
-#endif
-
-        applycontrule2++;
-        return true;
-      }
-
-      return false;
-    }
-
-    /* Check & create simple loop container */
-    bool checkNCreateLoopLCC(LCCNode* currentLCC) {
-
-      /************************ Check for loop **************************/
-
-      /* Header of a loop will not be combined by any rule as an exiting container, until the loop has already been reduced */
-      LCCNode* entryLCC = currentLCC->getInnerMostEntryLCC();
-      if(!entryLCC) return false; /* when the current container is a invertedV container */
-      auto entryBlock = (static_cast<UnitLCC *>(entryLCC))->getBlock();
-      Loop* currentLoop = LI->getLoopFor(entryBlock);
-
-      /* Proceed only if inside a loop */
-      if(!currentLoop) return false;
-
-      /* Proceed only if currentLCC is the header of a loop */
-      if(!LI->isLoopHeader(entryBlock)) return false;
-      
-      /* Proceed only if entry block does not have a fence inside it */
-      if(getNumLCCofBB(entryBlock) > 1) return false; /* Header cannot have a fence inside */
-      
-      BasicBlock* currLoopLatch = currentLoop->getLoopLatch();
-      BasicBlock* currLoopExBlock = currentLoop->getExitingBlock();
-      const SCEV* backEdgeTakenCount = SE->getBackedgeTakenCount(currentLoop);
-      InstructionCost* simplifiedBackEdges = nullptr;
-
-      /* Proceed only if loop is simple, that is, has single latch, and single exiting block */
-      if(!currLoopLatch || !currLoopExBlock) return false;
-      //errs() << entryBlock->getParent()->getName() << "(): Checking if simple for Loop " << *currentLoop << ". Latch: " << currLoopLatch->getName() << ", Exiting block: " << currLoopExBlock->getName() << "\n";
-
-      BasicBlock* loopPredBB = currentLoop->getLoopPreheader();
-      BasicBlock* loopSuccBB = currentLoop->getExitBlock();
-      if(!loopSuccBB || !loopPredBB) {
-#ifdef CRNT_DEBUG
-        errs() << "Function: " << entryBlock->getParent()->getName() << ", loop: " << entryBlock->getName() << " has : \n";
-        if(!loopPredBB)
-          errs() << "\tmultiple predecessor\n";
-        if(!loopSuccBB)
-          errs() << "\tmultiple successor\n";
-#endif
-        return false;
-      }
-      
-      assert(loopPredBB && "Loop having multiple predecessors require extra instrumentation. Support not present yet.");
-      //assert(loopSuccBB && loopPredBB && "Loop having multiple successors & predecessors require extra instrumentation. Support not present yet.");
-
-      LCCNode* loopPredUnitLCC = getLastLCCofBB(loopPredBB);
-      //errs() << "Loop Pred Unit LCC (" << loopPredUnitLCC->getID() << "):- ";
-      //printUnitLCCSet(loopPredUnitLCC);
-
-      LCCNode* loopPredLCC = loopPredUnitLCC->getOuterMostEnclosingLCC();
-      //errs() << " - Outer LCC (" << loopPredLCC->getID() << "): ";
-      //printUnitLCCSet(loopPredLCC);
-      //errs() << "\n";
-
-      LCCNode* loopSuccUnitLCC = getFirstLCCofBB(loopSuccBB);
-      //errs() << "Loop Succ Unit LCC (" << loopSuccUnitLCC->getID() << "):- ";
-      //printUnitLCCSet(loopSuccUnitLCC);
-
-      LCCNode* loopSuccLCC = loopSuccUnitLCC->getOuterMostEnclosingLCC();
-      //errs() << " - Outer LCC (" << loopSuccLCC->getID() << "): ";
-      //printUnitLCCSet(loopSuccLCC);
-      //errs() << "\n";
-
-      if(!loopPredBB || !loopSuccBB) {
-        unhandled_loop++;
-        return false;
-      }
-      
-      /* if the loop has already been reduced */
-      Loop *lccLoop = currentLCC->getLoop();
-      if(lccLoop == currentLoop) return false;
-
-      errs() << entryBlock->getParent()->getName() << "(): Attempting to create LCC for simple loop " << *currentLoop << ". Latch: " << currLoopLatch->getName() << ", Exiting block: " << currLoopExBlock->getName() << "\n";
-
-      /* Find if the exiting block is co-located with the header block */
-      bool isHeaderWithExitBlock = false;
-      int loopType;
-      bool loopBodyReduced = false;
-      auto succOfHeaderLCC = currentLCC->getSuccSet();
-      LCCNode *loopBodyLCC = nullptr;
-      if(currentLoop->isLoopExiting(entryBlock))
-        isHeaderWithExitBlock = true;
-
-      if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
-        InstructionCost* backEdges = scevToCost(backEdgeTakenCount);
-        simplifiedBackEdges = simplifyCost(currentLCC->getFunction(), backEdges, true);
-      }
-
-      if(isHeaderWithExitBlock) {
-        loopType = LoopLCC::HEADER_COLOCATED_EXIT;
-
-        /* Since the header is a branch statement, it couldn't have been reduced earlier */ 
-        /* Trying to find the branch that goes inside the loop */
-        if((succOfHeaderLCC.size() != 1) && ((succOfHeaderLCC.size() != 2))) /* 2 for self loop, 1 for others(as one latch) */
-          return false;
-
-        for(auto succIt = succOfHeaderLCC.begin(); succIt != succOfHeaderLCC.end(); succIt++) {
-          auto succLCC = succIt->first;
-          LCCNode* succInnerLCC = succLCC->getInnerMostEntryLCC();
-          if(!succInnerLCC) return false; /* when the successor container is a invertedV container */
-          BasicBlock *succEnBlock = (static_cast<UnitLCC *>(succInnerLCC))->getBlock();
-
-          /* Ignore the exiting block */
-          if (!currentLoop->contains(succEnBlock)) continue;
-
-          /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-          if(!currentLCC->isSimpleSuccEdge(succLCC, succIt->second))
-            return false;
-          
-          /* Self loop */
-          if(currentLCC == succLCC) {
-            loopBodyReduced = true;
-            loopType = LoopLCC::SELF_LOOP;
-
-            break;
-          }
-
-          /* To consider the loop body as reduced, the successor of the loop body must be the header LCC, & there must not be any fence */
-          LCCNode* succOfSuccLCC = succLCC->getSingleSuccWOFence();
-          if(succOfSuccLCC && (succOfSuccLCC == currentLCC)) {
-            loopBodyLCC = succLCC;
-            loopBodyReduced = true;
-            break;
-          }
-          else {
-            return false;
-          }
-        }
-      }
-      else {
-        loopType = LoopLCC::HEADER_NONCOLOCATED_EXIT;
-
-        /* Since there is one latch & one exiting block, and header is not exiting, latch & exiting block must be the same. */
-        /* Header & exiting block must be reduced inside one container, with one edge to itself & another outside loop */
-        if(succOfHeaderLCC.size() != 2) return 0;
-
-        for(auto succIt = succOfHeaderLCC.begin(); succIt != succOfHeaderLCC.end(); succIt++) {
-          auto succLCC = succIt->first;
-          LCCNode* succInnerLCC = succLCC->getInnerMostEntryLCC();
-          if(!succInnerLCC) return false; /* when the successor container is a invertedV container */
-          BasicBlock *succEnBlock = (static_cast<UnitLCC *>(succInnerLCC))->getBlock();
-
-          /* Ignore the exiting block */
-          if (!currentLoop->contains(succEnBlock)) continue;
-          
-          if(succLCC == currentLCC) {
-            /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-            if(!currentLCC->isSimpleSuccEdge(succLCC, succIt->second)) { /* currentLCC has self loop to succLCC */
-              return false;
-            }
-
-            loopBodyReduced = true;
-            break;
-          }
-        }
-      }
-
-      if(!loopBodyReduced) return false;
-
-      /********************* Create new container **********************/
-      LCCNode* newLCC = new LoopLCC(lccIDGen++, currentLCC, loopBodyLCC, loopPredLCC, loopSuccLCC, currentLoop, loopType, simplifiedBackEdges, isHeaderWithExitBlock, false);
-
-      /******************** Create new connections *********************/
-      newLCC->makeNewSuccConnections(loopSuccLCC); /* loopSuccLCC is the exit LCC for newLCC */
-      newLCC->makeNewPredConnections(loopPredLCC); /* loopPredLCC is the entry LCC for newLCC */
-    
-      /******************** Update global LCC list *********************/
-      auto F = currentLCC->getFunction();
-      auto position = eraseFromGlobalLCCList(loopPredLCC);
-      globalOuterLCCList[F].insert(position, newLCC);
-      eraseFromGlobalLCCList(currentLCC);
-      if(loopBodyLCC) eraseFromGlobalLCCList(loopBodyLCC);
-      eraseFromGlobalLCCList(loopSuccLCC);
-
-      /************************ Test Printing **************************/
-#ifdef LC_DEBUG
-      errs() << "\n\n\n************************** Matched Loop Header: ****************************\n";
-      errs() << "\nLoop Container(" << newLCC->getID() << "):- ";
-      errs() << "PreHeader LCC(" << loopPredLCC->getID() << "): (";
-      printUnitLCCSet(loopPredLCC);
-      errs() << "), Header LCC(" << currentLCC->getID() << " ): (";
-      printUnitLCCSet(currentLCC);
-      if(loopBodyLCC) {
-        errs() << "), Body LCC(" << loopBodyLCC->getID() << "): (";
-        printUnitLCCSet(loopBodyLCC);
-      }
-      errs() << "), PostExit LCC(" << loopSuccLCC->getID() << "): (";
-      printUnitLCCSet(loopSuccLCC);
-      errs() << "), New Loop LCC(";
-      printUnitLCCSet(newLCC);
-      errs() << ")\n";
-
-      if(simplifiedBackEdges)
-        errs() << ", Backedge: " << *simplifiedBackEdges << " [ Original SCEV Backedge : " << *backEdgeTakenCount << " ]\n";
-      else {
-        errs() << ", no simplified backedges\n";
-
-        if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
-          InstructionCost* backEdges = scevToCost(backEdgeTakenCount);
-          errs() << "Unsimplified backedge: " << *backEdges << "\n[ Original SCEV Backedge: " << *backEdgeTakenCount << " ]\n";
-        }
-        else {
-          if (backEdgeTakenCount)
-            errs() << "The Backedge that could not be computed: " << *backEdgeTakenCount << "\n";
-          else
-            errs() << "No Backedge info is present to the IR\n";
-        }
-      }
-#endif
-
-      applycontrule3++;
-      return true;
-    }
-    
-    /* if there is a fence inside the loop, this will return false */
-    bool getChildrenOfLoop(LCCNode* currLCC, Loop* currLoop, std::set<LCCNode* > childSet) {
-
-      /* if currLCC is not supplied, means this is the starting call & it should point to the loop header */
-      auto succSetOfEntryLCC = currLCC->getSuccSet();
-      for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-        /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-        auto succLCC = succIt->first;
-        LCCNode* innerSuccEnLCC = succLCC->getInnerMostEntryLCC();
-        LCCNode* innerSuccExLCC = succLCC->getInnerMostExitLCC();
-        LCCNode* oneInnerSuccEnLCC = succLCC->getOneInnerMostEntryLCC();
-        BasicBlock* succBlock;
-        if(innerSuccEnLCC) 
-          succBlock = (static_cast<UnitLCC*>(innerSuccEnLCC))->getBlock();
-        else if(innerSuccExLCC)
-          succBlock = (static_cast<UnitLCC*>(innerSuccExLCC))->getBlock();
-        else if(oneInnerSuccEnLCC) {
-          succBlock = (static_cast<UnitLCC*>(oneInnerSuccEnLCC))->getBlock();
-        }
-        else {
-          assert("Container should have at least one entry LCC");
-        }
-
-        /* This successor is outside the loop, so will not be added to children */
-        if(!currLoop->contains(succBlock))
-          continue;
-
-        /* succLCC is a child of the loop */
-
-        if(!currLCC->isSimpleSuccEdge(succLCC, succIt->second))
-          return false;
-
-        auto found = childSet.count(succLCC);
-        if(found)
-          continue;
-        else {
-          childSet.insert(succLCC);
-          bool canBeReduced = getChildrenOfLoop(succLCC, currLoop, childSet);
-          if(!canBeReduced)
-            return canBeReduced;
-        }
-      }
-      return true;
-    }
-
-    /* direction = 1 means traverse forward from start to end, = 0 means traverse backward from start to end */
-    /* the segment in question must not have loops back to it */
-    /* checks if startBB dominates everything on the path to endBB, except endBB */
+    /* 
+     * checks if branch is simple or not, that is, startBB dominates everything on the path to endBB, except endBB 
+     * direction = 1 means traverse forward from start to end, = 0 means traverse backward from start to end
+     * the segment in question must not have loops back to it 
+     * */
     bool DFSCheckForComplexBr(BasicBlock* startBB, BasicBlock* endBB, bool direction, BasicBlock* currentBB, std::list<BasicBlock*> *blocksTraversed = nullptr) {
 
       if(!blocksTraversed)
@@ -4182,460 +3548,7 @@ namespace {
       return true;
     }
 
-    bool checkNgetChildLCCOfSESE(LCCNode* domLCC, LCCNode* postDomLCC, std::map<std::list<LCCNode*> *, double> *pathSet, std::list<LCCNode* > *childSet, Loop* L, LCCNode* currLCC = nullptr, std::list <LCCNode*> *currPath = nullptr) {
-      LCCNode* innerDomLCC = domLCC->getInnerMostEntryLCC();
-      LCCNode* innerPostDomLCC = postDomLCC->getInnerMostEntryLCC();
-      BasicBlock* domBB = (static_cast<UnitLCC*>(innerDomLCC))->getBlock();
-      BasicBlock* postDomBB = (static_cast<UnitLCC*>(innerPostDomLCC))->getBlock();
-      bool firstSucc = true; // first successor of the currentLCC - used for forking new paths for multiple successors
-      std::list <LCCNode*> *pathHeader = nullptr;
-      std::list <LCCNode*> *copyPathTillNow = nullptr;
-      double copyBP = 0;
-
-      auto pathInPathSet = pathSet->find(currPath);
-      if(pathInPathSet != pathSet->end()) {
-        copyBP = pathInPathSet->second;
-      }
-
-      /* if currLCC is not supplied, means this is the starting call & it should point to the dominator LCC */
-      if(!currLCC) {
-        currLCC = domLCC;
-        /* no currPath should be present yet */
-      }
-      else {
-        /* Keep a copy of the path till here, in case it has multiple successors, & new path has to be forked with the same initial prefix */
-        copyPathTillNow = new std::list<LCCNode*>(*currPath);
-      }
-
-      LCCNode* innerCurrExLCC = currLCC->getInnerMostExitLCC();
-      BasicBlock* currBlock = nullptr;
-      if(innerCurrExLCC) {
-        currBlock = (static_cast<UnitLCC*>(innerCurrExLCC))->getBlock();
-      }
-      else {
-        assert("Current container should have at least one entry LCC");
-      }
-
-      auto succSetOfEntryLCC = currLCC->getSuccSet();
-      for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-
-        //LCCNode* innerSuccEnLCC = succLCC->getInnerMostEntryLCC();
-        //LCCNode* oneInnerSuccEnLCC = succLCC->getOneInnerMostEntryLCC();
-        auto succLCC = succIt->first;
-        LCCNode* innerSuccExLCC = succLCC->getInnerMostExitLCC();
-        BasicBlock* succBlock;
-        /*
-        if(innerSuccEnLCC) 
-          succBlock = (static_cast<UnitLCC*>(innerSuccEnLCC))->getBlock();
-        else if(oneInnerSuccEnLCC) {
-          succBlock = (static_cast<UnitLCC*>(oneInnerSuccEnLCC))->getBlock();
-        }
-        else 
-*/
-
-        if(innerSuccExLCC) {
-          succBlock = (static_cast<UnitLCC*>(innerSuccExLCC))->getBlock();
-        }
-        else {
-          assert("Successor container should have at least one entry LCC");
-        }
-
-        auto L1 = LI->getLoopFor(succBlock);
-        /* containers belong to different loops */
-        if(L != L1)
-          return false;
-
-        if(!DT->dominates(domBB, succBlock) || !PDT->dominates(postDomBB, succBlock)) {
-          assert("This is not right. The block is not dominated or postdominated by the right containers.");
-        }
-
-#if 1
-        /* allow only unitLCCs as successor inner layer containers */
-        if (!succLCC->isUnitLCC()) {
-          //errs() << "Child LCCs in this SESE region are not unitLCCs!\n";
-          return false;
-        }
-        else {
-          //errs() << "Succ in complex branch: " << succBlock->getName() << " from branch starting at " << currBlock->getName() << "\n";
-        }
-#endif
-
-        /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-        if(!currLCC->isSimpleSuccEdge(succLCC, succIt->second)) {
-          return false;
-        }
-
-        BranchProbability bp = BPI->getEdgeProbability(currBlock, succBlock);
-        uint32_t numeratorBP = bp.getNumerator();
-        uint32_t denominatorBP = bp.getDenominator();
-        double numBP = ((double)numeratorBP/denominatorBP);
-
-        /* first call to recursive function - add a new path for every successor */
-        if(domLCC == currLCC) {
-          //errs() << "In first layer with curr "; printUnitLCCSet(currLCC); errs() << ", succ "; printUnitLCCSet(succLCC); errs() << "\n";
-          assert((!currPath) && "currPath must be null since this is the first call to the recursive function!");
-          pathHeader = new std::list<LCCNode*>;
-          pathHeader->push_back(domLCC); // added once for every path
-          pathHeader->push_back(postDomLCC); // added once for every path
-          (*pathSet)[pathHeader] = numBP; // for paths created at the top level
-          //errs() << "Created top layer new path with prob: " << numBP << "\n";
-        }
-        else {
-          /* for every first successor of second layer onwards */
-          if(firstSucc) { // only needed for subsequent recursive calls
-            //errs() << "In second layer, first succ: with curr "; printUnitLCCSet(currLCC); errs() << ", succ "; printUnitLCCSet(succLCC); errs() << "\n";
-            firstSucc = false;
-            pathHeader = currPath; // append nodes to this path only
-            auto oldBP = (*pathSet)[pathHeader];
-            auto newBP = oldBP * copyBP;
-            (*pathSet)[pathHeader] = newBP;
-            //errs() << "Updated path with prob: " << newBP << " from " << oldBP << "\n";
-          }
-          else {
-            /* for all 2nd layer second successor onwards */
-
-            pathHeader = new std::list<LCCNode*>(*copyPathTillNow); // because the currPath may have extended beyond the parent node
-            numBP *= copyBP; /* calculating the overall probability from the percentage of the parent path's probability */
-            (*pathSet)[pathHeader] = numBP;
-            //errs() << "Created second layer new path with prob: " << numBP << "(branch BP was: " << copyBP << ")\n";
-
-          }
-        }
-
-        /* childSet should not include the dom or postdom, pathset already includes it when it was created . */
-        if(succLCC == postDomLCC) {
-          continue;
-        }
-        else {
-          if (childSet->end() == std::find(childSet->begin(), childSet->end(), succLCC)) {
-            childSet->push_back(succLCC);
-            childSet->unique();
-          }
-          pathHeader->push_back(succLCC);
-          pathHeader->unique();
-          bool canBeReduced = checkNgetChildLCCOfSESE(domLCC, postDomLCC, pathSet, childSet, L, succLCC, pathHeader);
-          if(!canBeReduced) {
-            //errs() << "Branch at " << domBB->getName() << " cannot be reduced into a complex branch with simple elements. Returning false.\n";
-            return canBeReduced;
-          }
-        }
-      }
-
-      if(currLCC == domLCC) {
-        childSet->unique();
-      }
-      return true;
-    }
-
-    /* if there is a fence inside the branch, this will return false */
-    bool getChildLCCOfSESE(LCCNode* currLCC, LCCNode* domLCC, LCCNode* postDomLCC, std::set<LCCNode* > childSet) {
-      LCCNode* innerDomLCC = domLCC->getInnerMostEntryLCC();
-      LCCNode* innerPostDomLCC = postDomLCC->getInnerMostEntryLCC();
-      BasicBlock* domBB = (static_cast<UnitLCC*>(innerDomLCC))->getBlock();
-      BasicBlock* postDomBB = (static_cast<UnitLCC*>(innerPostDomLCC))->getBlock();
-
-      /* if currLCC is not supplied, means this is the starting call & it should point to the dominator LCC */
-      if(!currLCC)
-        currLCC = domLCC;
-
-      auto succSetOfEntryLCC = currLCC->getSuccSet();
-      for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-        /* If it is a fence edge, or the successor is connected to multiple child LCCs of current LCC */
-        auto succLCC = succIt->first;
-        if(!currLCC->isSimpleSuccEdge(succLCC, succIt->second)) {
-          return false;
-        }
-        auto found = childSet.count(succLCC);
-        if(found)
-          continue;
-        /* postDomLCC should not be added to child set */
-        else if(succLCC == postDomLCC)
-          continue;
-        else {
-          LCCNode* innerSuccEnLCC = succLCC->getInnerMostEntryLCC();
-          LCCNode* innerSuccExLCC = succLCC->getInnerMostExitLCC();
-          LCCNode* oneInnerSuccEnLCC = succLCC->getOneInnerMostEntryLCC();
-          BasicBlock* succBlock;
-          if(innerSuccEnLCC) 
-            succBlock = (static_cast<UnitLCC*>(innerSuccEnLCC))->getBlock();
-          else if(innerSuccExLCC)
-            succBlock = (static_cast<UnitLCC*>(innerSuccExLCC))->getBlock();
-          else if(oneInnerSuccEnLCC) {
-            succBlock = (static_cast<UnitLCC*>(oneInnerSuccEnLCC))->getBlock();
-          }
-          else {
-            assert("Container should have at least one entry LCC");
-          }
-
-          if(!DT->dominates(domBB, succBlock) || !PDT->dominates(postDomBB, succBlock)) {
-            assert("This is not right. The block is not dominated or postdominated by the right containers.");
-          }
-
-          childSet.insert(succLCC);
-          bool canBeReduced = getChildLCCOfSESE(succLCC, domLCC, postDomLCC, childSet);
-          if(!canBeReduced)
-            return canBeReduced;
-        }
-      }
-      return true;
-    }
-    
-    /* Check & create minimal LCCs starting from this, when all the rules have failed to make a change 
-     * Recursive function. Enclosing loops & postDoms are passes if present. 
-     * Returns inner containers if found. */
-    bool checkForMinimalLCCs(LCCNode* currentLCC, Loop* enLoop, BasicBlock* enDom, BasicBlock* enPostDom) {
-      auto lccType = currentLCC->getType();
-      std::set<BasicBlock*> blocksToCheck; 
-      BasicBlock* exitBlock = nullptr; /* For finding branch regions */
-      BasicBlock* entryBlock = nullptr; /* For finding loop regions */
-      bool found = false;
-
-      /* For each type of container, get the list of blocks for checking to be part of the 
-       * enclosing region, & find the exiting container which will be used for matching 
-       * unknown rule entry points */
-      switch(lccType) {
-        case LCCNode::UNIT_LCC:
-        {
-          BasicBlock* currBlock = (static_cast<UnitLCC *>(currentLCC))->getBlock();
-          blocksToCheck.insert(currBlock);
-          exitBlock = currBlock;
-          break;
-        }
-        case LCCNode::PATH_LCC:
-        case LCCNode::BRANCH_LCC:
-        case LCCNode::LOOP_LCC:
-        case LCCNode::UNKNOWN_LCC:
-        {
-          LCCNode* entryLCC = currentLCC->getInnerMostEntryLCC();
-          LCCNode* exitLCC = currentLCC->getInnerMostExitLCC();
-          BasicBlock *enBlock = nullptr, *exBlock = nullptr;
-          if(entryLCC) {
-            enBlock = (static_cast<UnitLCC *>(entryLCC))->getBlock();
-            blocksToCheck.insert(enBlock);
-            entryBlock = enBlock;
-          }
-          if(exitLCC) {
-            exBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
-            blocksToCheck.insert(exBlock);
-            exitBlock = exBlock;
-          }
-          break;
-        }
-        case LCCNode::INVERTEDV_LCC:
-        {
-          LCCNode* entryLCC = currentLCC->getInnerMostEntryLCC();
-          auto exitLCCs = currentLCC->getAllInnerMostExitLCC();
-          BasicBlock *enBlock = nullptr, *exBlock = nullptr;
-          if(entryLCC) {
-            enBlock = (static_cast<UnitLCC *>(entryLCC))->getBlock();
-            blocksToCheck.insert(enBlock);
-            entryBlock = enBlock;
-          }
-          for(auto exitLCCIt = exitLCCs.begin(); exitLCCIt != exitLCCs.end(); exitLCCIt++) {
-            LCCNode* exitLCC = *exitLCCIt;
-            exBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
-            blocksToCheck.insert(exBlock);
-            exitBlock = nullptr; /* since it has a fence after it */
-          }
-          break;
-        }
-        case LCCNode::V_LCC:
-        {
-          auto entryLCCs = currentLCC->getAllInnerMostEntryLCC();
-          LCCNode* exitLCC = currentLCC->getInnerMostExitLCC();
-          BasicBlock *enBlock = nullptr, *exBlock = nullptr;
-          for(auto entryLCCIt = entryLCCs.begin(); entryLCCIt != entryLCCs.end(); entryLCCIt++) {
-            LCCNode* entryLCC = *entryLCCIt;
-            enBlock = (static_cast<UnitLCC *>(entryLCC))->getBlock();
-            blocksToCheck.insert(enBlock);
-            entryBlock = nullptr;
-          }
-          if(exitLCC) {
-            exBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
-            blocksToCheck.insert(exBlock);
-            exitBlock = exBlock;
-          }
-          break;
-        }
-        default:
-          assert("This lcc type does not exist!");
-      }
-
-      /* current block must be dominated & postdominated by the enclosing doms & postdoms, 
-       * and must be a part of the enclosing loop. Otherwise return nullptr. */
-      for(auto blockIt = blocksToCheck.begin(); blockIt != blocksToCheck.end(); blockIt++) {
-        BasicBlock* currBlock = *blockIt;
-        if(enLoop) 
-          if(!enLoop->contains(currBlock))
-            return false;
-
-        if(enDom)
-          if(!DT->dominates(enDom, currBlock))
-            return false;
-
-        if(enPostDom)
-          if(!PDT->dominates(enPostDom, currBlock))
-            return false;
-      }
-
-      /* Container is delimited by a fence. Loop region cannot be checked as it will contain a fence */
-      if(!exitBlock)
-        return false;
-
-      /* exitBlock is the entry point of the unknown branch region to match */
-      Loop* currLoop = LI->getLoopFor(exitBlock);
-      DomTreeNode* currentPDNode = nullptr;
-      DomTreeNode* postDomNode = nullptr;
-      DomTreeNode* postDomDNode = nullptr;
-      DomTreeNode* domNode = nullptr;
-      BasicBlock* domBB = nullptr;
-      BasicBlock* postDomBB = nullptr;
-      LCCNode* newLCC;
-      LCCNode* postDomLCC;
-      std::set<LCCNode*> childLCCs;
-
-      /* Check for an enclosed branch inside the current loop */
-      currentPDNode = PDT->getNode(exitBlock);
-      if(currentPDNode) {
-        postDomNode = currentPDNode->getIDom();
-        if(postDomNode) {
-          postDomBB = postDomNode->getBlock();
-          if(postDomBB) {
-            postDomDNode = DT->getNode(postDomBB);
-            if(postDomDNode) {
-              domNode = postDomDNode->getIDom();
-              if(domNode) {
-                domBB = domNode->getBlock();
-                /* This is a enclosed single entry single exit region */
-                if(domBB) {
-                  /* This is the entry point of the single entry single exit region */
-                  if(domBB == exitBlock) {
-                    Loop* postDomLoop = LI->getLoopFor(postDomBB);
-                    /************* This is a branch contained entirely inside a loop that can be potentially reduced **************/
-                    if (postDomLoop == currLoop) {
-                      auto succSetOfEntryLCC = currentLCC->getSuccSet();
-                      for(auto succIt = succSetOfEntryLCC.begin(); succIt != succSetOfEntryLCC.end(); succIt++) {
-                        bool matched = checkForMinimalLCCs(succIt->first, currLoop, domBB, postDomBB);
-                        if(matched)
-                          return true;
-                        else {
-                          LCCNode* postDomUnitLCC = getFirstLCCofBB(postDomBB);
-                          LCCNode* postDomLCC = postDomUnitLCC->getOuterMostEnclosingLCC();
-                          /* Find all LCCs on the path to postdom LCC & create new LCC */
-                          bool canBeReduced = getChildLCCOfSESE(nullptr, currentLCC, postDomLCC, childLCCs);
-                          /* Unknown branch region has a fence */
-                          if(!canBeReduced)
-                            return false;
-                          else {
-                            newLCC = new UnknownLCC(lccIDGen++, currentLCC, childLCCs, postDomLCC, nullptr);
-                            found = true;
-                          }
-                        }
-                      }
-                    }
-                  }
-                  else if(DT->dominates(domBB, exitBlock)) {
-                    return false;
-                  }
-                  else if(DT->dominates(exitBlock, domBB)) {
-                    assert("This cannot happen since everything from current block goes out through post dom block");
-                  }
-                  else {
-                    assert("This is an invalid option!");
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      /* Container is delimited by a fence on the top. Cannot be the header of a loop */
-      if(!entryBlock)
-        return false;
-
-      /* entryBlock is the entry point of the unknown loop region to match */
-      /* Check for an enclosed branch inside the current loop */
-      if(!found) {
-        currentPDNode = PDT->getNode(entryBlock);
-        if(currentPDNode) {
-          postDomNode = currentPDNode->getIDom();
-          if(postDomNode) {
-            postDomBB = postDomNode->getBlock();
-            if(postDomBB) {
-              postDomDNode = DT->getNode(postDomBB);
-              if(postDomDNode) {
-                domNode = postDomDNode->getIDom();
-                if(domNode) {
-                  domBB = domNode->getBlock();
-                  /* This is a enclosed single entry single exit region */
-                  if(domBB) {
-                    /* This is the entry point of the single entry single exit region */
-                    if(domBB == entryBlock) {
-                      /* currLoop must exist if this block is a loop header */
-                      bool isHeader = LI->isLoopHeader(entryBlock);
-                      if(isHeader) {
-                        BasicBlock* currLoopLatch = currLoop->getLoopLatch();
-                        BasicBlock* currLoopExBlock = currLoop->getExitingBlock();
-                        /* This is an enclosed loop region */
-                        if(currLoopLatch && currLoopExBlock) {
-                          LCCNode* postDomUnitLCC = getFirstLCCofBB(postDomBB);
-                          postDomLCC = postDomUnitLCC->getOuterMostEnclosingLCC();
-                          bool canBeReduced = getChildrenOfLoop(currentLCC, currLoop, childLCCs);
-                          /* if loop had a fence inside it, this loop cannot be reduced */
-                          if(!canBeReduced)
-                            return false;
-                          else {
-                            newLCC = new UnknownLCC(lccIDGen++, currentLCC, childLCCs, postDomLCC, currLoop);
-                            found = true;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      if(found) {
-        /******************** Create new connections *********************/
-        newLCC->makeNewSuccConnections(postDomLCC); /* succLCC is the exit LCC for newLCC */
-        newLCC->makeNewPredConnections(currentLCC); /* currentLCC is the entry LCC for newLCC */
-
-        /******************** Update global LCC list *********************/
-        auto F = currentLCC->getFunction();
-        auto position = eraseFromGlobalLCCList(currentLCC);
-        globalOuterLCCList[F].insert(position, newLCC);
-        eraseFromGlobalLCCList(postDomLCC);
-        for(auto childLCCIt = childLCCs.begin(); childLCCIt != childLCCs.end(); childLCCIt++)
-          eraseFromGlobalLCCList(*childLCCIt);
-
-        /*********************** Update statistics ***********************/
-        applyrule6++;
-
-        /************************ Test Printing **************************/
-        errs() << "\nUnknown Container(" << newLCC->getID() << "):- ";
-        errs() << "Entry LCC(" << currentLCC->getID() << "): (";
-        printUnitLCCSet(currentLCC);
-        errs() << "), Child LCC( ";
-        for(auto childLCCIt = childLCCs.begin(); childLCCIt != childLCCs.end(); childLCCIt++) {
-          printUnitLCCSet(*childLCCIt);
-          errs() << "(" << (*childLCCIt)->getID() << ")\t";
-        }
-        errs() << "), Exit LCC(" << postDomLCC->getID() << "): (";
-        printUnitLCCSet(postDomLCC);
-        errs() << ")\n";
-        
-        return true;
-      }
-
-      /* It is neither a loop header nor a single entry single exit non-loop region. Should return nullptr. */
-      return false;
-    }
-    
+    /* Check for common patterns in the CFG starting at the specified LCC & create hierarchical or unit LCCs if pattern matches */
     bool checkNApplyRules(LCCNode* currentLCC) {
       int ruleIndex = 1;
     
@@ -4669,7 +3582,6 @@ namespace {
 
     /* traverseNReduce() signifies one pass of iterating over the entire CFG, & applying rules whenever they match */
     void traverseNReduce(Function *F) {
-
 #ifdef LC_DEBUG
       errs() << "\n************************ Creating container structure **********************\n";
 #endif
@@ -4694,9 +3606,8 @@ namespace {
 #endif
     }
 
-
+    /* Remove all unit LCCs that do not match any pattern */
     void manageDanglingLCCs(Function* F) {
-
       if(ClockType != INSTANTANEOUS) {
         errs() << "Invalid clock type\n";
         exit(1);
@@ -4898,7 +3809,7 @@ namespace {
       } while(checkAgain);
     }
 
-    int func_opts = 0;
+    /* Evaluate the instruction cost of the different types of LCCs */
     void costEvaluate(Function* F) {
       //bool isClone = isClonedFunc(F);
       bool isThread = isThreadFunc(F); // Function cost will always be instrumented in the caller, & not in the entry or exit LCC of the function for PC or IC
@@ -4906,6 +3817,7 @@ namespace {
       bool isRecursive = isRecursiveFunc[F->getName()];
       bool costWritten = false;
 
+      /* PREDICTIVE type is deprecated */
       if(ClockType == PREDICTIVE) {
 #ifdef LC_DEBUG
         errs() << "\n********************** Predictive Clock Cost Evaluation **********************\n";
@@ -4941,6 +3853,7 @@ namespace {
           }
         }
       }
+      /* INSTANTANEOUS type is default */
       else if(ClockType == INSTANTANEOUS) {
 #ifdef LC_DEBUG
         errs() << "\n******************** Instantaneous Clock Cost Evaluation ********************\n";
@@ -5030,10 +3943,7 @@ namespace {
       }
     }
 
-    /* instrType: ALL_IR(0) - increment & push based on cost value passed (mostly IR count)
-     * instrType: PUSH_ON_CYCLES(1) - increment based on IR & push based on cycles
-     * instrType: INCR_ON_CYCLES(2) - increment based on cycles & push based on cycles
-     */
+    /* Probe Instrumentation */
     void instrumentGlobal(Instruction* I, eInstrumentType instrType, Value* val, LoadInst* loadDisFlag = nullptr) {
       Value *loadedLC = nullptr;
       if (instrType == INCR_ON_CYCLES) {
@@ -5050,6 +3960,7 @@ namespace {
       instrumentedInst++;
     }
 
+    /* called from deprecated sections */
     Value* createLocalCounter(Instruction *I) {
       IRBuilder<> IR(I);
       AllocaInst *alloca_inst = IR.CreateAlloca(IR.getInt64Ty(), 0, "localCounter");
@@ -5058,6 +3969,7 @@ namespace {
       return alloca_inst;
     }
 
+    /* called from deprecated sections */
     Value* createLocalFlag(Instruction *I) {
       IRBuilder<> IR(I);
       AllocaInst *alloca_inst = IR.CreateAlloca(IR.getInt32Ty(), 0, "localFlag");
@@ -5066,7 +3978,8 @@ namespace {
       return alloca_inst;
     }
 
-    /* Load from thread local LocalLC to local variable localCounter */
+    /* called from deprecated sections */
+    /* load from thread local LocalLC to local variable localCounter */
     void loadCounterInLocal(Instruction *I, Value* alloca_inst, std::string gvName) {
       IRBuilder<> IR(I);
       Function *F = I->getFunction();
@@ -5075,7 +3988,8 @@ namespace {
       IR.CreateStore(Load, alloca_inst);
     }
 
-    /* Store from local variable localCounter to thread local LocalLC */
+    /* called from deprecated sections */
+    /* store from local variable localCounter to thread local LocalLC */
     void storeCounterFromLocal(Instruction *I, Value* alloca_inst, std::string gvName) {
       IRBuilder<> IR(I);
       Function *F = I->getFunction();
@@ -5084,6 +3998,7 @@ namespace {
       IR.CreateStore(Load, lc);
     }
 
+    /* Finds functions where CI is registered */
     void findCIfunctions(Module &M) {
       for(auto &F : M) {
         for(inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
@@ -5105,8 +4020,8 @@ namespace {
       }
     }
 
+    /* Half baked attempt to not instrument probes in CI functions - but they will be disabled from being called in runtime anyway */
     bool isRestrictedFunction(Function* F) {
-
       if((F->getName().compare("printCountersPi")==0) 
           || (F->getName().compare("_Z14intvActionHookl")==0)
           || (F->getName().compare("intvActionHook")==0) 
@@ -5117,6 +4032,7 @@ namespace {
       return false;
     }
 
+    /* called from deprecated sections */
     void handleUnreachable(Function *F) {
       for(auto &BB: *F) {
         for (BasicBlock::iterator I = BB.begin(), ie = BB.end(); I != ie; ++I) {
@@ -5132,6 +4048,7 @@ namespace {
       }
     }
 
+    /* deprecated */
     void initializeLocals(Function *F) {
 
       /* Locals are no longer supported */
@@ -5155,6 +4072,7 @@ namespace {
       handleUnreachable(F);
     }
 
+    /* deprecated */
     void instrumentLocals(Function *F) {
 
       if(gIsOnlyThreadLocal) {
@@ -5222,7 +4140,7 @@ namespace {
 			}
     }
 
-    /* Opt & Naive */
+    /* Instrument probe before & after an external library call */
     void instrumentLibCallsWithCycleIntrinsic(Function *F) {
       std::vector<std::list<Instruction*>*> externalCalls;
       for(inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
@@ -5245,14 +4163,13 @@ namespace {
           externalCalls.push_back(listInst);
       }
       for(auto Ilist : externalCalls) {
-        //instrumentExternalCalls(I);
         //errs() << "first: " << *Irange.first << ", second: " << *Irange.second << "\n";
         instrumentExternalCallsWithIntrinsic(Ilist);
       }
     }
 
+    /* Instrument all the instructions marked in the cost analysis phase for the specified function */
     void instrumentFunc(Function *F) {
-
 #ifdef LC_DEBUG
       errs() << "\n************************ Instrumenting Function " << F->getName() << "**************************\n";
 #endif
@@ -5339,7 +4256,7 @@ namespace {
       return;
     }
 
-    /* CIs need to be instrumented using this abstraction for CI Opt */
+    /* Instrument probes for the configured CI type */
     void instrumentCI(Instruction *I, Value* val) {
       switch(InstGranularity) {
         case OPTIMIZE_HEURISTIC:
@@ -5381,8 +4298,8 @@ namespace {
       }
     }
 
+    /* Create cost evaluation statistics */
     void computeCostEvalStats(Function *F) {
-
       int num_of_unit_lcc = 0;
       int num_blocks = 0;
       int num_of_final_lcc = 0;
@@ -5429,6 +4346,7 @@ namespace {
 
     }
 
+    /* Create probe instrumentation statistics */
     void computeInstrStats(Function *F) {
       if(F) {
         auto fstatIt = FuncStat.find(F);
@@ -5437,6 +4355,7 @@ namespace {
       }
     }
 
+    /* Print all computed probe statistics for specified function */
     void printStats(Function *F) {
       if(F) {
         /* print per function stats */
@@ -5550,6 +4469,7 @@ namespace {
       }
     }
 
+    /* Print all instructions where a probe will be placed & print the cost update in the probe of the specified function */
     void printInstrStats(Function *F) {
       errs() << "\n**************** Printing " << F->getName() << "() Instrumentation Statistics ****************\n";
       if(ClockType == PREDICTIVE) {
@@ -5573,6 +4493,7 @@ namespace {
       }
     }
 
+    /* Check if this is a single basic block loop */
     bool checkIfSelfLoop(Loop *L) {
       bool isSelfLoop = false;
       BasicBlock* headerBBL = L->getHeader();
@@ -5588,6 +4509,7 @@ namespace {
       return isSelfLoop;
     }
 
+    /* Check if this is a single entry block & single exiting block loop, that is, the loop cannot be entered or exited at multiple blocks */
     bool checkIfSESELoop(Loop *L) {
 
       if(!L->getExitingBlock())
@@ -5600,6 +4522,7 @@ namespace {
       return true;
     }
 
+    /* Transform or instrument single block loop as needed */
     void instrumentSelfLoop(Loop *L) {
       auto selfLoopInfo = selfLoop.find(L);
       BasicBlock* headerBBL = L->getHeader();
@@ -5660,6 +4583,7 @@ namespace {
       selfLoop.erase(selfLoopInfo);
     }
 
+    /* Transform or instrument single-entry single-exit (SESE) loop as needed */
     void instrumentSESELoop(Loop *L) {
       auto seseLoopInfo = seseLoop.find(L);
       BasicBlock* headerBBL = L->getHeader();
@@ -5722,8 +4646,7 @@ namespace {
       seseLoop.erase(seseLoopInfo);
     }
 
-    /* This function instruments extra blocks for direct branches. 
-     * It works on the global list of header blocks, which get refreshed for every function. */
+    /* Transform or instrument any loop as needed */
     void instrumentLoops(Function *F) {
       if (!checkIfInstGranIsOpt())
       {
@@ -5841,8 +4764,7 @@ namespace {
       }
     }
 
-    /* This function instruments extra blocks for direct branches. 
-     * It works on the global list of header blocks, which get refreshed for every function. */
+    /* instruments extra blocks for direct branches to make them more easily amenable to cost analysis */
     void instrumentBlocks(Function *F) {
 			
       if (!checkIfInstGranIsOpt()) {
@@ -5932,6 +4854,7 @@ namespace {
       BPI->calculate(*F, *LI);
     }
 
+    /* run all the passes of LCC creation, cost analysis & probe instrumentation */
     void runPasses(Function *F) {
       
       if(!checkIfInstGranIsOpt()) {
@@ -5987,7 +4910,8 @@ namespace {
 
     }
 
-    /* returns true if the function contains a fence */
+    /* Create the list of unit LCCs for a basic block
+     * returns true if the function contains a fence (instruction where probe is necessary) */
     bool makeContainersOfBB(BasicBlock* block) {
 
       bool hasFence = false;
@@ -6129,129 +5053,7 @@ namespace {
       return hasFence;
     }
 
-    /* these update rules are not generic & used for specific cases where a new block is inserted to transform a branch to a known pattern */
-    void updateContainerCFG(BasicBlock *newBlock, SmallVector<BasicBlock*, 10> nearestPreds, BasicBlock* nearestSucc) {
-
-      if(bbToContainersMap.end() == bbToContainersMap.find(newBlock)) {
-        errs() << "New block's container has not be created yet.";
-        exit(1);
-      }
-
-      /* get new block's container */
-      std::vector<LCCNode*> containers = bbToContainersMap[newBlock];
-      if(containers.size() != 1) {
-        errs() << "New block has multiple containers, which is not possible.";
-        exit(1);
-      }
-      LCCNode* newLCC = getSingleLCCofBB(newBlock);
-
-      /* Get predecessor LCCs of successor block */
-      if(bbToContainersMap.end() == bbToContainersMap.find(nearestSucc)) {
-        errs() << "New block's successor's (" << nearestSucc->getName() << ") container has not be created yet.";
-        exit(1);
-      }
-
-      auto succUnitLCC = getFirstLCCofBB(nearestSucc);
-      if(!succUnitLCC) {
-        errs() << "New block's successor container's (" << nearestSucc->getName() << ")  cannot be found.";
-        exit(1);
-      }
-      auto succLCC = succUnitLCC->getOuterMostEnclosingLCC();
-      auto predOfSuccLCC = succLCC->getPredSet();
-      bool addedSuccLCC = false;
-
-      for(auto predBB : nearestPreds) {
-
-        /* For each predecessor block, get successor LCCs */
-        if(bbToContainersMap.end() == bbToContainersMap.find(predBB)) {
-          errs() << "New block's predecessor's (" << predBB->getName() << ") container has not be created yet.";
-          exit(1);
-        }
-
-        auto predUnitLCC = getLastLCCofBB(predBB);
-        if(!predUnitLCC) {
-          errs() << "New block's predecessor's (" << predBB->getName() << ") container cannot be found.";
-          exit(1);
-        }
-        auto predLCC = predUnitLCC->getOuterMostEnclosingLCC();
-        auto succOfPredLCC = predLCC->getSuccSet();
-
-        /* Find the pred LCC in the pred set of the Succ LCC, & add them to the new LCC */
-        auto connectedPredLCCIt = predOfSuccLCC.find(predLCC);
-        /* sanity check */
-        if(connectedPredLCCIt == predOfSuccLCC.end()) {
-          errs() << "Block " << predBB->getName() << "'s LCC was not found in the pred LCC list of successor " << nearestSucc->getName() << "\n";
-          exit(1);
-        }
-        auto connectedPredLCC = *connectedPredLCCIt;
-        newLCC->addPredLCC(predLCC, false); /* Making an assumption that such connections are never fence */
-#ifdef ALL_DEBUG
-        errs() << "Added predecessor ";
-        printUnitLCCSet(predLCC);
-        errs() << " (" << predBB->getName() << ") to new block " << newBlock->getName() << "\n";
-#endif
-
-        /* Find the succ LCC in the succ set of the Pred LCC, & add them to the new LCC. Done only once since there is only one succ LCC */
-        if(!addedSuccLCC) {
-          addedSuccLCC = true;
-          auto connectedSuccLCCIt = succOfPredLCC.find(succLCC);
-          /* sanity check */
-          if(connectedSuccLCCIt == succOfPredLCC.end()) {
-            errs() << "Block " << nearestSucc->getName() << "'s LCC was not found in the succ LCC list of predecessor " << predBB->getName() << "\n";
-            exit(1);
-          }
-          newLCC->addSuccLCC(succLCC, false); /* Making an assumption that such connections are never fence */
-          succLCC->addPredLCC(newLCC, false); /* Making an assumption that such connections are never fence */
-#ifdef ALL_DEBUG
-          errs() << "Added successor ";
-          printUnitLCCSet(succLCC);
-          errs() << " (" << nearestSucc->getName() << ") to new block " << newBlock->getName() << "\n";
-          errs() << "Added predecessor " << newBlock->getName() << " to postdom " << nearestSucc->getName() << "\n";
-#endif
-        }
-
-        /* first pred is replaced by new LCC. Rest are removed. */
-        succLCC->removeSuccLCC(predLCC);
-#ifdef ALL_DEBUG
-        errs() << "Removed predecessor ";
-        printUnitLCCSet(predLCC);
-        errs() << " (" << predBB->getName() << ") of postdom ";
-        printUnitLCCSet(succLCC);
-        errs() << " (" << nearestSucc->getName() << ")\n";
-#endif
-
-        //predLCC->replaceSucc(succLCC, newLCC);
-        predLCC->removeSuccLCC(succLCC);
-        predLCC->addSuccLCC(newLCC, false); /* Making an assumption that such connections are never fence */
-#ifdef ALL_DEBUG
-        errs() << "Removed successor ";
-        printUnitLCCSet(succLCC);
-        errs() << " (" << nearestSucc->getName() << ") of predecessor ";
-        printUnitLCCSet(predLCC);
-        errs() << " (" << predBB->getName() << ")\n";
-        errs() << "Added successor " << newBlock->getName() << " to predecessor ";
-        printUnitLCCSet(predLCC);
-        errs() << " (" << predBB->getName() << ")\n";
-#endif
-      }
-
-      /* Add newLCC to the global list of LCCs - already added through makeContainersOfBB */
-      //globalOuterLCCList[F].push_back(newLCC);
-#ifdef ALL_DEBUG
-      Function *F = newBlock->getParent();
-      errs() << "Not adding ";
-      printUnitLCCSet(newLCC);
-      errs() << " to the global list of outer LCCs\n";
-      errs() << "Number of outer level LCCS: " << globalOuterLCCList[F].size() << "\n";
-      errs() << "Global set: ";
-      for(auto lcc : globalOuterLCCList[F]) {
-        printUnitLCCSet(lcc);
-        errs() << ",";
-      }
-      errs() << "\n";
-#endif
-    }
-
+    /* Create the interconnection network between LCCs, emulating the connection of basic blocks (representated by the LCCs) in the original CFG */
     void createContainerCFG(BasicBlock* currentBB) {
 
       std::vector<LCCNode*> containers = bbToContainersMap[currentBB];
@@ -6371,7 +5173,7 @@ namespace {
       }
     }
 
-    /* Initialize the container graph from the actual graph */
+    /* Translate the CFG into an LCC graph */
     void initializeLCCGraph(Function *F) {
       
       /* --- re-initializations per function --- */
@@ -6444,7 +5246,8 @@ namespace {
       computedFuncInfo[F] = fInfo;
     }
 
-    /* if the dominator of the postdominator of start, is not equal to start & dominates start */
+    /* Return true if it matches the following pattern:
+     * if the dominator of the postdominator of start, is not equal to start & dominates start */
     bool matchComplexBranchForward(BasicBlock* start, BasicBlock **end) {
 
       DomTreeNode *startPDN = PDT->getNode(start);
@@ -6496,7 +5299,7 @@ namespace {
       return true;
     }
 
-    /* start is the partial postdom, end is the dominator */
+    /* same as matchComplexBranchForward, but in opposite direction */
     bool matchComplexBranchBackward(BasicBlock* start, BasicBlock **end) {
 
       DomTreeNode *startDN = DT->getNode(start);
@@ -6556,6 +5359,7 @@ namespace {
       return true;
     }
 
+    /* Check if the branches are not simple, that is, all child nodes are not dominated & postdominated by single entry and exit nodes respectively */
     bool matchComplexBranch(BasicBlock* start, BasicBlock **end, bool *direction) {
       if(matchComplexBranchForward(start, end)) {
         *direction = true;
@@ -6568,12 +5372,11 @@ namespace {
         return true;
       }
 #endif
-
       return false;
     }
 
+    /* Transform a complex branch to a simpler equivalent form that is amenable to cost analysis */
     void transformComplexBranchForward(BasicBlock *start, BasicBlock *end) {
-
       SmallVector<BasicBlock*, 10> nearestPreds;
       /* For forward direction, find all predecessors of postDominator that are dominated by start */
       for (auto predIt = pred_begin(end), predEnd = pred_end(end); predIt != predEnd; ++predIt) {
@@ -6634,6 +5437,7 @@ namespace {
       }
     }
 
+    /* same as transformComplexBranchForward, in the opposite direction */
     void transformComplexBranchBackward(BasicBlock *start, BasicBlock *end) {
 
       SmallVector<BasicBlock*, 10> nearestSuccs;
@@ -6692,7 +5496,7 @@ namespace {
       }
     }
 
-    int preprocessing=0;
+    /* Preprocess & transform the CFG into an equivalent form before running the pass */
     void transformGraph(Function *F) {
       bool res;
       do {
@@ -6717,16 +5521,7 @@ namespace {
       } while(res);
     }
 
-    /// Get the latch condition instruction.
-    static ICmpInst *getLatchCmpInst(const Loop &L) {
-      if (BasicBlock *Latch = L.getLoopLatch())
-        if (BranchInst *BI = dyn_cast_or_null<BranchInst>(Latch->getTerminator()))
-          if (BI->isConditional())
-            return dyn_cast<ICmpInst>(BI->getCondition());
-
-      return nullptr;
-    }
-
+    /* Transform a single-entry single-entry generic loop into an equivalent inner & outer loop, such that the probe can be instrumented in the outer loop only, while not changing functionality */
     BasicBlock* transformSESELoopWithoutBounds(Loop *L, int iterations, int numSelfLoopCost) {
       BasicBlock *headerBlock = L->getHeader();
       Function *F = headerBlock->getParent();
@@ -7053,6 +5848,7 @@ namespace {
       return outerExitingBlock;
     }
 
+    /* Instrument print calls in loop for debugging */
     void addDebugPrints(Loop *L) {
       auto preheaderBB = L->getLoopPreheader();
       auto currBB = L->getHeader();
@@ -7088,6 +5884,7 @@ namespace {
       }
     }
 
+    /* Transform a single-basic-block generic loop into an equivalent inner & outer loop, such that the probe can be instrumented in the outer loop only, while not changing functionality */
     BasicBlock* transformGenericSelfLoopWithoutBounds(Loop *L, int iterations, int numSelfLoopCost) {
       BasicBlock *onlyBlock = L->getHeader();
       Function *F = onlyBlock->getParent();
@@ -7425,258 +6222,6 @@ namespace {
       return endBlock;
     }
 
-    BasicBlock* transformSelfLoopWithBounds(Loop *L, int iterations) {
-
-      BasicBlock *onlyBlock = L->getHeader();
-      Function *F = onlyBlock->getParent();
-      bool isInverseCond = false; /* inverse condition is when first successor of loop condition is not the header of the loop */
-
-      errs() << "Attempting to transform self loop " << onlyBlock->getName() << " of " << F->getName() << " with " << iterations << " inner loop iterations --> " << *L;
-
-      Value *indVarPhiInst = L->getCanonicalInductionVariable();
-      Instruction *splitFrontInst = onlyBlock->getFirstNonPHI();
-      if(!splitFrontInst) {
-        errs() << "Self loop block does not have any non-phi instructions. Not handled.";
-        exit(1);
-      }
-
-      /* Store IV Phi Nodes */
-      InductionDescriptor IndDesc;
-      SmallVector<PHINode*,20> pnList;
-      for (BasicBlock::iterator I = onlyBlock->begin(); isa<PHINode>(I); ++I) {
-        if(isa<PHINode>(I)) {
-          PHINode *PN = cast<PHINode>(I);
-          pnList.push_back(PN);
-          //errs() << "Need to copy Phi Node to new block --> " << *PN << "\n";
-        }
-      }
-
-      auto boundsL = L->getBounds(*SE);
-      BasicBlock *loopLatch = L->getLoopLatch();
-      BasicBlock *loopHeader = L->getHeader();
-      BranchInst *BI = dyn_cast_or_null<BranchInst>(loopLatch->getTerminator());
-      ICmpInst *LatchCmpInst = dyn_cast<ICmpInst>(BI->getCondition());
-      bool isStepInstFirstOp = false;
-
-      assert((loopLatch == onlyBlock) && "A self loop cannot have separate latches & headers!");
-      assert((loopHeader == onlyBlock) && "A self loop cannot have headers & body!");
-      assert(LatchCmpInst && "Expecting the latch compare instruction to be a CmpInst");
-      assert(BI && BI->isConditional() && "Expecting conditional latch branch");
-      assert((BI->getNumSuccessors() == 2) && "Self loop with more than 2 successors is not handled");
-      assert(boundsL && "Loop has no bounds information!");
-      assert((LatchCmpInst->getOperand(0) == &(boundsL->getStepInst()) || LatchCmpInst->getOperand(1) == &(boundsL->getStepInst())) && "Latch compare instruction is not using the step instruction!");
-      assert(indVarPhiInst->getType()->isIntegerTy() && "Canonical Induction variable is not of integer type!");
-
-      if(LatchCmpInst->getOperand(0) == &(boundsL->getStepInst()))
-        isStepInstFirstOp = true;
-      else
-        isStepInstFirstOp = false;
-
-      if(BI->getSuccessor(0) != loopHeader)
-        isInverseCond = true;
-
-      Value *valOrigCond = BI->getOperand(0);
-      BasicBlock *trueOperand = BI->getSuccessor(0);
-      //errs() << "Orig cond: " << *valOrigCond << "\n";
-
-      /******************* For first split *******************/
-      IRBuilder<> IR1(splitFrontInst);
-      AllocaInst *allocaLim = IR1.CreateAlloca(indVarPhiInst->getType(), 0, "newLimit");
-      //errs() << "Canonical Ind Var Type: " << *indVarPhiInst->getType() << "\n";
-      Value *valIterations = IR1.getIntN(SE->getTypeSizeInBits(indVarPhiInst->getType()), iterations);
-      Value *valIncInitial = IR1.CreateAdd(valIterations, indVarPhiInst);
-      IR1.CreateStore(valIncInitial, allocaLim);
-
-
-      /******************* For second split *******************/
-      Instruction *splitBackInst = BI;
-      IRBuilder<> IR2(splitBackInst);
-      Value *valZero = IR2.getIntN(SE->getTypeSizeInBits(indVarPhiInst->getType()), 0);
-      Value* valLimit = IR2.CreateLoad(allocaLim);
-      Value *valNewCond = IR2.CreateICmpNE(valLimit, valZero);
-
-      //MemorySSAUpdater MSSAU(MSSA);
-      BranchInst *newBranch = nullptr;
-      BasicBlock *newBlock = SplitBlock(onlyBlock, splitFrontInst, DT, LI, nullptr);
-      BasicBlock *endBlock = newBlock->splitBasicBlock(splitBackInst->getIterator());
-      //BranchInst *newBranch = IR2.CreateCondBr(valNegCondComp,newBlock,endBlock);
-      if(!isInverseCond)
-        newBranch = BranchInst::Create(/*ifTrue*/newBlock, /*ifFalse*/endBlock, valNewCond);
-      else
-        newBranch = BranchInst::Create(/*ifTrue*/endBlock, /*ifFalse*/newBlock, valNewCond);
-
-      Instruction *toBeReplacedTerm = newBlock->getTerminator();
-      ReplaceInstWithInst(toBeReplacedTerm, newBranch);
-
-      newBlock->setName("selfLoopOptBlock");
-      endBlock->setName("selfLoopOptExitBlock");
-
-      for (auto PN : pnList) {
-        PHINode *newPN = PHINode::Create(PN->getType(), 2, "phiIVClone", &newBlock->front());
-
-        for (int64_t i = PN->getNumIncomingValues() - 1; i >= 0; --i) {
-          BasicBlock *incomingBB = PN->getIncomingBlock(i);
-          Value *incomingVal = PN->getIncomingValue(i);
-          if (incomingBB == endBlock)
-            newPN->addIncoming(incomingVal, newBlock);
-        }
-        newPN->addIncoming(PN, onlyBlock);
-        for (Value::use_iterator UI = PN->use_begin(), UE = PN->use_end(); UI != UE;) {
-          Use &U = *UI++;
-          auto *Usr = dyn_cast<Instruction>(U.getUser());
-          if (Usr && Usr->getParent() != onlyBlock) {
-            //errs() << "User to replace Phi: " << *Usr << "\n";
-            if(Usr != newPN) {
-              U.set(newPN);
-            }
-          }
-          else {
-            errs() << "User in header block to replace Phi: " << *Usr << "\n";
-          }
-        }
-      }
-
-      //DT->recalculate(*(newBlock->getParent()));
-      //if(SE) SE->forgetLoop(L);
-
-      Loop *newInnerLoop = LI->AllocateLoop();
-      L->addChildLoop(newInnerLoop);
-      L->addBlockEntry(newBlock);
-      newInnerLoop->addBlockEntry(newBlock);
-      newInnerLoop->moveToHeader(newBlock);
-      return endBlock;
-    }
-
-    BasicBlock* transformLoop(Loop *L, int iterations) {
-      BasicBlock *onlyBlock = L->getHeader();
-      Function *F = onlyBlock->getParent();
-      bool isInverseCond = false; /* inverse condition is when first successor of loop condition is not the header of the loop */
-
-      errs() << "Attempting to transform self loop " << onlyBlock->getName() << " of " << F->getName() << " with " << iterations << " inner loop iterations --> " << *L;
-
-      Instruction *splitFrontInst = onlyBlock->getFirstNonPHI();
-      if(!splitFrontInst) {
-        errs() << "Self loop block does not have any non-phi instructions. Not handled.";
-        exit(1);
-      }
-
-      /* Store IV Phi Nodes */
-      InductionDescriptor IndDesc;
-      SmallVector<PHINode*,20> pnList;
-      for (BasicBlock::iterator I = onlyBlock->begin(); isa<PHINode>(I); ++I) {
-        if(isa<PHINode>(I)) {
-          PHINode *PN = cast<PHINode>(I);
-          //if (!InductionDescriptor::isInductionPHI(&*PN, *&L, SE, IndDesc))
-            //continue;
-          pnList.push_back(PN);
-          //errs() << "Need to copy Phi Node to new block --> " << *PN << "\n";
-        }
-      }
-
-      BasicBlock *loopLatch = L->getLoopLatch();
-      BasicBlock *loopHeader = L->getHeader();
-      BranchInst *BI = dyn_cast_or_null<BranchInst>(loopLatch->getTerminator());
-      ICmpInst *LatchCmpInst = dyn_cast<ICmpInst>(BI->getCondition());
-
-      assert((loopLatch == onlyBlock) && "A self loop cannot have separate latches & headers!");
-      assert((loopHeader == onlyBlock) && "A self loop cannot have headers & body!");
-      assert(LatchCmpInst && "Expecting the latch compare instruction to be a CmpInst");
-      assert(BI && BI->isConditional() && "Expecting conditional latch branch");
-      assert((BI->getNumSuccessors() == 2) && "Self loop with more than 2 successors is not handled");
-
-      if(BI->getSuccessor(0) != loopHeader)
-        isInverseCond = true;
-
-      Value *valOrigCond = BI->getOperand(0);
-      BasicBlock *trueOperand = BI->getSuccessor(0);
-      //errs() << "Orig cond: " << *valOrigCond << "\n";
-      //ICmpInst *splitBackInst = dyn_cast<ICmpInst>(BI->getCondition());
-      Instruction *splitBackInst = BI;
-
-      IRBuilder<> IR1(splitFrontInst);
-      AllocaInst *allocaIterator = IR1.CreateAlloca(IR1.getInt32Ty(), 0, "canIndVar");
-      Value *valOne = IR1.getInt32(1);
-      IR1.CreateStore(valOne, allocaIterator);  
-
-      IRBuilder<> IR2(splitBackInst);
-      valOne = IR2.getInt32(1);
-      Value* valIterator = IR2.CreateLoad(allocaIterator);
-      Value *valInc = IR2.CreateAdd(valOne, valIterator);
-      IR2.CreateStore(valInc, allocaIterator);  
-
-      Value *valTargetInterval = IR2.getInt32(iterations);
-      Value *valInnerCICond = nullptr;
-      Value *valNewCond = nullptr;
-      BranchInst *newBranch = nullptr;
-
-      if(!isInverseCond)
-        valInnerCICond = IR2.CreateICmpULE(valInc, valTargetInterval, "canIndVarPredicate");
-      else
-        valInnerCICond = IR2.CreateICmpUGT(valInc, valTargetInterval, "canIndVarPredicate");
-
-      Value *valInnerCICondExt = valInnerCICond;
-      //errs() << "Old cond type: " << *valOrigCond->getType() << ", new cond type: " << *valInnerCICond->getType() << "\n";
-      if( valOrigCond->getType() != valInnerCICond->getType()) {
-        valInnerCICondExt = IR2.CreateZExt(valInnerCICond, valOrigCond->getType(), "zeroExtend");
-      }
-
-      if(!isInverseCond)
-        valNewCond = IR2.CreateAnd(valOrigCond, valInnerCICondExt, "newCond");
-      else
-        valNewCond = IR2.CreateOr(valOrigCond, valInnerCICondExt, "newCond");
-      //Value *valNegCondComp = IR2.CreateICmpNE(valNewCond, valZero, "newComp");
-
-      //MemorySSAUpdater MSSAU(MSSA);
-      BasicBlock *newBlock = SplitBlock(onlyBlock, splitFrontInst, DT, LI, nullptr);
-      BasicBlock *endBlock = newBlock->splitBasicBlock(splitBackInst->getIterator());
-      //BranchInst *newBranch = IR2.CreateCondBr(valNegCondComp,newBlock,endBlock);
-      if(!isInverseCond)
-        newBranch = BranchInst::Create(/*ifTrue*/newBlock, /*ifFalse*/endBlock, valNewCond);
-      else
-        newBranch = BranchInst::Create(/*ifTrue*/endBlock, /*ifFalse*/newBlock, valNewCond);
-
-      Instruction *toBeReplacedTerm = newBlock->getTerminator();
-      ReplaceInstWithInst(toBeReplacedTerm, newBranch);
-
-      newBlock->setName("selfLoopOptBlock");
-      endBlock->setName("selfLoopOptExitBlock");
-
-      for (auto PN : pnList) {
-        PHINode *newPN = PHINode::Create(PN->getType(), 2, "phiIVClone", &newBlock->front());
-
-        for (int64_t i = PN->getNumIncomingValues() - 1; i >= 0; --i) {
-          BasicBlock *incomingBB = PN->getIncomingBlock(i);
-          Value *incomingVal = PN->getIncomingValue(i);
-          if (incomingBB == endBlock)
-            newPN->addIncoming(incomingVal, newBlock);
-        }
-        newPN->addIncoming(PN, onlyBlock);
-        for (Value::use_iterator UI = PN->use_begin(), UE = PN->use_end(); UI != UE;) {
-          Use &U = *UI++;
-          auto *Usr = dyn_cast<Instruction>(U.getUser());
-          if (Usr && Usr->getParent() != onlyBlock) {
-            //errs() << "User to replace Phi: " << *Usr << "\n";
-            if(Usr != newPN) {
-              U.set(newPN);
-            }
-          }
-          else {
-            errs() << "User in header block to replace Phi: " << *Usr << "\n";
-          }
-        }
-      }
-
-      //DT->recalculate(*(newBlock->getParent()));
-      //if(SE) SE->forgetLoop(L);
-
-      Loop *newInnerLoop = LI->AllocateLoop();
-      L->addChildLoop(newInnerLoop);
-      L->addBlockEntry(newBlock);
-      newInnerLoop->addBlockEntry(newBlock);
-      newInnerLoop->moveToHeader(newBlock);
-      return endBlock;
-    }
-
     /* Analysis Pass will evaluate cost of functions and encode where to instrument */
     void analyzeAndInstrFunc(Function &F) {
 
@@ -7695,8 +6240,7 @@ namespace {
       runPasses(&F);
     }
 
-    /* Always adds the increment of Local Logical Clock (LLC) before the instruction passed */
-    /* NonTLLC configuration must initialize & instrument Locals at function calls before & after the pass */
+    /* Updates the logical clock before the instruction passed */
     Value* incrementTLLC(Instruction &I, Value *costVal) {
       Function &F = *I.getFunction();
 
@@ -7748,8 +6292,7 @@ namespace {
       return Inc;
     }
 
-    /* Always adds the increment of Local Logical Clock (LLC) before the instruction passed */
-    /* NonTLLC configuration must initialize & instrument Locals at function calls before & after the pass */
+    /* updates the logical clock counter with the number of cycles executed since the last probe using llvm.readcyclecounter */
     Value* incrementTLLCWithCycles(Instruction &I) {
 
       Function *F = I.getFunction();
@@ -7795,6 +6338,7 @@ namespace {
       return Inc;
     }
 
+    /* get the number of IR instrumented for the logical clock update for different types of CI */
     int getCostOfInstrumentation() {
       int instrumentationCost = 0;
       if(checkIfInstGranIsDet())
@@ -7809,7 +6353,7 @@ namespace {
       return instrumentationCost;
     }
 
-    /* NonTLLC configuration must initialize & instrument Locals at function calls before & after the pass */
+    /* Call CI only if the target cycles have been reached */
     void pushToMLCfromTLLCifTSCExceeded(Instruction *I, Value *loadedLC, LoadInst* loadDisFlag = nullptr ) {
 
       if(!checkIfInstGranIsIntermediate()) {
@@ -7887,7 +6431,7 @@ namespace {
       pushToMLCfromTLLC(thenTerm, loadedLC, loadDisFlag, now);
     }
     
-    /* currTSC: current clock value that should be set when the condition for pushing succeeded */
+    /* Call CI & reset all counters */
     void pushToMLCfromTLLC(Instruction *I, Value *loadedLC, LoadInst* loadDisFlag = nullptr, Value* currTSC = nullptr) {
       Module *M = I->getModule();
       Function &F = *(I->getParent()->getParent());
@@ -7973,12 +6517,12 @@ namespace {
       }
     }
     
+    /* CI function prototype */
     Value* action_hook_prototype(Instruction *I) {
       Module *M = I->getParent()->getParent()->getParent();
       IRBuilder<> Builder(I);
       std::vector<Type*> funcArgs;
       funcArgs.push_back(Builder.getInt64Ty());
-      //Value* funcPtr = M->getGlobalVariable("intvActionHook",PointerType::getUnqual(FunctionType::get(Builder.getVoidTy(), funcArgs, false)));
       /* Declare the  thread local interrupt handler pointer, if it is not present in the module. */
       Value* funcPtr = M->getOrInsertGlobal("intvActionHook",PointerType::getUnqual(FunctionType::get(Builder.getVoidTy(), funcArgs, false)));
       GlobalVariable* gCIFuncPtr = static_cast<GlobalVariable *>(funcPtr);
@@ -7988,14 +6532,7 @@ namespace {
       return funcPtr;
     }
 
-    /* This function should be supplied in the module */
-    Function *action_hook_prototype_cumulative(Module *M) {
-      //Function *func = M->getFunction("_Z14intvActionHookl");
-      Function *func = M->getFunction("intvActionHookCumulative");
-      assert(func && "intvActionHook() is not supplied in the module.");
-      return func;
-    }
-
+    /* (not used) instrument probes for only external library calls */
     BasicBlock* instrumentExternalCalls(Instruction *I) {
       if(!gUseReadCycles) {
         errs() << "reading cycle counters is not enabled!\n";
@@ -8017,6 +6554,7 @@ namespace {
       instrumentIfLCEnabled(&*itI2, ALL_IR, costVal); // ALL_IR here means the cost value is created & passed to the routine, although the value passed is the cycle count difference & not the IR difference
     }
 
+    /* instrument probes with cycle counter for only external library calls */
     void instrumentExternalCallsWithIntrinsic(std::list<Instruction *> *IList) {
       if(!gUseReadCycles) {
         errs() << "reading cycle counters is not enabled!\n";
@@ -8077,6 +6615,7 @@ namespace {
       }
     }
 
+    /* check if CI is enabled & instrument probe if so */
     BasicBlock* instrumentIfLCEnabled(Instruction *I, eInstrumentType instrType, Value *incVal = nullptr) {
       IRBuilder<> IR(I);
       Value *flagSet = IR.getInt32(0);
@@ -8100,6 +6639,7 @@ namespace {
       return &*blockItr;
     }
 
+    /* check if target IR has been reached & call CI if so */
     void testNpushMLCfromTLLC(Instruction &I, Value *loadedLC, LoadInst* loadDisFlag = nullptr, bool useTSC = false) {
       IRBuilder<> IR(&I);
       Value *targetinterval = nullptr;
@@ -8155,34 +6695,6 @@ namespace {
 
     }
 
-    /* Clone all functions. Must be called after thread functions can be found */
-    void cloneFunctions(Module &M) {
-      errs() << "\n************************** CLONING FUNCTIONS ****************************\n";
-      llvm::StringRef suffix("_uninstrumented");
-      for(auto funcIt = CGOrderedFunc.begin(); funcIt != CGOrderedFunc.end(); funcIt++) {
-        auto fName = (*funcIt).first;
-        Function *F = M.getFunction(fName);
-
-        /* Do not clone thread functions */
-        if(isThreadFunc(F)) continue;
-
-        ValueToValueMapTy VMap;
-        std::string cloneFName(fName);
-        cloneFName.append(suffix);
-        Function* dupFunc = CloneFunction(F, VMap, nullptr);
-        dupFunc->setName(cloneFName);
-        CGOrderedFunc.insert(funcIt, std::make_pair(dupFunc->getName(), true));
-        funcIt++;
-      }
-
-#ifdef LC_DEBUG
-      errs() << "Total set of functions after cloning :-\n";
-      for(auto funcIt = CGOrderedFunc.begin(); funcIt != CGOrderedFunc.end(); funcIt++) {
-        errs() << (*funcIt).first << "\n";
-      }
-#endif
-    }
-
     /* Find all functions that are called using pthread_create */
     void findThreadFunc(Module &M) {
       StringRef mainFunc("main");
@@ -8215,6 +6727,7 @@ namespace {
       }
     }
 
+    /* printf prototype - to be called for debugging purpose */
     static Function *printf_prototype(Module *M) {
       Function *func = M->getFunction("printf");
       if(!func) {
@@ -8228,6 +6741,7 @@ namespace {
     }
 
 #ifdef PROFILING
+    /* printf declaration - to be called for profiling/debugging purpose */
     void createPrintFuncDecl(Module &M) {
       /* Create function declaration */
       std::string funcName("printCountersPi");
@@ -8260,6 +6774,7 @@ namespace {
 #endif
     }
 
+    /* printf definition - to be called for profiling/debugging purpose */
     void createPrintFuncDefn(Module &M) {
       /* Create function declaration */
       std::string funcName("printCountersPi");
@@ -8347,48 +6862,10 @@ namespace {
     }
 #endif
 
-    /* For cost analysis & instrumentation, phi instructions are ignored (cannot instrument before Phi inst) & 
-     * the instrumentations must occur after master clock definitions in thread functions */
-    Instruction* findNextValidInst(Instruction* I) { /* deprecated */
-      Function* F = I->getFunction();
-      BasicBlock* BB = I->getParent();
-      Instruction* retInst = I;
-
-      if(isThreadFunc(F)) {
-        BasicBlock* entryBB = &(F->getEntryBlock());
-        if(BB == entryBB) {
-          if(I == &(BB->front())) {
-            /* Find the clock definition in the first basic block of a thread beginner function */
-            bool found = false;
-            for(auto inst=inst_begin(F); inst!=inst_end(F); inst++) {
-              if(isa<StoreInst>(&*inst)) {
-                unsigned numOfOperands = (*inst).getNumOperands();
-                if (numOfOperands==2) {
-                  auto op2 = (*inst).getOperand(1);
-                  if(op2->getName().compare("tlMasterClock")==0) {
-                    inst++;
-                    retInst = &*inst;
-#ifdef LC_DEBUG
-                    errs() << "Valid start inst for thread func " << F->getName() << "() : " << *retInst << "\n";
-#endif
-                    found = true;
-                    break;
-                  }
-                }
-              }
-            }
-            assert(found && "This program needs to be updated with Master Clock definitions.");
-          }
-        }
-      }
-
-      retInst = checkForPhi(retInst);
-      return retInst;
-    }
-
-    /* printType says whether it is the function name or basic block name to be printed in the debug mode 
+    /* add calls to printf for profiling/debugging at the specified instruction
+     * printType says whether it is the function name or basic block name to be printed in the debug mode 
      * 0 is for function, 1 is for basic block name */
-    void callPrintFunc(Instruction *I, bool printType = true) { /* deprecated */
+    void callPrintFunc(Instruction *I, bool printType = true) {
 
       IRBuilder<> IR2(I);
       Module *M = I->getParent()->getParent()->getParent();
@@ -8415,7 +6892,8 @@ namespace {
 #endif
     }
 
-    void createPrintCalls(Module &M) { /* deprecated */
+    /* add print calls to debug locations */
+    void createPrintCalls(Module &M) {
 
       for(auto &F : M) {
         if(!F.isDeclaration()) {
@@ -8474,6 +6952,7 @@ namespace {
       }
     }
 
+    /* write function call costs to file for libraries */
     void writeCost(Module &M) {
       if(OutCostFilePath.empty())
         return;
@@ -8502,6 +6981,7 @@ namespace {
       fout.close();
     }
 
+    /* read function call costs to file for CI-compliant libraries */
     bool readCost() {
       /* There may not be any library cost file supplied */
       if(InCostFilePath.empty()) {
@@ -8549,6 +7029,7 @@ namespace {
       return true;
     }
 
+    /* (not used) reads instruction weights from configuration file */
     bool readConfig() {
       if(ConfigFile.empty())
         return true;
@@ -8609,7 +7090,7 @@ namespace {
       return true;
     }
 
-    /* All initial instrumentation prior to Analysis and Instrumentation passes should be done here */
+    /* All initialization related instrumentation prior to analysis and instrumentation passes */
     void initializeInstrumentation(Module &M) {
       auto initVal = llvm::ConstantInt::get(M.getContext(), llvm::APInt(64, 0, false));
       auto initVal32 = llvm::ConstantInt::get(M.getContext(), llvm::APInt(32, 0, false));
@@ -8637,12 +7118,9 @@ namespace {
         //pc->setInitializer(initVal);
       }
 #endif
-
-      /* Clone all functions */
-      //cloneFunctions(M);
     }
 
-    /* Code for IR generation from parametric cost */
+    /* Code for IR generation from parametric cost represented in InstructionCost structure */
     Value* scevToIR(Instruction *inst, const InstructionCost* fcost) {
       IRBuilder<> Builder(inst);
       Value *val = NULL;
@@ -8789,6 +7267,8 @@ namespace {
       return val;
     }
 
+    /**************************************** Naive ************************************/
+    /* Add probes to all basic blocks & all library calls for Naive CI */
     void instrumentAllBlocks(Module &M) {
       errs() << "Instrumenting all blocks\n";
 
@@ -8865,6 +7345,7 @@ namespace {
       }
     }
 
+    /* enable/disable CI on ci_enable/ci_disable function calls */
     void replaceCIConfigCalls(Function &F) {
       Module *M = F.getParent();
       for(inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
@@ -8914,8 +7395,8 @@ namespace {
       }
     }
 
+    /* Check if this block has an edge going backwards in the CFG */
     bool checkIfBackedge(BasicBlock* BB) {
-
       Loop *L = LI->getLoopFor(BB);
       bool isLatch = false;
       if(L) {
@@ -8945,7 +7426,7 @@ namespace {
       return false;
     }
 
-#if 1
+    /**************************************** CoreDet ************************************/
     typedef struct CDBBCost {
       int _status; /* 0 - no call inst fence (use onlyCost), 1 - with call inst fence (use front & back) */
       int _onlyCost; /* when there is no call instruction */
@@ -9327,11 +7808,9 @@ namespace {
         
       }
     }
-#endif
 
-    /* Instruments all function calls & backedges 
-     * NOTE: Try to heuristically figure out the best weights that makes it match the accuracy of the opt clock 
-     * For now, external lib call cost = ExtLibFuncCost, backedge & rest call cost = 1 */
+    /******************************************* CnB ***************************************/
+    /* Instruments all function calls & backedges */
     void instrumentLegacy(Module &M) {
       errs() << "Instrumenting for legacy\n";
 
@@ -9385,6 +7864,7 @@ namespace {
       }
     }
 
+    /* create & initialize a global variable for a cycle counter */
     void initializeLastCycleTL(Module &M) {
       errs() << "Created LastCycleTS\n";
       auto initVal = llvm::ConstantInt::get(M.getContext(), llvm::APInt(64, 0, false));
@@ -9394,7 +7874,7 @@ namespace {
         cycle->setInitializer(initVal);
     }
 
-    /* Instruments all function calls & backedges */
+    /* Instruments all function calls & backedges with llvm.readcyclecounter calls */
     void instrumentLegacyAccurate(Module &M) {
       errs() << "Instrumenting for accurate legacy\n";
       gIsOnlyThreadLocal = true;
@@ -9435,7 +7915,7 @@ namespace {
       }
     }
 
-    /* CompilerInterrupt Pass function */
+    /* CompilerInterrupt Pass entry function */
     bool runOnModule(Module &M) override {
       gIsOnlyThreadLocal = false;
       int numFunctions = 0;

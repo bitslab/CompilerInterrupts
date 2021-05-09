@@ -235,7 +235,7 @@ namespace {
   DominatorTree *DT;
   LoopInfo *LI;
   ScalarEvolution *SE;
-  MemorySSA *MSSA;
+  // MemorySSA *MSSA;
   BranchProbabilityInfo *BPI;
   std::set<std::string> fenceList;
   std::set<Instruction*> callInstToReplaceForPC; /* list of instructions whose calls will be replaced */
@@ -883,7 +883,7 @@ namespace {
   }
 
   /* only for debugging - find all external library calls */
-  void findAllLibraryCalls(Module &M) {
+  __attribute__ ((unused)) void findAllLibraryCalls(Module &M) {
     errs() << "Finding all library calls\n";
     for(auto &F : M) {
       if(F.isDeclaration())
@@ -2017,13 +2017,13 @@ namespace {
     bool _hasDirectEdge;
 		double _directBranchProb;
     BasicBlock* _domBlock;
-    BasicBlock* _postdomBlock;
+    // BasicBlock* _postdomBlock;
     
     //BasicBlock *postDom; // Kept for new rule to match smallest SESE region
   public:
     /* ----------------- Constructor ---------------------*/
 
-    BranchLCC(int id, LCCNode* entryLCC, LCCNode* exitLCC, std::map<LCCNode*, double> branchLCCInfo, bool hasDirectEdge, double directBranchProb, BasicBlock* domBlock, BasicBlock* postdomBlock, bool hasFence) : LCCNode(LCCNode::BRANCH_LCC, id), _entryLCC(entryLCC), _exitLCC(exitLCC), _branchLCCInfo(branchLCCInfo), _hasDirectEdge(hasDirectEdge), _directBranchProb(directBranchProb), _domBlock(domBlock), _postdomBlock(postdomBlock) {
+    BranchLCC(int id, LCCNode* entryLCC, LCCNode* exitLCC, std::map<LCCNode*, double> branchLCCInfo, bool hasDirectEdge, double directBranchProb, BasicBlock* domBlock, BasicBlock* postdomBlock, bool hasFence) : LCCNode(LCCNode::BRANCH_LCC, id), _entryLCC(entryLCC), _exitLCC(exitLCC), _branchLCCInfo(branchLCCInfo), _hasDirectEdge(hasDirectEdge), _directBranchProb(directBranchProb), _domBlock(domBlock) {
       assert(entryLCC && exitLCC && "entry or exit LCCs cannot be null for a Branch Container");
       assert(!branchLCCInfo.empty() && "there should be at least one concrete branch for Branch Container");
       _entryLCC->setParentLCC(this);
@@ -2482,7 +2482,7 @@ namespace {
       /* Loop header cannot start with an incoming cost, since it has multiple predecessors */
       InstructionCost *headerLCCCost = _headerLCC->getCostForIC(false, zeroCost); // preheader cost can only be added if the entire loop cost is available
       int numPreHeaderCost = getConstCost(preHeaderLCCCost);
-      bool headerInstrumented = _headerLCC->isInstrumented();
+      // bool headerInstrumented = _headerLCC->isInstrumented();
 
       if(_loopType == SELF_LOOP) {
 
@@ -3642,7 +3642,7 @@ namespace {
               succIsComplex = true;
               break;
             }
-            UnitLCC* succLCC = (static_cast<UnitLCC*>(succIt->first));
+            // UnitLCC* succLCC = (static_cast<UnitLCC*>(succIt->first));
           }
 
           /* No successor check */
@@ -3834,7 +3834,7 @@ namespace {
           if(!isThread && !isRecursive && (entryLCC == currLCC)) {
             InstructionCost* cost = currLCC->getCostForPC(false);
             int numCost = hasConstCost(cost);
-            InstructionCost *simplifiedCost;
+            InstructionCost *simplifiedCost = nullptr;
             if (numCost <= 0) 
               simplifiedCost = simplifyCost(F, cost);
 
@@ -4144,9 +4144,9 @@ namespace {
     void instrumentLibCallsWithCycleIntrinsic(Function *F) {
       std::vector<std::list<Instruction*>*> externalCalls;
       for(inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-        bool first = true;
-        bool found = false;
-        Instruction *firstInst = nullptr, *lastInst = nullptr;
+        // bool first = true;
+        // bool found = false;
+        // Instruction *firstInst = nullptr, *lastInst = nullptr;
         std::list<Instruction*> *listInst = nullptr;
         while(I!=E) {
           if(checkIfExternalLibraryCall(&*I)) {
@@ -4564,8 +4564,8 @@ namespace {
         /* Transformation */
         errs() << "\nThis selfloop will be transformed & instrumented --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() ). Self Loop cost: " << numSelfLoopCost << ". Iterations: " << innerLoopIterations << "\n";
 
-        int residualCost = CommitInterval % numSelfLoopCost;
-        InstructionCost *totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
+        // int residualCost = CommitInterval % numSelfLoopCost;
+        // InstructionCost *totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
         BasicBlock *exitBlock = nullptr;
         exitBlock = transformGenericSelfLoopWithoutBounds(L, innerLoopIterations, numSelfLoopCost);
 
@@ -4626,9 +4626,9 @@ namespace {
         /* Transformation */
         errs() << "\nThis seseloop will be transformed & instrumented --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() ). SESE Loop cost: " << numSESELoopCost << ". Iterations: " << innerLoopIterations << "\n";
 
-        int residualCost = CommitInterval % numSESELoopCost;
+        // int residualCost = CommitInterval % numSESELoopCost;
         /* Instrumenting the inner loop whole cost + residue. However, if the inner loop exited earlier because the outer loop exit cost has been reached, it will add an extra amount to the clock. This can be fixed by instrumenting the clock update based on the inner loop canonical induction variable creater in transformSESELoopWithoutBounds. For now, we hardcode the clock update. */
-        InstructionCost* totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
+        // InstructionCost* totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
         BasicBlock* exitBlock = nullptr;
         exitBlock = transformSESELoopWithoutBounds(L, innerLoopIterations, numSESELoopCost);
 
@@ -5524,7 +5524,7 @@ namespace {
     /* Transform a single-entry single-entry generic loop into an equivalent inner & outer loop, such that the probe can be instrumented in the outer loop only, while not changing functionality */
     BasicBlock* transformSESELoopWithoutBounds(Loop *L, int iterations, int numSelfLoopCost) {
       BasicBlock *headerBlock = L->getHeader();
-      Function *F = headerBlock->getParent();
+      // Function *F = headerBlock->getParent();
       auto lBounds = L->getBounds(*SE);
       bool isCanonical = false;
       bool isInverseCond = false; /* inverse condition is when first successor of loop condition is not the header of the loop */
@@ -5615,7 +5615,7 @@ namespace {
         isInverseCond = true;
 
       Value *valOrigCond = BI->getOperand(0);
-      BasicBlock *trueOperand = BI->getSuccessor(0);
+      // BasicBlock *trueOperand = BI->getSuccessor(0);
 
       Instruction *splitFrontInst = headerBlock->getFirstNonPHI();
       assert(splitFrontInst && "SESE header block does not have any non-phi instructions. Not handled.");
@@ -6000,7 +6000,7 @@ namespace {
         isInverseCond = true;
 
       Value *valOrigCond = BI->getOperand(0);
-      BasicBlock *trueOperand = BI->getSuccessor(0);
+      // BasicBlock *trueOperand = BI->getSuccessor(0);
 
       Instruction *splitFrontInst = onlyBlock->getFirstNonPHI();
       assert(splitFrontInst && "Self loop block does not have any non-phi instructions. Not handled.");
@@ -6552,6 +6552,7 @@ namespace {
       CallInst *cyc2 = IR2.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
       Value* costVal = IR2.CreateSub(cyc2, cyc1);
       instrumentIfLCEnabled(&*itI2, ALL_IR, costVal); // ALL_IR here means the cost value is created & passed to the routine, although the value passed is the cycle count difference & not the IR difference
+      return nullptr;
     }
 
     /* instrument probes with cycle counter for only external library calls */
@@ -6731,7 +6732,7 @@ namespace {
     static Function *printf_prototype(Module *M) {
       Function *func = M->getFunction("printf");
       if(!func) {
-        PointerType *Pty = PointerType::get(IntegerType::get(M->getContext(), 8), 0);
+        // PointerType *Pty = PointerType::get(IntegerType::get(M->getContext(), 8), 0);
         FunctionType *FuncTy9 = FunctionType::get(IntegerType::get(M->getContext(), 32), true);
 
         func = Function::Create(FuncTy9, GlobalValue::ExternalLinkage, "printf", M);

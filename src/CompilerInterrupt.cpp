@@ -243,7 +243,7 @@ namespace {
   std::map<BasicBlock*, InstructionCost*> directBranch; /* list of branch header blocks which need to instrument the direct branch. The Value is the instrumented branch */
   std::map<Loop*, InstructionCost*> selfLoop; /* list of branch header blocks which need to instrument the direct branch. The Value is the instrumented branch */
   std::map<Loop*, InstructionCost*> seseLoop; /* list of branch header blocks which need to instrument the direct branch. The Value is the instrumented branch */
-  std::map<std::string,const InstructionCost*> libraryInstructionCosts;
+  std::map<StringRef, const InstructionCost*> libraryInstructionCosts;
   std::map<Function*, FuncInfo*> computedFuncInfo;
   std::map<StringRef, bool> CGOrderedFunc; // list of functions in call graph order
   std::map<Function *, struct fstats> FuncStat;
@@ -2696,7 +2696,7 @@ namespace {
     static char ID;
     SmallVector<StringRef,100> funcUsedAsPointers; // contains list of all functions that begin a thread & main()
     std::map<Function*,Value*> localClock; // list of local variables to be passed as parameter, corresponding to each function in threadFunc 
-    std::map<std::string,bool> isRecursiveFunc;
+    std::map<StringRef, bool> isRecursiveFunc;
     /* Fence instructions are those where a probe is necessary - like a function call or an exit call etc.
      * Basic block may have fence instructions inside it, which will require multiple containers for a single block. Order of blocks must be preserved for which vector is used */
     std::map<BasicBlock*,std::vector<LCCNode*>> bbToContainersMap; 
@@ -4851,7 +4851,7 @@ namespace {
 
       DT->recalculate(*F);
       PDT->recalculate(*F);
-      BPI->calculate(*F, *LI);
+      BPI->calculate(*F, *LI, nullptr, DT, PDT);
     }
 
     /* run all the passes of LCC creation, cost analysis & probe instrumentation */
@@ -5396,7 +5396,7 @@ namespace {
       Function *F = start->getParent();
       DT->recalculate(*F);
       PDT->recalculate(*F);
-      BPI->calculate(*F, *LI);
+      BPI->calculate(*F, *LI, nullptr, DT, PDT);
 
 #ifdef CRNT_DEBUG
       /********************************* Debug prints *****************************/
@@ -5455,7 +5455,7 @@ namespace {
       Function *F = start->getParent();
       DT->recalculate(*F);
       PDT->recalculate(*F);
-      BPI->calculate(*F, *LI);
+      BPI->calculate(*F, *LI, nullptr, DT, PDT);
 
 #ifdef CRNT_DEBUG
       /********************************* Debug prints *****************************/
@@ -6491,9 +6491,9 @@ namespace {
       /* Code for calling custom function at push time */
       std::vector<llvm::Value*> args;
       args.push_back(valLC);
-      Value* hookFuncPtr = action_hook_prototype(I);
-      auto hookFunc = Builder.CreateLoad(hookFuncPtr, "ci_handler");
-      Builder.CreateCall(hookFunc, args);
+      Value *hookFuncPtr = action_hook_prototype(I);
+      auto hookFunc = Builder.CreateLoad(hookFuncPtr->getType()->getPointerElementType(), hookFuncPtr, "ci_handler");
+      Builder.CreateCall(cast<FunctionType>(hookFunc->getType()->getPointerElementType()), hookFunc, args);
 
       /* Enable CI */
       if(loadDisFlag) {
@@ -6673,7 +6673,7 @@ namespace {
               isRecursiveFunc[F->getName()] = true;
               errs() << "Recursive func name: " << F->getName() << "\n";
             }
-            else if(NodeVec.size()==1 && CGI.hasLoop()) {
+            else if(NodeVec.size()==1 && CGI.hasCycle()) {
               isRecursiveFunc[F->getName()] = true;
               errs() << "Self-Recursive func name: " << F->getName() << "(" << F << ") --> " << isRecursiveFunc[F->getName()] << "\n";
             }
@@ -7375,7 +7375,7 @@ namespace {
               Value *minFlagVal = Builder.getInt32(0);
               Value *condition = Builder.CreateICmpSGT(loadDisFlag, minFlagVal, "ci_flag_check");
               auto localLI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-              Instruction *ti = llvm::SplitBlockAndInsertIfThen(condition, &*I, false, nullptr, nullptr, localLI);
+              Instruction *ti = llvm::SplitBlockAndInsertIfThen(condition, &*I, false, nullptr, static_cast<DomTreeUpdater *>(nullptr), localLI);
               ti->getParent()->setName("check_ci_disabled_flag_val");
               Builder.SetInsertPoint(ti);
               Value *decrCnt = Builder.getInt32(1);

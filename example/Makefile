@@ -21,6 +21,7 @@ opt_demo.ll: ir_demo.ll
 	$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
 
 ir_demo.ll: demo.c
+	#$(CC) $(INC) -fno-discard-value-names -g -S -emit-llvm -o $@ $<
 	$(CC) $(INC) -g -S -emit-llvm -o $@ $<
 
 libci.so: ci_lib.o

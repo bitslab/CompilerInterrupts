@@ -47,6 +47,8 @@ run_shenango() {
   pushd shenango
   # must be run from frames
   ./run_shenango_experiments.sh
+  echo "Plot results are expected to be in $CUR_PATH/accuracy_and_overhead/$PLOT_RELATIVE_PATH"
+  echo "99.9pc.pdf, median.pdf, cpuminer-hashrate.pdf should correspond to Figure 6 in PLDI submission!"
   popd
 }
 
@@ -54,6 +56,9 @@ run_mtcp() {
   pushd mtcp
   # must be run from lines
   RUNS=3 ./experiment.sh
+  echo "Plot results are expected to be in $CUR_PATH/accuracy_and_overhead/$PLOT_RELATIVE_PATH"
+  echo "perf_unmod.pdf should correspond to Figure 4 in PLDI submission!"
+  echo "perf_mod.pdf should correspond to Figure 5 in PLDI submission!"
   popd
 }
 

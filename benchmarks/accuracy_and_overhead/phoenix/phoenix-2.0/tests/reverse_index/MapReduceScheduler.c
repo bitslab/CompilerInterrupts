@@ -496,8 +496,9 @@ static inline void schedule_tasks(thread_wrapper_arg_t *th_arg)
    {
       int ret_val;
       //CHECK_ERROR(pthread_join(g_state.tinfo[thread_cnt].tid, (void **)(void *)&ret_val) != 0);
-      pthread_join(g_state.tinfo[thread_cnt].tid, (void **)(void *)&ret_val); 
-      
+      // bug fix
+      if(g_state.tinfo)
+        pthread_join(g_state.tinfo[thread_cnt].tid, (void **)(void *)&ret_val); 
       // The thread returned and error. Restart the thread.
       //if (ret_val != 0)
       //{

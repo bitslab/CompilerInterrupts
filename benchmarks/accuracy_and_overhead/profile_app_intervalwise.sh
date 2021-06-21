@@ -2,9 +2,9 @@
 # This script runs perf record on the apps, based on intervals. Need to run the profile_app_eventwise.sh script after this to start running the app & profile it parallely on events, for comparison.
 
 CYCLE="${CYCLE:-5000}"
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"perf_profile"}"
-DIR=$CUR_PATH/microbenchmark_stats/$SUB_DIR
+DIR=$CUR_PATH/exp_results/$SUB_DIR
 
 source $CUR_PATH/include.sh
 
@@ -16,6 +16,8 @@ fi
 if [ $# -ne 2 ]; then
   echo "Usage: ./profile_app_intervalwise.sh <bench> <ci setting number>"
 fi
+
+mkdir -p $DIR
 
 program="$1"
 ci_setting="$2"
@@ -37,12 +39,10 @@ done
 #cmd="perf record -g -F 100000 -p $proc_id --per-thread -o $interval_ofile"
 #cmd="perf record -e syscalls:sys_enter_* --per-thread -p $proc_id -c 1 -o $interval_ofile"
 
-#cmd="perf record -F 100000 -T -p $proc_id -o $interval_ofile"
-cmd="perf record -e syscalls:sys_enter_* -e syscalls:sys_exit_* --per-thread -p $proc_id -c 1 -o $syscall_ofile"
+cmd="perf record -F 100000 -T -p $proc_id -o $interval_ofile"
+#cmd="perf record -e syscalls:sys_enter_* -e syscalls:sys_exit_* --per-thread -p $proc_id -c 1 -o $syscall_ofile"
 run_command $cmd
 
 echo "Ran perf record on $program ($proc_id)"
 
 sleep 2
-
-mkdir -p $DIR

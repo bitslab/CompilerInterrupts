@@ -8,7 +8,9 @@
 
 #include "llvm/Pass.h"
 #include "llvm/ADT/SCCIterator.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 //#include "llvm/IR/TypeBuilder.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Type.h"
@@ -35,6 +37,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
+#include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
@@ -77,7 +80,6 @@ namespace {
 
 //#define PROFILING
 #define EAGER_OPT // this instruments the cost in the bottom of the basic block representing the LCC container instead of the top. This allows compiler to optimizes certain instrumentations
-//#define SHIFT
 
 #ifdef ACCURACY
 #define PRINT_LC_DEBUG_INFO
@@ -97,7 +99,15 @@ namespace {
 #endif
 
 //#define ALLOWED_DEVIATION (CommitInterval/5)
-#define ALLOWED_DEVIATION 100
+//#define ALLOWED_DEVIATION 1000
+#define ALLOWED_DEVIATION (CommitInterval)
+#define SELF_LOOP_THRESH_DEPTH 0
+
+//#define REDUCE_BY_PROBE_INTV
+//#define SHIFT
+#define CYCLES_ACCURATE
+#define NEW_PROBE
+#define SELF_LOOP_CLONE
 
   /******************************************* Section: Structure & Class Definitions ******************************************/
 
@@ -120,7 +130,9 @@ namespace {
     OPTIMIZE_HEURISTIC_INTERMEDIATE_FIBER = 15, /* 15 - for fiber, interrupts are not disabled */
     NAIVE_HEURISTIC_FIBER = 16, /* 16 - for fiber, interrupts are not disabled */
     OPTIMIZE_CYCLES = 17, /* 17 - instrument based on IR, but check cycles at runtime */
-    NAIVE_CYCLES = 18 /* 18 - instrument based on IR, but check cycles at runtime */
+    NAIVE_CYCLES = 18, /* 18 - instrument based on IR, but check cycles at runtime */
+    ALL_INST_TL = 19, /* 19 -  instrument all instructions */
+    ALL_INST_INTERMEDIATE = 20 /* 20 -  instrument all instructions based on IR, but check cycles at runtime */
   };
 
   typedef enum instrumentType {
@@ -258,6 +270,12 @@ namespace {
   std::map<Function*, FuncInfo*> computedFuncInfo;
   std::map<StringRef, bool> CGOrderedFunc; // list of functions in call graph order
   std::map<Function *, struct fstats> FuncStat;
+  SmallPtrSet<BasicBlock *,32> blackListedBlocks;
+  std::map<std::string, SmallVector<std::string,32> *> debugInstrList;
+  std::map<std::string, SmallVector<std::string,32> *> debugNoInstrList;
+  std::map<std::string, SmallVector<std::string,32> *> debugNoLoopTransformList;
+  std::map<std::string, SmallVector<std::string,32> *> debugNoLoopInstrList;
+  std::map<std::string, SmallVector<std::string,32> *> debugBBList;
   SmallVector<StringRef,20> threadFunc; // contains list of all functions that begin a thread & main()
   StringMap<unsigned char> ciFuncInApp; // list of functions used as compiler interrupt in application code 
   std::map<Function *, AllocaInst*> gLocalCounter;
@@ -350,6 +368,16 @@ namespace {
       }
     }
     return exitBB;
+  }
+
+  bool isNOOPInstruction(Instruction *I) {
+    if(isa<PHINode>(I)
+        || isa<GetElementPtrInst>(I) 
+        || isa<CastInst>(I)
+        || isa<AllocaInst>(I))
+      return true;
+    else
+      return false;
   }
 
   /* 0 is a valid value */
@@ -850,8 +878,8 @@ namespace {
   /* Finds the cost of a particular instruction */
   InstructionCost* getInstCostForPC(Instruction* I) {
     Function *F = I->getFunction();
-    if (isa<PHINode>(I)) {
-      /***************************** For Phi instructions ***************************/
+    if (isNOOPInstruction(I)) {
+      /***************************** For NoOp instructions ***************************/
       return getConstantInstCost(0);
     }
     else if (isa<LoadInst>(I) || isa<StoreInst>(I)) {
@@ -923,7 +951,7 @@ namespace {
         if(isa<DbgInfoIntrinsic>(I)) {
           return false;
         }
-#if 0
+#if 1
         else if(isa<IntrinsicInst>(I)) {
           errs() << "Intrinsic call: " << *I << "\n";
           return false;
@@ -981,7 +1009,7 @@ namespace {
 
     long newCost = 0;
 
-    if (isa<PHINode>(I)) {
+    if (isNOOPInstruction(I)) { 
       /***************************** For Phi instructions ***************************/
       return getConstantInstCost(0);
     }
@@ -1032,7 +1060,10 @@ namespace {
       }
     }
 #if 0
-    else if (Handle floating point differently) {
+    else if(isa<FPMathOperator>(I)) {
+      int fpCost = 1;
+      errs() << "Instrumenting cost " << fpCost << " for floating point type " << *(I->getType()) << " for Inst " << *I << "\n";
+      return getConstantInstCost(fpCost);
     }
 #endif
     else {
@@ -1091,6 +1122,7 @@ namespace {
       case OPTIMIZE_INTERMEDIATE:
       case OPTIMIZE_HEURISTIC_INTERMEDIATE_FIBER:
       case NAIVE_INTERMEDIATE:
+      case ALL_INST_INTERMEDIATE:
         {
           res=true;
           break;
@@ -1103,6 +1135,7 @@ namespace {
     bool res = false;
     switch(InstGranularity) {
       case NAIVE_TL:
+      case ALL_INST_TL:
       case OPTIMIZE_HEURISTIC_WITH_TL:
       case OPTIMIZE_HEURISTIC_FIBER:
       case COREDET_HEURISTIC_TL:
@@ -1114,6 +1147,36 @@ namespace {
         }
     }
     return res;
+  }
+
+  /* Cost of the probe when the IR interval is exceeded and CI is called */
+  int getProbeIntermediateInstrCost() {
+    int instrumentationCost = 0;
+    if(checkIfInstGranIsDet())
+      instrumentationCost = 3;
+    else if(checkIfInstGranIsIntermediate())
+      instrumentationCost = 10;
+    else if(checkIfInstGranCycleBasedCounter()) {
+      errs() << "This path is not verified. Check the cost from the instrumentation.";
+      exit(1);
+    }
+    /* naive-acc & opt-acc have the overhead added in the external lib calls */
+    if(InstGranularity != NAIVE_ACCURATE && InstGranularity != OPTIMIZE_ACCURATE)
+      assert((instrumentationCost!=0) && "Instrumentation cost is not available for this type of configuration");
+    return instrumentationCost;
+  }
+
+  /* Cost of the probe that gets executed everytime */
+  int getProbeFixedInstrCost() {
+    int instrumentationCost = 7;
+    if(checkIfInstGranCycleBasedCounter()) {
+      errs() << "This path is not verified. Check the cost from the instrumentation.";
+      exit(1);
+    }
+    /* naive-acc & opt-acc have the overhead added in the external lib calls */
+    if(InstGranularity != NAIVE_ACCURATE && InstGranularity != OPTIMIZE_ACCURATE)
+      assert((instrumentationCost!=0) && "Instrumentation cost is not available for this type of configuration");
+    return instrumentationCost;
   }
 
   /*********************************************** Section: Container class definition *********************************************/
@@ -1653,6 +1716,16 @@ namespace {
       return _instrValInfo;
     }
 
+    /* Only used for debugging case for removing instrumentation */
+    std::map<Instruction*, InstructionCost*>* getMutableInstrInfo() {
+      return &_instrInfo;
+    }
+
+    /* Only used for debugging case for removing instrumentation */
+    std::map<Instruction*, Value*>* getMutableInstrValInfo() {
+      return &_instrValInfo;
+    }
+
     bool getInstrumentFlag() {
       return toBeInstrumented;
     }
@@ -1675,12 +1748,15 @@ namespace {
       assert(I && "Instruction for instrumenting cannot be null!");
       /* Not checking if I falls in the range withing first & last instruction for this UnitLCC to avoid increasing compiling time. Need to ensure this before calling. */
 
-      /* Add the pair to the instrument list */
-      InstructionCost* newCost = cost;
+      /* Add the instrumentation cost to the previous accumulated cost */
+      int newNumCost = getConstCost(cost) + getProbeFixedInstrCost();
+      //int newNumCost = getConstCost(cost);
+      InstructionCost* newCost = getConstantInstCost(newNumCost);
+
       if(_instrInfo.end() != _instrInfo.find(I)) {
         auto prevCost = _instrInfo[I];
-        if (getConstCost(prevCost) != getConstCost(cost)) {
-          errs() << "Instruction " << *I << " in basic block " << I->getParent()->getName() << " (" << I->getFunction()->getName() << "()) has a previous cost of " << *prevCost << ", and gets a new cost of " << *cost << "\n";
+        if (getConstCost(prevCost) != newNumCost) {
+          errs() << "Instruction " << *I << " in basic block " << I->getParent()->getName() << " (" << I->getFunction()->getName() << "()) has a previous cost of " << *prevCost << ", and gets a new cost of " << *newCost << "\n";
           //int numPrevCost = getConstCost(prevCost);
           //int numNewCost = getConstCost(cost);
           //newCost = getConstantInstCost(numPrevCost+numNewCost);
@@ -1690,7 +1766,7 @@ namespace {
       _instrInfo[I] = newCost;
     }
 
-    void setInstrInfo(Instruction* I, Value* cost) {
+    void setInstrInfo(Instruction* I, Value* cost, int extraCost = 0) {
       toBeInstrumented = true;
 
       /* Sanity checks */
@@ -1703,7 +1779,12 @@ namespace {
         errs() << "Having multiple value based instrumentation at same instruction is not supported!\n";
         exit(1);
       }
-      _instrValInfo[I] = cost;
+      /* Add the instrumentation cost to the previous accumulated cost + 1 for the add instruction */
+      IRBuilder<> IR(I);
+      Value *instrCost = IR.getIntN(SE->getTypeSizeInBits(cost->getType()), getProbeFixedInstrCost() + extraCost + 1);
+      Value *newCost = IR.CreateAdd(cost, instrCost);
+      _instrValInfo[I] = newCost;
+      //_instrValInfo[I] = cost;
     }
 
     void printInstr() {
@@ -1733,10 +1814,10 @@ namespace {
       if(instrInfoIt != _instrInfo.end()) {
         _instrInfo[newI] = instrInfoIt->second; 
         _instrInfo.erase(instrInfoIt);
-      }
 #ifdef LC_DEBUG
-      errs() << "Block : " << getBlock()->getName() << ", OldI : " << *oldI << ", NewI : " << *newI << ", first inst : " << *_firstInst << ", last inst : " << *_lastInst << "\n";
+        errs() << "Block : " << getBlock()->getName() << ", OldI : " << *oldI << ", NewI : " << *newI << ", first inst : " << *_firstInst << ", last inst : " << *_lastInst << "\n";
 #endif
+      }
     }
 
 #if 1
@@ -1966,9 +2047,9 @@ namespace {
     }
 
     /* For instantaneous, cost is instrumented at the bottom. This special function is used for instrumenting the inner loops of unrolled loops */
-    void instrumentValueForIC(Value* val) {
+    void instrumentValueForIC(Value* val, int extraCost) {
       assert(val && "Non-numeric cost cannot be instrumented!");
-      setInstrInfo(_lastInst, val);
+      setInstrInfo(_lastInst, val, extraCost);
     }
 
     /* return true if any of its child containers are instrumented */
@@ -2224,9 +2305,7 @@ namespace {
       long diffCost = maxCost - minCost;
       if(diffCost > ALLOWED_DEVIATION) {
 #ifdef LC_DEBUG
-        if(getFunction()->getName().compare("CSHIFT")==0) {
-          errs() << "Diff cost that is greater than allowed dev: " << diffCost << "\n";
-        }
+        errs() << "Diff cost that is greater than allowed dev: " << diffCost << "\n";
 #endif
         instrumentBranch = true;
       }
@@ -2295,6 +2374,9 @@ namespace {
         InstructionCost* branchCost = branchLCC->getCostForIC(false, entryLCCCost);
         long numBranchCost = getConstCost(branchCost);
         long double weightedBranchCost = branchProb * numBranchCost;
+#ifdef ALL_DEBUG
+        errs() << "Indirect Branch cost: " << numBranchCost << ", weight: " << branchProb << "\n";
+#endif
         numNonDirectEdges++;
         avgFloatingBranchCost += weightedBranchCost;
         if(first) {
@@ -2319,15 +2401,22 @@ namespace {
         	maxCost = numEntryLCCCost;
         long double weightedBranchCost = _directBranchProb * numEntryLCCCost;
         avgFloatingBranchCost += weightedBranchCost;
+#ifdef ALL_DEBUG
+        errs() << "Direct Branch cost: " << numEntryLCCCost << ", weight: " << _directBranchProb << "\n";
+#endif
       }
       avgBranchCost = (long)avgFloatingBranchCost;
+      //avgBranchCost = (long)maxCost;
         
       long diffCost = maxCost - minCost;
       if(diffCost > ALLOWED_DEVIATION) {
+#ifdef LC_DEBUG
+        errs() << "Diff cost that is greater than allowed dev: " << diffCost << "\n";
+#endif
         instrumentBranch = true;
       }
 #ifdef CRNT_DEBUG
-      errs() << "Max: " << maxCost << ", Min: " << minCost << ", Diff: " << diffCost << ", Avg: " << avgBranchCost << ", to be instrumented: " << instrumentBranch << "\n";
+      errs() << "Max: " << maxCost << ", Min: " << minCost << ", Diff: " << diffCost << ", Allowed Deviation: " << ALLOWED_DEVIATION << " , Avg: " << avgBranchCost << ", to be instrumented: " << instrumentBranch << "\n";
 #endif
 
       if(instrumentBranch) {
@@ -2344,7 +2433,7 @@ namespace {
           if(directBranch.find(_domBlock) == directBranch.end()) {
             long numDirectBranchCost = numEntryLCCCost + 1; /* 1 for the new branch instruction created */
             directBranch[_domBlock] = getConstantInstCost(numDirectBranchCost);
-            errs() << "Direct branch from " << _domBlock->getName() << " needs to be instrumented\n";
+            errs() << "Direct branch from " << _domBlock->getName() << " needs to be instrumented with cost " << numDirectBranchCost << "\n";
           }
         }
         avgBranchCost = 0;
@@ -2530,6 +2619,9 @@ namespace {
         
       long diffCost = maxCost - minCost;
       if(diffCost > ALLOWED_DEVIATION) {
+#ifdef LC_DEBUG
+        errs() << "Diff cost that is greater than allowed dev: " << diffCost << "\n";
+#endif
         instrumentBranch = true;
       }
 #ifdef CRNT_DEBUG
@@ -2763,7 +2855,7 @@ namespace {
       /* Sanity checks */
       long initialNumCost = getConstCost(initialCost);
       int numBackEdgeCost = -1;
-      errs() << "Cost Evaluation of Loop: " << *_loop << "\n";
+      errs() << "Cost Evaluation of Loop: " << _loop->getHeader()->getName() << " at depth " << _loop->getLoopDepth() << "\n";
 #ifdef LC_DEBUG
       //errs() << "Getting cost for loop: " << *_loop << "\n";
       errs() << "Loop LCC id: " << getID() << " --> initial cost: " << initialNumCost << "\n";
@@ -2867,7 +2959,7 @@ namespace {
 
         //errs() << "Not a self loop:- " << *_loop << "\n";
 
-        errs() << "############# For Header-Colocated-Exit Loop " << *_loop << " #################\n";
+        errs() << "############# For Header-Colocated-Exit Loop " << _loop->getHeader()->getName() << " (depth: " << _loop->getLoopDepth() << " ) #################\n";
         bodyLCCCost = _bodyLCC->getCostForIC(false, headerLCCCost);
         //bodyInstrumented = _bodyLCC->isInstrumented();
         numBodyCost = hasConstCost(bodyLCCCost);
@@ -2925,7 +3017,7 @@ namespace {
       }
       else if(_loopType == HEADER_NONCOLOCATED_EXIT) {
 
-        errs() << "############# For Header-NonColocated-Exit Loop " << *_loop << " ###############\n";
+        errs() << "############# For Header-NonColocated-Exit Loop " << _loop->getHeader()->getName() << " (depth: " << _loop->getLoopDepth() << " ) ###############\n";
         bool loopNeedsTransform = true;
         //bool headerInstrumented = false;
         /* since header is non-colocated with exit, loop will run an extra time */
@@ -3108,8 +3200,12 @@ namespace {
       }
 
       long diffCost = maxCost - minCost;
-      if(diffCost > ALLOWED_DEVIATION)
+      if(diffCost > ALLOWED_DEVIATION) {
+#ifdef LC_DEBUG
+        errs() << "Diff cost that is greater than allowed dev: " << diffCost << "\n";
+#endif
         instrumentChild = true;
+      }
 
       if(instrumentChild) {
         /* Only dom & post dom cost are returned, every child is instrumented */
@@ -3294,8 +3390,12 @@ namespace {
       }
 
       long diffCost = maxCost - minCost;
-      if(diffCost > ALLOWED_DEVIATION)
+      if(diffCost > ALLOWED_DEVIATION) {
+#ifdef LC_DEBUG
+        errs() << "Diff cost that is greater than allowed dev: " << diffCost << "\n";
+#endif
         instrumentParent = true;
+      }
 
       if(instrumentParent) {
         /* Only exit cost are returned, every parent is instrumented */
@@ -3600,6 +3700,69 @@ namespace {
       return true;
     }
 
+    /********************************************* Copied from InductiveRangeCheckElimination.cpp ********************************************/
+
+#ifdef SELF_LOOP_CLONE
+  BasicBlock* cloneSelfLoop(BasicBlock *BB, const char *Tag) const {
+    ValueToValueMapTy Map;
+    BasicBlock *Clone = CloneBasicBlock(BB, Map, Twine(".") + Tag, BB->getParent());
+
+    auto GetClonedValue = [&Map](Value *V) {
+      assert(V && "null values not in domain!");
+      auto It = Map.find(V);
+      if (It == Map.end())
+        return V;
+      return static_cast<Value *>(It->second);
+    };
+
+    Clone->getTerminator()->setMetadata(".clonedSingleBlockLoop",
+                                              MDNode::get(*LLVMCtx, {}));
+
+    //assert(Map[BB] == Clone && "invariant!");
+
+    for (Instruction &I : *Clone)
+      RemapInstruction(&I, Map,
+                       RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+
+    // Exit blocks will now have one more predecessor and their PHI nodes need
+    // to be edited to reflect that.  No phi nodes need to be introduced because
+    // the loop is in LCSSA.
+
+    Loop *OriginalLoop = LI->getLoopFor(BB);
+    for (auto *SBB : successors(BB)) {
+      if(OriginalLoop->contains(SBB))
+        continue; // not an exit block
+
+      for (PHINode &PN : SBB->phis()) {
+        Value *OldIncoming = PN.getIncomingValueForBlock(BB);
+        PN.addIncoming(GetClonedValue(OldIncoming), Clone);
+      }
+    }
+
+    // change terminator of cloned block from original block to itself
+    Instruction *cloneTermInst = Clone->getTerminator();
+    int numOfSucc = cloneTermInst->getNumSuccessors();
+    for(int idx = 0; idx < numOfSucc; idx++) {
+      BasicBlock* succ = cloneTermInst->getSuccessor(idx);
+      if(succ == BB) {
+        //errs() << "Found BB " << succ->getName() << " at index " << idx << "\n";
+        cloneTermInst->setSuccessor(idx, Clone);
+        break;
+      }
+    }
+
+    // change cloned block's phi's
+    for (PHINode &PN : Clone->phis()) {
+		  int IDX = PN.getBasicBlockIndex(BB);
+			while (IDX != -1) {
+				PN.setIncomingBlock((unsigned)IDX, Clone);
+				IDX = PN.getBasicBlockIndex(BB);
+			}   
+    }
+
+    return Clone;
+  }
+#endif
 
     /********************************************* Copied from BasicBlockUtils.cpp ********************************************/
     /// Update DominatorTree, LoopInfo, and LCCSA analysis information.
@@ -3827,8 +3990,16 @@ namespace {
                                            bool PreserveLCSSA) {
       //assert(OrigBB->isLandingPad() && "Trying to split a non-landing pad!");
 
-      // Create a new basic block for OrigBB's predecessors listed in Succs. Insert
-      // it right before the original block.
+      errs() << "Splitting branches to successors ";
+      for(auto s: Succs) {
+        errs() << s->getName() << "\t";
+      }
+      errs() << " of dominator " << OrigBB->getName() << "\n";
+
+      assert(!isa<IndirectBrInst>(OrigBB->getTerminator()) &&
+             "Cannot split an edge from an IndirectBrInst");
+
+      // Create a new basic block for OrigBB's successors listed in Succs
       BasicBlock *NewBB1 = BasicBlock::Create(OrigBB->getContext(),
                                               OrigBB->getName() + Suffix1,
                                               OrigBB->getParent(), OrigBB);
@@ -3845,15 +4016,39 @@ namespace {
                "Cannot split an edge from an IndirectBrInst");
         Succs[i]->getTerminator()->replaceUsesOfWith(OrigBB, NewBB1);
       }
+
       BI1->setDebugLoc(OrigBB->getFirstNonPHI()->getDebugLoc());
 
       bool HasLoopExit = false;
-      UpdateAnalysisInformation(OrigBB, NewBB1, Succs, DT, LI, PreserveLCSSA,
+      for(auto succ : Succs) {
+        UpdateAnalysisInformation(succ, NewBB1, OrigBB, DT, LI, PreserveLCSSA,
                                 HasLoopExit);
+      }
 
       // Update the PHI nodes in OrigBB with the values coming from NewBB1.
       UpdatePHINodes(OrigBB, NewBB1, Succs, BI1, HasLoopExit);
       return NewBB1;
+    }
+
+    double getEdgeProbability(BasicBlock *start, BasicBlock *end) {
+      int numEdges = 0;
+      /* check the number of edges between these two blocks */
+      for (auto predIt = pred_begin(end), predEnd = pred_end(end); predIt != predEnd; ++predIt) {
+        if(*predIt == start) {
+          numEdges++;
+        }
+      }
+
+      BranchProbability bp = BPI->getEdgeProbability(start, end);
+      uint32_t numeratorBP = bp.getNumerator();
+      uint32_t denominatorBP = bp.getDenominator();
+      double edgeProb = (double)numeratorBP/denominatorBP;
+      double directEdgeProb = (edgeProb * numEdges);
+
+#ifdef ALL_DEBUG
+      errs() << "Edge probability between " << start->getName() << " and " << end->getName() << " with " << numEdges << " : " << directEdgeProb << "(" << numeratorBP << "/" << denominatorBP << ")\n";
+#endif
+      return directEdgeProb;
     }
 
     /* Check & create simple branch container */
@@ -3929,8 +4124,6 @@ namespace {
             printUnitLCCSet(succIt->first);
             errs() << "\n";
           }
-          /* will not handle this case */
-          return false;
         }
 
         /* Check if there is at most one container between the dom container & postdom container */
@@ -3942,7 +4135,7 @@ namespace {
 
         auto succSetOfEntryLCC = currentLCC->getSuccSet();
         bool directEdge = false; /* True if at least one direct edge is present */
-				double directEdgeProb = 0;
+        double indirectEdgeProb = 0, directEdgeProb = 0, totalEdgeProb = 0;
         std::map<LCCNode*, double> middleLCCInfo;
 
         /* Iterate over all the successors */
@@ -3955,11 +4148,13 @@ namespace {
 
           /* When the successor is the post dominator, it is a direct edge */
           if(succLCC == postDomLCC) {
+
+            directEdgeProb = getEdgeProbability(domBB, postDomBB);
+            totalEdgeProb += directEdgeProb;
             directEdge = true;
-						BranchProbability bp = BPI->getEdgeProbability(domBB, postDomBB);
-						uint32_t numeratorBP = bp.getNumerator();
-						uint32_t denominatorBP = bp.getDenominator();
-						directEdgeProb = ((double)numeratorBP/denominatorBP);
+#ifdef ALL_DEBUG
+            errs() << "Direct branch probability: " << directEdgeProb << "\n";
+#endif
             continue;
           }
 
@@ -3980,13 +4175,15 @@ namespace {
 
           auto succUnitLCC = succLCC->getInnerMostEntryLCC();
           BasicBlock* middleEnBlock = (static_cast<UnitLCC *>(succUnitLCC))->getBlock();
-          BranchProbability bp = BPI->getEdgeProbability(domBB, middleEnBlock);
-          uint32_t numeratorBP = bp.getNumerator();
-          uint32_t denominatorBP = bp.getDenominator();
-          double numBP = ((double)numeratorBP/denominatorBP);
-          middleLCCInfo[succLCC] = numBP;
-        }
 
+          indirectEdgeProb = getEdgeProbability(domBB, middleEnBlock);
+          totalEdgeProb += indirectEdgeProb;
+          middleLCCInfo[succLCC] = indirectEdgeProb;
+#ifdef ALL_DEBUG
+          errs() << "InDirect branch probability: " << indirectEdgeProb << "\n";
+#endif
+        }
+				
         /********************* Create new container *********************/
         LCCNode* newLCC = new BranchLCC(lccIDGen++, currentLCC, postDomLCC, middleLCCInfo, directEdge, directEdgeProb, domBB, postDomBB, false);
 
@@ -4083,12 +4280,18 @@ namespace {
         errs() << "), Middle LCC( ";
         for(auto middleLCCIt = middleLCCInfo.begin(); middleLCCIt != middleLCCInfo.end(); middleLCCIt++) {
           printUnitLCCSet(middleLCCIt->first);
-          errs() << "(" << middleLCCIt->first->getID() << ")\t";
+          errs() << "(id: " << middleLCCIt->first->getID() << ", probability: " << middleLCCIt->second << ")\t";
         }
         errs() << "), Exit LCC(" << postDomLCC->getID() << "): (";
         printUnitLCCSet(postDomLCC);
-        errs() << ")\n";
+        errs() << "), Direct Probability (if present): " << directEdgeProb << "\n";
 #endif
+
+        /* Sanity check */
+        if(totalEdgeProb > 1.01 || totalEdgeProb < 0.99) {
+          errs() << "Total edge probability " << totalEdgeProb << " does not add up. Aborting.\n";
+          exit(1);
+        }
 
         applycontrule2++;
         return true;
@@ -4361,7 +4564,7 @@ namespace {
       Loop *lccLoop = currentLCC->getLoop();
       if(lccLoop == currentLoop) return false;
 
-      errs() << entryBlock->getParent()->getName() << "(): Attempting to create LCC for simple loop " << *currentLoop << ". Latch: " << currLoopLatch->getName() << ", Exiting block: " << currLoopExBlock->getName() << "\n";
+      errs() << entryBlock->getParent()->getName() << "(): Attempting to create LCC for simple loop " << entryBlock->getName() << " at depth " << currentLoop->getLoopDepth() << " . Latch: " << currLoopLatch->getName() << ", Exiting block: " << currLoopExBlock->getName() << "\n";
 
       /* Find if the exiting block is co-located with the header block */
       bool isHeaderWithExitBlock = false;
@@ -4371,6 +4574,13 @@ namespace {
       LCCNode *loopBodyLCC = nullptr;
       if(currentLoop->isLoopExiting(entryBlock))
         isHeaderWithExitBlock = true;
+
+#ifdef ALL_DEBUG
+      if(backEdgeTakenCount) {
+        errs() << "Loop " << *currentLoop << "\n";
+        errs() << "Backedge count for loop with header " << entryBlock->getName() << " : " << *(SE->getBackedgeTakenCount(currentLoop)) << "\n";
+      }
+#endif
 
       if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
         InstructionCost* backEdges = scevToCost(backEdgeTakenCount);
@@ -5748,18 +5958,25 @@ namespace {
       }
     }
 
+    void instrumentProbe(Instruction* I, eInstrumentType instrType, Value* val = nullptr) {
+      instrumentGlobal(I, instrType, val, nullptr);
+      //instrumentIfLCEnabled(I, instrType, val, nullptr);
+    }
+
     /* instrType: ALL_IR(0) - increment & push based on cost value passed (mostly IR count)
      * instrType: PUSH_ON_CYCLES(1) - increment based on IR & push based on cycles
      * instrType: INCR_ON_CYCLES(2) - increment based on cycles & push based on cycles
      */
-    void instrumentGlobal(Instruction* I, eInstrumentType instrType, Value* val, LoadInst* loadDisFlag = nullptr) {
+    void instrumentGlobal(Instruction* I, eInstrumentType instrType, Value* val = nullptr, LoadInst* loadDisFlag = nullptr) {
       Value *loadedLC = nullptr;
       if (instrType == INCR_ON_CYCLES) {
         assert(!val && "Not expecting a pre-calculated cost value for this configuration");
         loadedLC = incrementTLLCWithCycles((*I));
       }
-      else
+      else {
+        assert(val && "Not expecting a null cost value for this configuration");
         loadedLC = incrementTLLC((*I), val);
+      }
 
       if(instrType == PUSH_ON_CYCLES)
         testNpushMLCfromTLLC(*I,loadedLC,loadDisFlag,true);
@@ -6083,12 +6300,186 @@ namespace {
     }
 #endif
 
-    void instrumentFunc(Function *F) {
+    bool isBlockListed(BasicBlock *BB, std::map<std::string, SmallVector<std::string,32> *> &storageDS) {
+      Function *F = BB->getParent();
+      if(storageDS.end() != storageDS.find(F->getName())) {
+        auto blockNames = storageDS[F->getName()];
+        for(auto bbName:*blockNames) {
+          if(BB->getName().compare(bbName) == 0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    void printBlock(Function *F, char *block) {
+      for(auto &bb: *F) {
+        if(bb.getName().compare(block)==0) {
+          errs() << "Printing block " << block << "\n";
+          errs() << bb << "\n";
+        }
+      }
+    }
+
+    bool canBeInstrumented(BasicBlock *currBB) {
+      if(blackListedBlocks.end() != blackListedBlocks.find(currBB))
+        return false; 
+      return true;
+    }
+
+    void findPragmaInstr(Function *F) {
+      Module *M = F->getParent();
+      SmallVector<BasicBlock *,32> pragmaDisableList;
+      SmallPtrSet<BasicBlock *, 32> pragmaEnableList;
+      for(inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
+        if (CallInst *ci = dyn_cast<CallInst>(&*I)) {
+          auto calledFunc = ci->getCalledFunction();
+          if(calledFunc) {
+            Instruction* instr = &*I;
+            if(calledFunc->getName().compare("instr_disable") == 0) {
+              pragmaDisableList.push_back(instr->getParent());
+              I++; // increment the pointer before deleting the pointed instruction
+              instr->eraseFromParent();
+              I--;
+            }
+            else if (calledFunc->getName().compare("instr_enable") == 0) {
+              pragmaEnableList.insert(instr->getParent());
+              I++; // increment the pointer before deleting the pointed instruction
+              instr->eraseFromParent();
+              I--;
+            }
+          }
+        }
+      }
 
 #ifdef LC_DEBUG
-      errs() << "\n************************ Instrumenting Function " << F->getName() << "**************************\n";
+      if(!pragmaDisableList.empty()) {
+        errs() << "\n\nDisabled Block List for Function " << F->getName() << " (" << pragmaDisableList.size() << " calls):\t";
+        for(auto BB:pragmaDisableList) {
+          errs() << BB->getName() << "\t";
+        }
+        errs() << "\n";
+      }
+
+      if(!pragmaEnableList.empty()) {
+        errs() << "\n\nEnabled Block List for Function " << F->getName() << " (" << pragmaEnableList.size() << " calls):\t";
+        for(auto BB:pragmaEnableList) {
+          errs() << BB->getName() << "\t";
+        }
+        errs() << "\n";
+      }
 #endif
+
+      const llvm::DominatorTree &cDT = *DT;
+      const llvm::LoopInfo &cLI = *LI;
+
+      int bbcount = 0, blbbCount = 0;
+      SmallVector<std::string,32> *debugNoInstBB = nullptr;
+
+      /* If more blocks are added for not instrumenting through file */
+      if(debugNoInstrList.end() != debugNoInstrList.find(F->getName()))
+        debugNoInstBB = debugNoInstrList[F->getName()];
+
+      errs() << "Blacklisted blocks for function " << F->getName() << ":-\n";
+      for(Function::iterator BB = F->begin(), endBB = F->end(); BB!=endBB; ++BB) {
+        BasicBlock* currBB = &*BB;
+        bbcount++;
+        if(!pragmaDisableList.empty()) {
+          SmallVector<BasicBlock *, 32> disableBlockWorkList = pragmaDisableList;
+          /* if there is one path from an enable block to it, we shouldn't instrument it */
+          if(isPotentiallyReachableFromMany(disableBlockWorkList, currBB, &pragmaEnableList, &cDT, &cLI)) {
+            blackListedBlocks.insert(currBB);
+            blbbCount++;
+            errs() << currBB->getName() << "\n";
+          }
+        }
+
+        /* Check if some additional blocks are not supposed to be instrumented */
+        if(debugNoInstBB && !debugNoInstBB->empty()) {
+          for(auto BB:*debugNoInstBB) {
+            if(BB.compare(currBB->getName())==0) {
+              blackListedBlocks.insert(currBB);
+              blbbCount++;
+              errs() << currBB->getName() << "\n";
+              //errs() << "Block " << bbName << " of Function " << F->getName() << " is prohibited from instrumentation\n";
+            }
+          }
+        }
+      }
+      errs() << "Function " << F->getName() << ":- Total blocks: " << bbcount << ", Total blacklisted blocks by pragma: " << blbbCount << "\n";
+    }
+
+    void deletePragmaInstr(Function *F) {
+      for(auto BB:blackListedBlocks)
+        blackListedBlocks.erase(BB);
+    }
+
+    void removeDisabledInstr(Function *F) {
+      int totalRemovedInst = 0;
+      int totalRemInst = 0;
+      for(auto &currBB : *F) {
+        auto LCCs = bbToContainersMap[&currBB];
+        for(auto LCC : LCCs) {
+          UnitLCC* unitLCC = static_cast<UnitLCC*>(LCC);
+
+          /* Decide whether to instrument this container */
+          bool toInstrument = false;
+
+          if(unitLCC->getInstrumentFlag()) {
+            auto instrLCCInfo = unitLCC->getMutableInstrInfo();
+            auto instrValLCCInfo = unitLCC->getMutableInstrValInfo();
+
+            while(!instrLCCInfo->empty()) {
+              bool removedInstr = false;
+              for(auto instrInfoIt = instrLCCInfo->begin(); instrInfoIt != instrLCCInfo->end(); instrInfoIt++) {
+                Instruction* I = instrInfoIt->first;
+                //if(!canBeInstrumented(I->getParent())) {
+                if(!canBeInstrumented(I->getParent()) && !isBlockListed(I->getParent(), debugInstrList)) {
+                //if(!isBlockListed(I->getParent(), debugInstrList)) {
+                  errs() << "Erasing instrumentation of Block " << currBB.getName() << " : " << *I << "\n";
+                  instrLCCInfo->erase(instrInfoIt);
+                  removedInstr = true;
+                  totalRemovedInst++;
+                  break;
+                }
+              }
+              if(!removedInstr)
+                break;
+            }
+
+            while(!instrValLCCInfo->empty()) {
+              bool removedInstr = false;
+              for(auto instrInfoIt = instrValLCCInfo->begin(); instrInfoIt != instrValLCCInfo->end(); instrInfoIt++) {
+                Instruction* I = instrInfoIt->first;
+                //if(!canBeInstrumented(I->getParent())) {
+                if(!canBeInstrumented(I->getParent()) && !isBlockListed(I->getParent(), debugInstrList)) {
+                //if(!isBlockListed(I->getParent(), debugInstrList)) {
+                  errs() << "Erasing instrumentation (value-based cost) of Block " << currBB.getName() << " : " << *I << "\n";
+                  instrValLCCInfo->erase(instrInfoIt);
+                  removedInstr = true;
+                  totalRemovedInst++;
+                  break;
+                }
+              }
+              if(!removedInstr)
+                break;
+            }
+          }
+        }
+      }
+      errs() << "Number of erased probes in Function " << F->getName() << "(): " << totalRemovedInst << "\n";
+    }
+
+    void instrumentFunc(Function *F) {
+
+//#ifdef LC_DEBUG
+      errs() << "\n************************ Instrumenting Function " << F->getName() << "**************************\n";
+//#endif
       int numInstrumented = 0;
+
+      /* Disable remove all pragma disabled instrumentation sections */
+      removeDisabledInstr(F);
 
       for(auto &currBB : *F) {
 #if 0
@@ -6150,6 +6541,18 @@ namespace {
               Instruction* I = instrInfoIt->first;
               InstructionCost* instCost = instrInfoIt->second;
               /******************************** Instrument the instruction *********************************/
+#if 0
+              auto bb=I->getParent()->getName();
+              if(F->getName().compare("revidx_map") != 0 
+                  || bb.compare("for.body.preheader") == 0
+                  || bb.compare("for.cond5.preheader") == 0
+                  || bb.compare("for.body7.lr.ph") == 0
+                  || bb.compare("for.end.loopexit") == 0
+                  || bb.compare("for.end") == 0
+                  || bb.compare("for.end100.loopexit") == 0
+                  || bb.compare("for.end100") == 0
+                  ) {
+#endif
 #ifdef ALL_DEBUG
               if(hasConstCost(instCost) < 0) {
                 errs() << "Instrumenting block " << I->getParent()->getName() << " (Inst: " << *I << ") with non-numeric cost : " << *instCost << "\n";
@@ -6157,15 +6560,23 @@ namespace {
               else {
                 errs() << "Instrumenting block " << I->getParent()->getName() << " (Inst: " << *I << ") : " << *instCost << "\n";
               }
-              //errs() << "Instrumenting Instruction " << *I << " in block " << currBB.getName() << "\n";
 #endif
               Value *val = scevToIR(I, instCost);
               instrumentCI(I, val);
               numInstrumented++;
+#if 0
+              }
+              else {
+                errs() << "Not Instrumenting block " << I->getParent()->getName() << " of " << F->getName() << " with cost " << *instCost << "\n";
+              }
+#endif
             }
 
             for(auto instrInfoIt = instrValLCCInfo.begin(); instrInfoIt != instrValLCCInfo.end(); instrInfoIt++) {
               Instruction* I = instrInfoIt->first;
+#ifdef ALL_DEBUG
+              errs() << "Instrumenting block " << I->getParent()->getName() << " (Inst: " << *I << ") with variable cost!\n";
+#endif
               Value *val = instrInfoIt->second;
               instrumentCI(I, val);
               numInstrumented++;
@@ -6201,6 +6612,10 @@ namespace {
       if(InstGranularity == OPTIMIZE_ACCURATE) {
         instrumentLibCallsWithCycleIntrinsic(F);
       }
+      errs() << "Number of probes in Function " << F->getName() << "(): " << numInstrumented << "\n";
+#ifdef LC_DEBUG
+      errs() << "\n************************ Finished Instrumenting Function " << F->getName() << "**************************\n";
+#endif
 
       return;
     }
@@ -6212,31 +6627,27 @@ namespace {
         case OPTIMIZE_HEURISTIC_WITH_TL:
         case OPTIMIZE_ACCURATE:
         {
-          //Value *val = scevToIR(I, instCost);
-          instrumentIfLCEnabled(I, ALL_IR, val);
+          instrumentProbe(I, ALL_IR, val);
           break;
         }
         case OPTIMIZE_INTERMEDIATE:
         {
-          //Value *val = scevToIR(I, instCost);
-          instrumentIfLCEnabled(I, PUSH_ON_CYCLES, val);
+          instrumentProbe(I, PUSH_ON_CYCLES, val);
           break;
         }
         case OPTIMIZE_HEURISTIC_INTERMEDIATE_FIBER:
         {
-          //Value *val = scevToIR(I, instCost);
-          instrumentGlobal(I, PUSH_ON_CYCLES, val);
+          instrumentProbe(I, PUSH_ON_CYCLES, val);
           break;
         }
         case OPTIMIZE_HEURISTIC_FIBER:
         {
-          //Value *val = scevToIR(I, instCost);
-          instrumentGlobal(I, ALL_IR, val);
+          instrumentProbe(I, ALL_IR, val);
           break;
         }
         case OPTIMIZE_CYCLES:
         {
-          instrumentIfLCEnabled(I, INCR_ON_CYCLES);
+          instrumentProbe(I, INCR_ON_CYCLES);
           break;
         }
         default: 
@@ -6244,6 +6655,15 @@ namespace {
           errs() << "This level of instrumentation granularity is not present!\n";
           exit(1);
         }
+      }
+    }
+
+    // For instructions that are replaced, their instrumentation should be replaced too
+    void replaceInstrumentation(Instruction *oldI, Instruction *newI) {
+      auto LCCs = bbToContainersMap[newI->getParent()];
+      for(auto LCC : LCCs) {
+        UnitLCC* unitLCC = static_cast<UnitLCC*>(LCC);
+        unitLCC->replaceInst(oldI, newI);
       }
     }
 
@@ -6442,6 +6862,30 @@ namespace {
           }
         }
       }
+
+      for(auto &BB : *F) { 
+        std::vector<LCCNode*> containers = bbToContainersMap[&BB];
+#ifdef LC_DEBUG
+        if(containers.size() == 0) {
+          errs() << "Block " << BB.getName() << " of Function " << F->getName() << " has 0 containers!\n";
+        }
+#endif
+      }
+
+    }
+
+    void printCodeLocation(Instruction* I) {
+      BasicBlock *parent = I->getParent();
+      Function *F = I->getFunction();
+      auto debugLoc = I->getDebugLoc();
+      errs() << "Instruction code location:- F: " << F->getName() << ", BB: " << parent->getName() << ", Loc: " << debugLoc.getInlinedAt()->getFilename() << ":" << debugLoc.getLine() << ":" << debugLoc.getCol() << "\n";
+    }
+
+    void printCodeLocation(Loop* L) {
+      BasicBlock *header = L->getHeader();
+      Function *F = header->getParent();
+      auto startLoc = L->getStartLoc();
+      errs() << "Loop code location:- F: " << F->getName() << ", Hdr: " << header->getName() << ", Loc: " << startLoc.getInlinedAt()->getFilename() << ":" << startLoc.getLine() << ":" << startLoc.getCol() << "\n";
     }
 
     bool checkIfSelfLoop(Loop *L) {
@@ -6474,6 +6918,13 @@ namespace {
     void instrumentSelfLoop(Loop *L) {
       auto selfLoopInfo = selfLoop.find(L);
       BasicBlock* headerBBL = L->getHeader();
+      
+      /* These loops are disabled from instrumentation through a debug file or pragma */
+      if(isBlockListed(headerBBL, debugNoLoopInstrList) || !canBeInstrumented(headerBBL)) {
+        errs() << "Erasing instrumentation & transformation of Self Loop " << headerBBL->getName() << "\n";
+        selfLoop.erase(selfLoopInfo);
+        return;
+      }
 
 #if 0
       /* Temporary - on debug purpose */
@@ -6505,32 +6956,6 @@ namespace {
         return;
       }
 
-#if 0
-#if 1
-      /* For Debugging */
-      if(
-          headerBBL->getName().compare("for.body3.i")!=0
-          //|| headerBBL->getName().compare("for.body71.us")==0
-          //|| headerBBL->getName().compare("for.body3.i179")==0
-          //|| headerBBL->getName().compare("for.body")==0
-          )
-      {
-        errs() << "Not instrumenting " << headerBBL->getName() << " for debugging\n";
-        selfLoop.erase(selfLoopInfo);
-        return;
-      }
-#else
-      if(
-          headerBBL->getName().compare("while.cond39.i")==0
-        ) 
-      {
-        errs() << "Not instrumenting " << headerBBL->getName() << " for debugging\n";
-        selfLoop.erase(selfLoopInfo);
-        return;
-      }
-#endif
-#endif
-
       InstructionCost* selfLoopCost = selfLoopInfo->second;
       int numSelfLoopCost = hasConstCost(selfLoopCost);
       if (numSelfLoopCost == 0) {
@@ -6541,6 +6966,15 @@ namespace {
       int innerLoopIterations = CommitInterval/numSelfLoopCost;
       LCCNode *loopLCC = getLastLCCofBB(headerBBL);
       UnitLCC *unitLoopLCC = static_cast<UnitLCC*>(loopLCC);
+
+      /* For Debug purpose */
+      if(isBlockListed(headerBBL, debugNoLoopTransformList)) {
+        errs() << "For Debugging: Not transforming but instrumenting self loop " << headerBBL->getName() << " in function " << headerBBL->getParent()->getName() << "(). Transform iterations should have been: " << innerLoopIterations << "\n";
+
+        unitLoopLCC->instrumentForIC(selfLoopCost);
+        selfLoop.erase(selfLoopInfo);
+        return;
+      }
 
 #if 0
       /* No self loop optimization for now. Remove the next three lines to enable it. */
@@ -6561,67 +6995,82 @@ namespace {
       profile_loop_advanced(L);
 #endif
 
-      int innerIterationThresh = 10;
-      bool hasInductionVar = false;
-      if(L->getInductionVariable(*SE)) hasInductionVar = true;
-      //if(innerLoopIterations <= innerIterationThresh || !L->isCanonical(*SE)) {
-      if(innerLoopIterations <= innerIterationThresh || !hasInductionVar) {
-        if(!hasInductionVar)
-          errs() << "\nThis selfloop will not be transformed since it has no induction variable --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() )\n";
-        else
-          errs() << "\nThis selfloop will not be transformed because of too low iteration count --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() ). Self Loop cost: " << numSelfLoopCost << ". Iterations: " << innerLoopIterations << "\n";
-
-        /* Generic instrumentation */
-        unitLoopLCC->instrumentForIC(selfLoopCost);
+      /* Find number of backedges */
+      int numIterations = -1;
+      const SCEV* backEdgeTakenCount = SE->getBackedgeTakenCount(L);
+      if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
+        InstructionCost* simplifiedBackEdges = simplifyCost(headerBBL->getParent(), scevToCost(backEdgeTakenCount), true);
+        numIterations = hasConstCost(simplifiedBackEdges);
       }
-      else {
-#if 1
-        /* Transformation */
-        errs() << "\nThis selfloop will be transformed & instrumented --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() ). Self Loop cost: " << numSelfLoopCost << ". Iterations: " << innerLoopIterations << "\n";
 
-        int residualCost = CommitInterval % numSelfLoopCost;
-        /* Instrumenting the inner loop whole cost + residue. However, if the inner loop exited earlier because the outer loop exit cost has been reached, it will add an extra amount to the clock. This can be fixed by instrumenting the clock update based on the inner loop canonical induction variable creater in transformSelfLoopWithoutBounds. For now, we hardcode the clock update. */
-        InstructionCost *totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
-        BasicBlock *exitBlock = nullptr;
-#if 1
-        exitBlock = transformGenericSelfLoopWithoutBounds(L, innerLoopIterations, numSelfLoopCost);
+      int innerIterationThresh = 0;
+      bool hasInductionVar = false;
+      bool transformOrInstrumentInside = true;
+
+      if(L->getInductionVariable(*SE)) hasInductionVar = true;
+
+#ifndef SELF_LOOP_CLONE
+      if((L->getLoopDepth()>=SELF_LOOP_THRESH_DEPTH 
+            || (numIterations>0 && innerLoopIterations>numIterations))
+          && !isBlockListed(headerBBL, debugNoLoopTransformList) 
+          && canBeInstrumented(headerBBL)
+          ) {
+        errs() << "Attempting to instrument loop cost outside loop for " << L->getHeader()->getName() << " at loop depth " << L->getLoopDepth() << "\n";
+        transformOrInstrumentInside = !(instrumentSelfLoopOutside(L, numSelfLoopCost));
+        if(!transformOrInstrumentInside)
+          errs() << "Successfully instrumented loop cost outside loop for " << L->getHeader()->getParent()->getName() << ":" << L->getHeader()->getName() << " at loop depth " << L->getLoopDepth() << "\n";
+      }
+      //printCodeLocation(L);
+#else
+      if(L->getLoopDepth()>=SELF_LOOP_THRESH_DEPTH
+          && !isBlockListed(headerBBL, debugNoLoopTransformList)) {
+        if(cloneSelfLoopOnCondition(L, numSelfLoopCost, innerLoopIterations))
+          errs() << "Successfully cloned " << headerBBL->getParent()->getName() << "():" << headerBBL->getName() << " at depth " << L->getLoopDepth() << "\n";
+      }
 #endif
+      if(transformOrInstrumentInside) {
+        if(innerLoopIterations <= innerIterationThresh
+            || !hasInductionVar
+            || (numIterations>0 && innerLoopIterations>numIterations)) {
+          if(!hasInductionVar)
+            errs() << "\nThis selfloop will not be transformed since it has no induction variable --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() )\n";
+          else
+            errs() << "\nThis selfloop will not be transformed because of too low iteration count --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() ). Self Loop cost: " << numSelfLoopCost << ". Iterations: " << innerLoopIterations << "\n";
 
-        if (!exitBlock) {
-          errs() << "Self loop cannot be transformed. Therefore instrumenting it.\n";
           /* Generic instrumentation */
           unitLoopLCC->instrumentForIC(selfLoopCost);
         }
         else {
-          self_loop_transform++;
-        }
-  #if 0
-          if(L->isCanonical(*SE)) {
-            errs() << "Self loop is canonical. Going for special transformation with " << innerLoopIterations << " iterations.\n";
-            exitBlock = transformSelfLoopWithoutBounds(L, innerLoopIterations, numSelfLoopCost);
+          /* Transformation */
+          errs() << "\nThis selfloop will be transformed & instrumented --> " << headerBBL->getName() << "( " << headerBBL->getParent()->getName() << "() ). Self Loop cost: " << numSelfLoopCost << ". Iterations: " << innerLoopIterations << "\n";
+
+          int residualCost = CommitInterval % numSelfLoopCost;
+          /* Instrumenting the inner loop whole cost + residue. However, if the inner loop exited earlier because the outer loop exit cost has been reached, it will add an extra amount to the clock. This can be fixed by instrumenting the clock update based on the inner loop canonical induction variable creater in transformSelfLoopWithoutBounds. For now, we hardcode the clock update. */
+          InstructionCost *totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
+
+#ifdef   ALL_DEBUG
+          /* only for printing - might be useful later */
+          auto estimatedTrips = getLoopEstimatedTripCount(L);
+          if(estimatedTrips)
+            errs() << "Estimated trip count is: " << *estimatedTrips << "\n";
+#endif  
+
+          BasicBlock *exitBlock = nullptr;
+#if 1   // Turn this off to stop transformation
+          exitBlock = transformGenericSelfLoopWithoutBounds(L, innerLoopIterations, numSelfLoopCost);
+#endif  
+
+          if (!exitBlock) {
+            /* Generic instrumentation */
+            //if(!isBlockListed(headerBBL, debugNoLoopTransformList) && canBeInstrumented(headerBBL)) {
+              errs() << "Self loop " << headerBBL->getName() << " cannot be transformed. Therefore instrumenting it with body cost " << *selfLoopCost << ".\n";
+              unitLoopLCC->instrumentForIC(selfLoopCost);
+            //}
           }
           else {
-            errs() << "Self loop is not canonical. Going for generic transformation with " << innerLoopIterations << " iterations.\n";
-  #if 0
-            if(headerBBL->getName().compare("for.body.i.us.i")==0 ||
-                //headerBBL->getParent()->getName().compare("lu")==0 ||
-                headerBBL->getName().compare("for.body.i.us.us.i458.us")==0 ||
-                headerBBL->getName().compare("for.body3.us57.i.us")==0 ||
-                headerBBL->getName().compare("for.body.i.us.us.i477.us")==0 ||
-                headerBBL->getName().compare("for.body.i.us.us.i.us.us")==0 ||
-                headerBBL->getName().compare("for.body3.i")==0)
-              exitBlock = transformGenericSelfLoopWithoutBounds(L, innerLoopIterations);
-  #else
-            //if(headerBBL->getName().compare("for.body.i.us.us.i.us.us")==0) {
-              //addDebugPrints(L);
-              exitBlock = transformGenericSelfLoopWithoutBounds(L, innerLoopIterations, numSelfLoopCost);
-            //}
-  #endif
+            self_loop_transform++;
           }
-  #endif
-#else
-        unitLoopLCC->instrumentForIC(selfLoopCost);
-#endif
+        }
       }
 
       /* remove loop from map after processing */
@@ -6632,6 +7081,13 @@ namespace {
       auto seseLoopInfo = seseLoop.find(L);
       BasicBlock* headerBBL = L->getHeader();
       BasicBlock* latchBBL = L->getLoopLatch();
+
+      /* These loops are disabled from instrumentation through a debug file or pragma */
+      if(isBlockListed(headerBBL, debugNoLoopInstrList) || !canBeInstrumented(headerBBL)) {
+        errs() << "Erasing instrumentation & transformation of SESE Loop " << headerBBL->getName() << "\n";
+        seseLoop.erase(seseLoopInfo);
+        return;
+      }
 
       if(seseLoopInfo == seseLoop.end()) {
         errs() << "This seseloop has fixed cost & is not scheduled for instrumentation in the body --> " << headerBBL->getName() << "\n";
@@ -6671,6 +7127,7 @@ namespace {
 
       int innerIterationThresh = 10;
       bool hasInductionVar = false;
+
       if(L->getInductionVariable(*SE)) hasInductionVar = true;
       //if(innerLoopIterations <= innerIterationThresh || !L->isCanonical(*SE)) {
       if(innerLoopIterations <= innerIterationThresh || !hasInductionVar) {
@@ -6691,12 +7148,18 @@ namespace {
         /* Instrumenting the inner loop whole cost + residue. However, if the inner loop exited earlier because the outer loop exit cost has been reached, it will add an extra amount to the clock. This can be fixed by instrumenting the clock update based on the inner loop canonical induction variable creater in transformSESELoopWithoutBounds. For now, we hardcode the clock update. */
         InstructionCost* totalLoopCost = getConstantInstCost(CommitInterval - residualCost);
         BasicBlock* exitBlock = nullptr;
+
+        if(isBlockListed(headerBBL, debugNoLoopTransformList) || !canBeInstrumented(headerBBL)) {
+          errs() << "Not transforming debug SESE Loop for " << headerBBL->getName() << "\n";
+        }
+        else {
 #if 1
-        exitBlock = transformSESELoopWithoutBounds(L, innerLoopIterations, numSESELoopCost);
+          exitBlock = transformSESELoopWithoutBounds(L, innerLoopIterations, numSESELoopCost);
 #endif
+        }
 
         if (!exitBlock) {
-          errs() << "SESE loop cannot be transformed. Therefore instrumenting it.\n";
+          errs() << "SESE loop cannot be transformed. Therefore instrumenting it with body cost " << *seseLoopCost << ".\n";
           /* Generic instrumentation */
           unitLoopLCC->instrumentForIC(seseLoopCost);
         }
@@ -6762,9 +7225,9 @@ namespace {
 
       errs() << "\nLoops scheduled for transform for " << F->getName() << ":- \n";
       for(auto selfLoopInfo : selfLoop)
-        errs() << "Self Loop: " << *(selfLoopInfo.first) << "\n"; 
+        errs() << "Self Loop: " << selfLoopInfo.first->getHeader()->getName() << " (depth: " << selfLoopInfo.first->getLoopDepth() << ")\n"; 
       for(auto seseLoopInfo : seseLoop)
-        errs() << "Sese Loop: " << *(seseLoopInfo.first) << "\n"; 
+        errs() << "Sese Loop: " << seseLoopInfo.first->getHeader()->getName() << " (depth: " << seseLoopInfo.first->getLoopDepth() << ")\n"; 
       errs() << "\n";
 
       //if(F->getName().compare("main") == 0)
@@ -6816,7 +7279,7 @@ namespace {
 
       /* Instrument all self loops first */
       for(auto L : visitedSelfLoops) {
-        errs() << "\nAttempting to transform function " << F->getName() << "()'s self loop " << *L << "\n";
+        errs() << "\nAttempting to transform function " << F->getName() << "()'s self loop " << L->getHeader()->getName() << " at loop depth " << L->getLoopDepth() << "\n";
         //if(L->getHeader()->getName().compare("for.body3.us.i")==0)
         instrumentSelfLoop(L);
         //errs() << "\n" << F->getName() << "(): Transformed Self loop " << *L << "\n";
@@ -6835,7 +7298,7 @@ namespace {
         }
 
         visitedSeseLoops.erase(maxDepthLoop);
-        errs() << "\nAttempting to transform function " << F->getName() << "()'s max-depth sese loop " << *maxDepthLoop << "\n";
+        errs() << "\nAttempting to transform function " << F->getName() << "()'s max-depth sese loop " << maxDepthLoop->getHeader()->getName() << " at loop depth " << maxDepthLoop->getLoopDepth() << "\n";
         instrumentSESELoop(maxDepthLoop);
         //errs() << "\n" << F->getName() << "(): Transformed loop " << *maxDepthLoop << "\n";
       }
@@ -6875,6 +7338,10 @@ namespace {
         exit(1);
       }
 
+#ifdef ALL_DEBUG
+      errs() << "Instrumenting direct blocks for function " << F->getName() << "\n";
+#endif
+
       for(auto headerIt = directBranch.begin(); headerIt!=directBranch.end(); headerIt++) {
         BasicBlock* head = headerIt->first;
         DomTreeNode *currentPDTNode = PDT->getNode(head);
@@ -6883,6 +7350,18 @@ namespace {
         auto headTermInst = head->getTerminator();
 #ifdef CRNT_DEBUG
         errs() << "Instrument between " << head->getName() << " and " << tail->getName() << ". Adding cost " << *headerIt->second << " to it!\n";
+        /* Only for the print */
+        getEdgeProbability(head, tail);
+
+        /* For Debugging */
+        if(isBlockListed(head, debugNoInstrList)) {
+          errs() << "For debug purpose, not instrumenting direct block between " << head->getName() << " and " << tail->getName() << "\n";
+
+          //PHINode *PN;
+          //for (BasicBlock::iterator phiIt = tail->begin(); (PN = dyn_cast<PHINode>(phiIt)); ++phiIt)
+            //errs() << "For tail block " << tail->getName() << " --> phi inst: " << *PN << "\n";
+          continue;
+        }
 #endif
         std::string name(head->getName());
         name.append("DirectSucc");
@@ -6923,7 +7402,7 @@ namespace {
               //errs() << "Found tail " << tail->getName() << " at index " << idx << "\n";
               branchInst->setSuccessor(idx, directBlock);
               /* Instrument the cost in this new block */
-              break;
+              break; 
             }
           }
         }
@@ -6936,33 +7415,59 @@ namespace {
               //errs() << "Found tail " << tail->getName() << " at index " << idx << "\n";
               switchInst->setSuccessor(idx, directBlock);
               /* Instrument the cost in this new block */
-              break;
+              //break; // A switch can have multiple cases/edges leading to the same basic block, so we cannot break here. We make one block & point all switch direct branches to it.
             }
           }
         }
         else
           assert("This is not a proper direct branch to instrument");
 
-				/* Loop over any phi node in the basic block, updating the BB field of incoming values */
 				PHINode *PN;
+#if 0
+				for (BasicBlock::iterator phiIt = tail->begin(); (PN = dyn_cast<PHINode>(phiIt)); ++phiIt) {
+					errs() << "For direct block's " << directBlock->getName() << " --> phi inst: " << *PN << "\n";
+        }
+#endif
+
+				/* Loop over any phi node in the basic block, updating the BB field of incoming values */
 				for (BasicBlock::iterator phiIt = tail->begin(); (PN = dyn_cast<PHINode>(phiIt)); ++phiIt) {
 					//errs() << "For tail block " << tail->getName() << " --> changing phi inst: " << *PN << "\n";
 					int IDX = PN->getBasicBlockIndex(head);
+          /* Important fix for a subtle bug, where the new block has multiple edges to the head but single edge with tail 
+           * The tail's phi instruction should only have value for the single edge, instead of its previous multiple edges to head
+           * Therefore the extra values are deleted */
+          bool first = true;
 					while (IDX != -1) {
-						PN->setIncomingBlock((unsigned)IDX, directBlock);
-						IDX = PN->getBasicBlockIndex(head);
+            if(first) {
+              first = false;
+              PN->setIncomingBlock((unsigned)IDX, directBlock);
+              IDX = PN->getBasicBlockIndex(head);
+            }
+            else {
+              /* If there were multiple edges between head & tail, they are now between head & new block. Tail's phi's extra edge value should be removed */
+						  PN->removeIncomingValue((unsigned)IDX, true);
+              IDX = PN->getBasicBlockIndex(head);
+            }
 					}   
 				}   
 
+#if 0
+        BPI->calculate(*F, *LI);
+        errs() << "Checking edge probability between " << head->getName() << " and new block " << directBlock->getName() << "\n";
+        getEdgeProbability(head, directBlock);
+        errs() << "Checking edge probability between new block " << directBlock->getName() << " and " << tail->getName() << "\n";
+        getEdgeProbability(directBlock, tail);
+#endif
+
         /* Instrumenting the cost in the new branch */
         auto newI = IR.CreateBr(tail);
-        Value *costVal = scevToIR(newI, headerIt->second);
 #if 0
+        Value *costVal = scevToIR(headerIt->second);
         instrumentCI(newI, costVal); // instrumenting here leads to problems with broken loop info & dominator trees. So schedule it later.
 #else
         LCCNode *newLCC = new UnitLCC(lccIDGen++, directBlock, directBlock->getFirstNonPHI(), &(directBlock->back()), false);
         UnitLCC* newUnitLCC = static_cast<UnitLCC*>(newLCC);
-        newUnitLCC->instrumentValueForIC(costVal);
+        newUnitLCC->instrumentForIC(headerIt->second);
         std::vector<LCCNode*> containers;
         containers.push_back(newLCC);
         bbToContainersMap[directBlock] = containers;
@@ -7029,6 +7534,8 @@ namespace {
 #endif
 
       computeCostEvalStats(F);
+
+      //printBlock(F, "for.body456.preheader");
 
       /* Instrument function */
       instrumentFunc(F);
@@ -7557,6 +8064,10 @@ namespace {
       if(numCountMergeEdges <= 1)
         return false;
 
+#ifdef LC_DEBUG
+      errs() << "matchComplexBranchForward() :- In " << start->getParent()->getName() << "(), found a forward complex branch match starting at block " << start->getName() << " and ending at its post-dominator " << (*end)->getName() << "\n";
+#endif
+
       return true;
     }
 
@@ -7621,12 +8132,21 @@ namespace {
     }
 
     bool matchComplexBranch(BasicBlock* start, BasicBlock **end, bool *direction) {
+#if 0
+      if(isBlockListed(start, debugNoInstrList))
+        return false;
+#endif
+
       if(matchComplexBranchForward(start, end)) {
         *direction = true;
         return true;
       }
 
+      /* This happens mostly in case of a switch statement, where there can be multiple cases to the same block,
+       * creating a postdom separate from the other cases */
+      // for switch cases, the cases leading to the same block are summarized during analysis, & the singular block is instrumented if cost is unreasonably large or unknown
 #if 0
+      errs() << "WARNING: Matched a backward complex branch at " << start->getName() << " (dominator: " << (*end)->getName() << " ). Since this is only for switch statements which we handle differently, we won't transform this.\n";
       if(matchComplexBranchBackward(start, end)) {
         *direction = false;
         return true;
@@ -7640,15 +8160,22 @@ namespace {
 
       SmallVector<BasicBlock*, 10> nearestPreds;
       /* For forward direction, find all predecessors of postDominator that are dominated by start */
+#ifdef CRNT_DEBUG
+      errs() << "Predecessors of complex postdom block & their edge probabilities:- \n";
+#endif
       for (auto predIt = pred_begin(end), predEnd = pred_end(end); predIt != predEnd; ++predIt) {
         auto predBB = *predIt;
         if (!DT->dominates(start, predBB))
           continue;
-        else
+        else {
           nearestPreds.push_back(predBB);
+        }
+#ifdef CRNT_DEBUG
+        getEdgeProbability(start, predBB);
+#endif
       }
       ArrayRef<BasicBlock*> predArrList(nearestPreds.begin(), nearestPreds.end());
-      BasicBlock* newBlock = SplitPostDomPredecessors(end, predArrList, "_dummy", DT, LI, true);
+      BasicBlock* newBlock = SplitPostDomPredecessors(end, predArrList, "_forward_dummy", DT, LI, true);
       if(!newBlock) {
         errs() << "SplitPostDomPredecessors() could not split the predecessors of the postdominator. Aborting.\n";
         exit(1);
@@ -7675,6 +8202,9 @@ namespace {
       for (auto it = pred_begin(newBlock), et = pred_end(newBlock); it != et; ++it)
       {
         errs() << (*it)->getName() << "\n";
+#ifdef CRNT_DEBUG
+        getEdgeProbability(start, *it);
+#endif
       }
       errs() << "Predecessors of postdom " << (end)->getName() << " block:- \n";
       for (auto it = pred_begin(end), et = pred_end(end); it != et; ++it)
@@ -7698,19 +8228,22 @@ namespace {
       }
     }
 
+    /* end is the dominator, start is the postdominator */
     void transformComplexBranchBackward(BasicBlock *start, BasicBlock *end) {
 
       SmallVector<BasicBlock*, 10> nearestSuccs;
-      /* For forward direction, find all successors of postDominator that are dominated by start */
+      /* For backward direction, find all successors of Dominator that are post-dominated by end */
       for (auto succIt = succ_begin(end), succEnd = succ_end(end); succIt != succEnd; ++succIt) {
         auto succBB = *succIt;
-        if (!DT->dominates(start, succBB))
+        if (!PDT->dominates(start, succBB))
           continue;
-        else
+        else {
+          errs() << succBB->getName() << " is a successor of " << end->getName() << " that is postdominated by " << start->getName() << "\n";
           nearestSuccs.push_back(succBB);
+        }
       }
       ArrayRef<BasicBlock*> succArrList(nearestSuccs.begin(), nearestSuccs.end());
-      BasicBlock* newBlock = SplitDomSuccessors(end, succArrList, "_dummy", DT, LI, true);
+      BasicBlock* newBlock = SplitDomSuccessors(end, succArrList, "_backward_dummy", DT, LI, true);
 
       Function *F = start->getParent();
       DT->recalculate(*F);
@@ -7743,7 +8276,7 @@ namespace {
 #endif
 
       /* sanity check */
-      DomTreeNode *startDN = PDT->getNode(start);
+      DomTreeNode *startDN = DT->getNode(start);
       assert(startDN && "cannot find dom node of start block");
       DomTreeNode *dnToStart = startDN->getIDom();
       assert(dnToStart && "cannot find dominator node of start node");
@@ -7771,10 +8304,12 @@ namespace {
               transformComplexBranchForward(startBB, endBB);
               errs() << F->getName() << "(): Transformed branch between " << startBB->getName() << " and " << endBB->getName() << " in the forward direction\n";
             }
+#if 0
             else {
               transformComplexBranchBackward(startBB, endBB);
               errs() << F->getName() << "(): Transformed branch between " << startBB->getName() << " and " << endBB->getName() << " in the backward direction\n";
             }
+#endif
             break;
           }
         }
@@ -7901,9 +8436,13 @@ namespace {
 
       Instruction *toBeReplacedTerm = newBlock->getTerminator();
       ReplaceInstWithInst(toBeReplacedTerm, newBranch);
+      replaceInstrumentation(toBeReplacedTerm, newBranch);
 
-      newBlock->setName("selfLoopOptBlock");
-      endBlock->setName("selfLoopOptExitBlock");
+      char blockName[256];
+      sprintf(blockName, "%s_SelfLoopOpt", firstBlock->getName());
+      newBlock->setName(blockName);
+      sprintf(blockName, "%s_SelfLoopExit", firstBlock->getName());
+      endBlock->setName(blockName);
 
       for (auto PN : pnList) {
         PHINode *newPN = PHINode::Create(PN->getType(), 2, "phiIVClone", &newBlock->front());
@@ -7948,10 +8487,10 @@ namespace {
       bool isInverseCond = false; /* inverse condition is when first successor of loop condition is not the header of the loop */
 
       /* Checking preconditions */
-      assert((iterations>1) && "Too small number of iterations to instrument!");
+      //assert((iterations>1) && "Too small number of iterations to instrument!");
 
       if(!lBounds) {
-        errs() << "Bounds are not present. Cannot transform!\n";
+        errs() << "Loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << ":- Bounds are not present. Will not transform loop!\n";
         return nullptr;
       }
 
@@ -8001,15 +8540,18 @@ namespace {
       assert(splitFrontInst && "Self loop block does not have any non-phi instructions. Not handled.");
 
       Instruction *splitBackInst = BI;
+      char blockName[256];
 
       /******************* For first split *******************/
       BasicBlock *newBlock = SplitBlock(onlyBlock, splitFrontInst, DT, LI, nullptr);
-      newBlock->setName("selfLoopOptBlock");
+      sprintf(blockName, "%s_SelfLoopOpt", onlyBlock->getName());
+      newBlock->setName(blockName);
 
       /******************* For second split *******************/
       BasicBlock *endBlock = SplitBlock(newBlock, splitBackInst, DT, LI, nullptr);
+      sprintf(blockName, "%s_SelfLoopExit", onlyBlock->getName());
       //BasicBlock *endBlock = newBlock->splitBasicBlock(splitBackInst->getIterator()); // SplitBlock preserves passes unlike this
-      endBlock->setName("selfLoopOptExitBlock");
+      endBlock->setName(blockName);
 
       /* Creating condition argument in the outer loop header */
       auto loopHdrCondArgInst = onlyBlock->getFirstNonPHI();
@@ -8104,6 +8646,7 @@ namespace {
 
       Instruction *toBeReplacedTerm = newBlock->getTerminator();
       ReplaceInstWithInst(toBeReplacedTerm, newBranch);
+      replaceInstrumentation(toBeReplacedTerm, newBranch);
 
       //DT->recalculate(*(newBlock->getParent()));
       //if(SE) SE->forgetLoop(L);
@@ -8187,13 +8730,16 @@ namespace {
 
       Value *loopIterationsExt = localIndVar;
       Value *loopBodyCost = IREnd.getInt64(numSelfLoopCost);
+      int extraCost = 0;
       if(localIndVar->getType() != loopBodyCost->getType()) {
         loopIterationsExt = IREnd.CreateZExt(localIndVar, loopBodyCost->getType(), "zeroExtendSLI");
+        extraCost+=1;
       }
       Value *loopCost = IREnd.CreateMul(loopIterationsExt, loopBodyCost);
+      extraCost+=1;
 
       /* register the outer loop for the cost instrumentation phase */
-      newUnitLCC->instrumentValueForIC(loopCost);
+      newUnitLCC->instrumentValueForIC(loopCost, extraCost);
       std::vector<LCCNode*> containers;
       containers.push_back(newLCC);
       bbToContainersMap[endBlock] = containers;
@@ -8219,10 +8765,10 @@ namespace {
 
       /* Checking preconditions */
       assert((L->getNumBlocks() != 1) && "Self loops are handled separately");
-      assert((iterations>1) && "Too small number of iterations to instrument!");
+      //assert((iterations>1) && "Too small number of iterations to instrument!");
 
       if(!lBounds) {
-        errs() << "Bounds are not present. Cannot transform!\n";
+        errs() << "Loop " << headerBlock->getParent()->getName() << ":" << headerBlock->getName() << ":- Bounds are not present. Will not transform sese loop!\n";
         return nullptr;
       }
 
@@ -8416,6 +8962,7 @@ namespace {
 
       Instruction *toBeReplacedTerm = innerExitingBlock->getTerminator();
       ReplaceInstWithInst(toBeReplacedTerm, newBranch);
+      replaceInstrumentation(toBeReplacedTerm, newBranch);
 
       //DT->recalculate(*(innerHeaderBlock->getParent()));
       //if(SE) SE->forgetLoop(L);
@@ -8503,23 +9050,28 @@ namespace {
 
       /* instrumenting the new outer loop */
       Value *loopIterations = nullptr;
+      int extraCost = 0;
       if(!isCanonical) {
         Value *loopIntv = IREnd.CreateSub(localIndVar, indVarPhiInst, "loop_intv");
         loopIterations = IREnd.CreateSDiv(loopIntv, StepValue, "loop_iter");
+        extraCost+=2;
       }
       else {
         loopIterations = IREnd.CreateSub(localIndVar, indVarPhiInst, "loop_intv");;
+        extraCost+=1;
       }
 
       Value *loopIterationsExt = loopIterations;
       Value *loopBodyCost = IREnd.getInt64(numSelfLoopCost);
       if(loopIterations->getType() != loopBodyCost->getType()) {
         loopIterationsExt = IREnd.CreateZExt(loopIterations, loopBodyCost->getType(), "zeroExtendSLI");
+        extraCost+=1;
       }
       Value *loopCost = IREnd.CreateMul(loopIterationsExt, loopBodyCost);
+      extraCost+=1;
 
       /* register the outer loop for the cost instrumentation phase */
-      newUnitLCC->instrumentValueForIC(loopCost);
+      newUnitLCC->instrumentValueForIC(loopCost, extraCost);
       std::vector<LCCNode*> containers;
       containers.push_back(newLCC);
       bbToContainersMap[outerExitingBlock] = containers;
@@ -8562,6 +9114,458 @@ namespace {
       }
     }
 
+#ifdef SELF_LOOP_CLONE
+    bool checkIfValueDominatesInst(Value *V, Instruction* I) {
+      if(isa<Instruction>(V)) {
+        Instruction *VInst = dyn_cast<Instruction>(V);
+        if(!DT->dominates(VInst, I)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /* Instruments the loop with the loop cost at the end of the loop, using the loop bounds whose actual values are known at runtime */
+    bool cloneSelfLoopOnCondition(Loop *L, int numSelfLoopCost, int innerLoopIterations) {
+      bool isCanonical = false;
+      bool needsCounter = false;
+      auto lBounds = L->getBounds(*SE);
+      Value *InitialIVValue2 = nullptr;
+      Value *StepValue = nullptr;
+      Value *FinalIVValue = nullptr;
+      BasicBlock *onlyBlock = L->getHeader();
+
+      errs() << "Checking if self loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << " can be cloned!\n";
+      //printInstrStats(onlyBlock->getParent());
+
+      if(L->isCanonical(*SE)) {
+        isCanonical = true;
+      }
+
+      if(!lBounds) {
+        errs() << "Loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << ":- Bounds are not present. Will not clone loop!\n";
+        return false;
+      }
+      else {
+        if(!isCanonical) {
+          InitialIVValue2 = &lBounds->getInitialIVValue();
+          StepValue = lBounds->getStepValue();
+
+          if(!InitialIVValue2) {
+            errs() << "Loop " << onlyBlock->getName() << ":- No initial value present. Will not clone loop.\n";
+            return false;
+          }
+
+          if(!StepValue) {
+            errs() << "Loop " << onlyBlock->getName() << ":- No step value present. Will not clone loop.\n";
+            return false;
+          }
+
+          if(!isa<ConstantInt>(StepValue)) {
+            errs() << "Loop " << onlyBlock->getName() << ":- The step value is not constant. Will not clone loop!\n";
+            return false;
+          }
+        }
+
+        FinalIVValue = &lBounds->getFinalIVValue();
+
+        if(!FinalIVValue) {
+          errs() << "Loop " << onlyBlock->getName() << ":- No final value present. Will not clone loop.\n";
+          return false;
+        }
+      }
+
+      BasicBlock* preheaderBlock = L->getLoopPreheader();
+      BasicBlock* exitBlock = L->getExitBlock();
+      assert(exitBlock && "Self loop is assumed to have unique single exit block!");
+
+      IRBuilder<> IRPreheader(preheaderBlock->getTerminator());
+
+      errs() << "Cloning self loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << " 's value based runtime cost (preheader: " << preheaderBlock->getName() << ", exit block: " << exitBlock->getName() << " with body cost " << numSelfLoopCost << " & iterations " << innerLoopIterations << ")\n";
+
+      //printCodeLocation(L);
+      //printCodeLocation(onlyBlock->getTerminator());
+
+      /* Find number of backedges */
+      int numIterations = -1;
+      const SCEV* backEdgeTakenCount = SE->getBackedgeTakenCount(L);
+      if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
+        InstructionCost* simplifiedBackEdges = simplifyCost(onlyBlock->getParent(), scevToCost(backEdgeTakenCount), true);
+        numIterations = hasConstCost(simplifiedBackEdges)+1;
+        if(numIterations>0)
+          return false;
+      }
+
+      Value *loopIterations = nullptr;
+      int extraCost = 0;
+
+      if(!isCanonical) {
+        Value *valRange;
+        ConstantInt *Init = dyn_cast_or_null<ConstantInt>(InitialIVValue2);
+        ConstantInt *Step = dyn_cast_or_null<ConstantInt>(StepValue);
+
+        if(!Init || !Init->isZero()) {
+          if(!checkIfValueDominatesInst(FinalIVValue, preheaderBlock->getTerminator())) {
+            errs() << "Loop iteration final value is not known before entering the loop!\n";
+            return false;
+          }
+          if(!checkIfValueDominatesInst(InitialIVValue2, preheaderBlock->getTerminator())) {
+            errs() << "Loop iteration initial value is not known before entering the loop!\n";
+            return false;
+          }
+          extraCost+=1;
+          valRange = IRPreheader.CreateSub(FinalIVValue, InitialIVValue2);
+          errs() << "Self loop has non-zero initial value. So value range is: (" << *FinalIVValue << ") - (" << *InitialIVValue2 << ") = " << *valRange << "\n";
+        }
+        else {
+          if(!checkIfValueDominatesInst(FinalIVValue, preheaderBlock->getTerminator())) {
+            errs() << "Loop iteration final value is not known before entering the loop!\n";
+            return false;
+          }
+          valRange = FinalIVValue;
+          errs() << "Self loop has initial value 0. So value range is: " << *FinalIVValue << "\n";
+        }
+
+        if(!Step || !Step->isOne()) {
+          if(!checkIfValueDominatesInst(StepValue, preheaderBlock->getTerminator())) {
+            errs() << "Loop iteration step value is not known before entering the loop!\n";
+            return false;
+          }
+          extraCost+=1;
+          loopIterations = IRPreheader.CreateSDiv(valRange,StepValue);
+          errs() << "Self loop has step size of 1. So iteration is same as (end-start)/step value (end-start: " << *valRange << ", step: " << *StepValue << "\n";
+        }
+        else {
+          loopIterations = valRange;
+          errs() << "Self loop has step size of 1. So iteration is same as end-start value: " << *valRange << "\n";
+        }
+      }
+      else {
+        if(!checkIfValueDominatesInst(FinalIVValue, preheaderBlock->getTerminator())) {
+          errs() << "Loop iteration final value is not known before entering the loop!\n";
+          return false;
+        }
+        loopIterations = FinalIVValue;
+        errs() << "Self loop is canonical. So iteration is same as final value: " << *FinalIVValue << "\n";
+      }
+
+      /* 
+       * Clone single body loop into another with suffix clonedSelfLoop - both should have the same preheader & exit blocks
+       * Create condition in preheader to check if its small enough to be instrumented outside
+       * If true: transform or instrument cloned block loop (in the calling function)
+       * If false: instrument outside original block
+       */
+
+      // create condition in preheader
+      //Value *condition = IRPreheader.CreateICmpULE(loopIterations, IRPreheader.getInt64(innerLoopIterations), "short_loop_cond");
+      Value *condition = IRPreheader.CreateICmpULE(loopIterations, IRPreheader.getIntN(SE->getTypeSizeInBits(loopIterations->getType()), innerLoopIterations), "short_loop_cond");
+      extraCost++;
+      errs() << "Loop Iter: " << *loopIterations << "\n";
+      errs() << "Loop condition: " << *condition << "\n";
+
+      // clone loop block for the false condition
+      BasicBlock* clonedBlock = cloneSelfLoop(onlyBlock, "clonedSelfLoop");
+
+      // Jump to right version of the loop based on the condition
+      assert(isa<BranchInst>(preheaderBlock->getTerminator()) && "Self Loop's preheader blocks's terminator is not a branch instruction.");
+      BranchInst *brI = dyn_cast<BranchInst>(preheaderBlock->getTerminator());
+      assert(!brI->isConditional() && "Self Loop's preheader has conditional branch terminator!");
+      Instruction* replacedInst = preheaderBlock->getTerminator();
+      BranchInst *newTerm =
+        BranchInst::Create(/*ifTrue*/clonedBlock, /*ifFalse*/onlyBlock, condition);
+      ReplaceInstWithInst(preheaderBlock->getTerminator(), newTerm);
+      replaceInstrumentation(replacedInst, newTerm);
+
+      // create block between cloned block & exit block, for instrumenting the loop cost
+      BasicBlock *costBlock = BasicBlock::Create(clonedBlock->getContext(), clonedBlock->getName() + ".loopCost", clonedBlock->getParent(), exitBlock);
+
+      //errs() << "Parent loop before: " << *(L->getParentLoop()) << "\n";
+
+      // Add loop to the same parent loop as the cloned block
+      //L->getParentLoop()->addBasicBlockToLoop(clonedBlock, *LI);
+
+      /* Create new loop for the cloned block */
+      Loop *clonedLoop = LI->AllocateLoop();
+
+      /* Create new loop to the parent, if present */
+      Loop* parentLoop = L->getParentLoop();
+      if(parentLoop) {
+        parentLoop->addBasicBlockToLoop(costBlock, *LI);
+        parentLoop->addChildLoop(clonedLoop);
+      }
+      else {
+        LI->addTopLevelLoop(clonedLoop);
+      }
+
+      /* add cloned Block to the loop after the loop has been added to its parent or to the module */
+      clonedLoop->addBasicBlockToLoop(clonedBlock, *LI);
+      clonedLoop->moveToHeader(clonedBlock);
+
+      //L->getParentLoop()->addBlockEntry(clonedBlock);
+      //clonedLoop->addBlockEntry(clonedBlock);
+
+      Loop *clonedLoop1 = LI->getLoopFor(clonedBlock);
+      if(parentLoop)
+        errs() << "Parent loop: " << *parentLoop << "\n";
+      errs() << "Orig loop: " << *L << "\n";
+      errs() << "Created Cloned Loop: " << *clonedLoop << "\n";
+      if(!clonedLoop1)
+        errs() << "Loop for cloned loop still doesn't exist!\n";
+      errs() << "Cloned loop: " << *clonedLoop1 << "\n";
+
+  		//if (DT)
+        //DT->addNewBlock(costBlock, clonedBlock);
+  		//if (PDT)
+        //PDT->addNewBlock(costBlock, exitBlock);
+
+      // change terminator of cloned block from exit block to cost block
+      Instruction *clonedBlockTermInst = clonedBlock->getTerminator();
+      int numOfSucc = clonedBlockTermInst->getNumSuccessors();
+      /* Find the direct successor */
+      for(int idx = 0; idx < numOfSucc; idx++) {
+        BasicBlock* succ = clonedBlockTermInst->getSuccessor(idx);
+        if(succ == exitBlock) {
+          //errs() << "Found exitBlock " << exitBlock->getName() << " at index " << idx << "\n";
+          clonedBlockTermInst->setSuccessor(idx, costBlock);
+          /* Instrument the cost in this new block */
+          break;
+        }
+      }
+
+      /* Loop over any phi node in exit block, updating the BB field of incoming values */
+      PHINode *PN;
+      for (BasicBlock::iterator phiIt = exitBlock->begin(); (PN = dyn_cast<PHINode>(phiIt)); ++phiIt) {
+        //errs() << "For tail block " << exitBlock->getName() << " --> changing phi inst: " << *PN << "\n";
+        int IDX = PN->getBasicBlockIndex(clonedBlock);
+        while (IDX != -1) {
+          PN->setIncomingBlock((unsigned)IDX, costBlock);
+          IDX = PN->getBasicBlockIndex(clonedBlock);
+        }   
+      }   
+
+      // add terminator from cost block to exit block
+      IRBuilder<> IRCost(costBlock);
+      auto costBlockTermInst = IRCost.CreateBr(exitBlock);
+      costBlockTermInst->setDebugLoc(clonedBlock->getTerminator()->getDebugLoc());
+
+      // compute loop cost in cost block
+      IRBuilder<> IRCostBlockTermInst(costBlockTermInst);
+      //Value *loopBodyCost = IRCostBlockTermInst.getInt64(numSelfLoopCost);
+      Value *loopBodyCost = IRCostBlockTermInst.getIntN(SE->getTypeSizeInBits(loopIterations->getType()),numSelfLoopCost);
+      Value *loopCost = IRCostBlockTermInst.CreateMul(loopIterations, loopBodyCost);
+
+#if 0
+      // instrument the cost
+      makeContainersOfBB(costBlock);
+      LCCNode* costBlockLCC = getFirstLCCofBB(costBlock);
+      UnitLCC* costBlockUnitLCC = static_cast<UnitLCC*>(costBlockLCC);
+      errs() << "Cost accumulated: " << extraCost << "\n";
+      costBlockUnitLCC->instrumentValueForIC(loopCost, extraCost);
+
+#else
+      /* register the outer loop for the cost instrumentation phase */
+      LCCNode *newLCC = new UnitLCC(lccIDGen++, costBlock, costBlock->getFirstNonPHI(), &(costBlock->back()), false);
+      UnitLCC* newUnitLCC = static_cast<UnitLCC*>(newLCC);
+      newUnitLCC->instrumentValueForIC(loopCost, extraCost);
+      std::vector<LCCNode*> containers;
+      containers.push_back(newLCC);
+      bbToContainersMap[costBlock] = containers;
+#endif
+
+      //BranchInst *newClonedBlockTerm = BranchInst::Create(costBlock);
+      //ReplaceInstWithInst(clonedBlock->getTerminator(), newClonedBlockTerm);
+
+      //instrumentSelfLoopOutside(clonedBlock->getLoopFor(), numSelfLoopCost)
+
+      DT->recalculate(*(onlyBlock->getParent()));
+      PDT->recalculate(*(onlyBlock->getParent()));
+      BPI->calculate(*(onlyBlock->getParent()), *LI);
+      //SE->forgetLoop(L);
+      formLCSSARecursively(*L, *DT, LI, SE);
+      simplifyLoop(L, DT, LI, SE, nullptr, nullptr, true);
+
+      /* Sanity test */
+      if(parentLoop) {
+        assert(parentLoop->contains(clonedLoop) && "Original L's parent does not contain clonedLoop!");
+        assert((parentLoop->contains(clonedBlock)) && "Parent loop does not contain the newly cloned block!");
+        assert((parentLoop->contains(costBlock)) && "Parent loop does not contain the cost block of the newly cloned block!");
+        assert((clonedLoop->getParentLoop() == parentLoop) && "Cloned loop's parent loop is not the same as original loop's");
+      }
+      assert((clonedLoop!=L) && "Original loop & cloned loop are the same!");
+      assert((clonedLoop->getLoopDepth() == L->getLoopDepth()) && "Loop depth of cloned loop & original loop does not match!");
+      assert((clonedBlock->getTerminator()->getNumSuccessors() == onlyBlock->getTerminator()->getNumSuccessors()) && "Number of successors in cloned loop differs from that in original loop!");
+      if(Loop *costLoop = LI->getLoopFor(costBlock))
+        assert((costLoop == parentLoop) && "Cloned self loop's outside cost instrumentation block's depth is not correct!");
+
+      //errs() << "Printing instrumention just after cloning\n";
+      //printInstrStats(onlyBlock->getParent());
+      return true;
+    }
+#endif
+
+    /* Instruments the loop with the loop cost at the end of the loop, using the loop bounds whose actual values are known at runtime */
+    bool instrumentSelfLoopOutside(Loop *L, int numSelfLoopCost) {
+      bool isCanonical = false;
+      bool needsCounter = false;
+      auto lBounds = L->getBounds(*SE);
+      Value *InitialIVValue2 = nullptr;
+      Value *StepValue = nullptr;
+      Value *FinalIVValue = nullptr;
+      BasicBlock *onlyBlock = L->getHeader();
+
+      if(L->isCanonical(*SE)) {
+        isCanonical = true;
+      }
+
+      if(!lBounds) {
+        needsCounter = true;
+        errs() << "Loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << ":- Bounds are not present. Will not instrument outside loop!\n";
+      }
+      else {
+        if(!isCanonical) {
+          InitialIVValue2 = &lBounds->getInitialIVValue();
+          StepValue = lBounds->getStepValue();
+
+          if(!InitialIVValue2) {
+            errs() << "Loop " << onlyBlock->getName() << ":- No initial value present. Cannot transform loop.\n";
+            needsCounter = true;
+          }
+
+          if(!StepValue) {
+            errs() << "Loop " << onlyBlock->getName() << ":- No step value present. Cannot transform loop.\n";
+            needsCounter = true;
+          }
+
+          if(!isa<ConstantInt>(StepValue)) {
+            errs() << "Loop " << onlyBlock->getName() << ":- The step value is not constant. Cannot transform!\n";
+            needsCounter = true;
+          }
+        }
+
+        FinalIVValue = &lBounds->getFinalIVValue();
+
+        if(!FinalIVValue) {
+          errs() << "Loop " << onlyBlock->getName() << ":- No final value present. Cannot transform loop.\n";
+          needsCounter = true;
+        }
+      }
+
+      BasicBlock* preheaderBlock = L->getLoopPreheader();
+      BasicBlock* exitBlock = L->getExitBlock();
+      assert(exitBlock && "Self loop is assumed to have unique single exit block!");
+
+      IRBuilder<> IRPreheader(preheaderBlock->getFirstNonPHI());
+      IRBuilder<> IRHeader(onlyBlock->getFirstNonPHI());
+      IRBuilder<> IRExit(exitBlock->getFirstNonPHI());
+
+      if(needsCounter)
+        errs() << "Needs counter inside self loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << " 's value based runtime cost (preheader: " << preheaderBlock->getName() << ", exit block: " << exitBlock->getName() << ", body cost: " << numSelfLoopCost << ")\n";
+      else
+        errs() << "Instrumenting outside self loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << " 's value based runtime cost (preheader: " << preheaderBlock->getName() << ", exit block: " << exitBlock->getName() << ", body cost: " << numSelfLoopCost << ")\n";
+
+      //if(isBlockListed(onlyBlock, debugNoLoopTransformList) || !canBeInstrumented(onlyBlock)) {
+      //printCodeLocation(L);
+      //printCodeLocation(onlyBlock->getTerminator());
+
+      /* Find number of backedges */
+      int numIterations = -1;
+      const SCEV* backEdgeTakenCount = SE->getBackedgeTakenCount(L);
+      if(backEdgeTakenCount && (backEdgeTakenCount != SE->getCouldNotCompute())) {
+        InstructionCost* simplifiedBackEdges = simplifyCost(onlyBlock->getParent(), scevToCost(backEdgeTakenCount), true);
+        numIterations = hasConstCost(simplifiedBackEdges)+1;
+      }
+
+      Value *loopIterations = nullptr;
+      Value *loopBodyCost = IRExit.getInt64(numSelfLoopCost);
+      int extraCost = 0;
+
+      // When numIterations is small, cost is instrumented after the loop. When its large, loop is transformed.
+      if(numIterations>0) {
+        errs() << "Self loop's iterations (" << numIterations << ") are known!\n";
+        loopIterations = IRExit.getInt64(numIterations);
+      }
+      else if(needsCounter) {
+        return false;
+        errs() << "Self loop's iterations cannot be determined. Therefore instrumenting a counter!\n";
+        loopIterations = IRPreheader.CreateAlloca(IRPreheader.getInt64Ty(), 0, "loop_iter");
+        Value *valZero = IRPreheader.getInt64(0);
+        IRPreheader.CreateStore(valZero, loopIterations);  
+
+        Value *load = IRHeader.CreateLoad(loopIterations);
+        Value *valOne = IRHeader.getInt64(1);
+        Value *inc = IRHeader.CreateAdd(valOne, load);
+        IRHeader.CreateStore(inc, loopIterations);  
+      }
+      else {
+        errs() << "Self loop's iterations cannot be determined. Therefore instrumenting the iteration cost as a function of its parameters!\n";
+        if(!isCanonical) {
+          Value *valRange;
+          ConstantInt *Init = dyn_cast_or_null<ConstantInt>(InitialIVValue2);
+          ConstantInt *Step = dyn_cast_or_null<ConstantInt>(StepValue);
+
+          if(!Init || !Init->isZero()) {
+            valRange = IRExit.CreateSub(FinalIVValue, InitialIVValue2);
+            extraCost+=1;
+          }
+          else
+            valRange = FinalIVValue;
+
+          if(!Step || !Step->isOne()) {
+            loopIterations = IRExit.CreateSDiv(valRange,StepValue);
+            extraCost+=1;
+          }
+          else
+            loopIterations = valRange;
+        }
+        else
+          loopIterations = FinalIVValue;
+      
+        if(loopIterations->getType() != loopBodyCost->getType()) {
+          loopIterations = IRExit.CreateZExt(loopIterations, loopBodyCost->getType(), "zeroExtendSLI");
+          extraCost+=1;
+        }
+      }
+
+      if(needsCounter) {
+#if 1
+        loopIterations = IRExit.CreateLoad(loopIterations);
+        extraCost+=1;
+#else
+        /* Temporary debug code - for finding the cause for a crash in the 'needsCounter' path */
+        errs() << "F: " << exitBlock->getParent()->getName() << ", BB: " << onlyBlock->getName() << "\n";
+        if(exitBlock->getParent()->getName().compare("reduce_worker") != 0) {
+          loopIterations = IRPreheader.CreateAlloca(IRPreheader.getInt64Ty(), 0, "loop_iter");
+        }
+        else {
+          if(exitBlock->getParent()->getName().compare("reduce_worker") == 0
+              && onlyBlock->getName().compare("while.body71.i") == 0) {
+            errs() << "Matched reduce_worker:while.body71.i";
+            loopIterations = IRPreheader.CreateAlloca(IRPreheader.getInt64Ty(), 0, "loop_iter");
+            LCCNode* exitLCC = getFirstLCCofBB(exitBlock);
+            UnitLCC* exitUnitLCC = static_cast<UnitLCC*>(exitLCC);
+            exitUnitLCC->instrumentForIC(getConstantInstCost(numSelfLoopCost));
+          }
+          else {
+            if(exitBlock->getParent()->getName().compare("reduce_worker") == 0) {
+              errs() << "Not instrumenting loop_iter in block " << preheaderBlock->getName() << "\n";
+              //loopIterations = IRPreheader.CreateAlloca(IRPreheader.getInt64Ty(), 0, "abcdefgh");
+            }
+          }
+        }
+        return;
+#endif
+      }
+
+      Value *loopCost = IRExit.CreateMul(loopIterations, loopBodyCost);
+      extraCost+=1;
+      LCCNode* exitLCC = getFirstLCCofBB(exitBlock);
+      UnitLCC* exitUnitLCC = static_cast<UnitLCC*>(exitLCC);
+      /* Disclaimer : might hit a case where the block already had a prior cost to be instrumented. Its not supported currently & will lead to an assert. But ideally, these two costs should be summed up & instrumented */
+      exitUnitLCC->instrumentValueForIC(loopCost, extraCost);
+
+      return true;
+    }
+
     BasicBlock* transformGenericSelfLoopWithoutBounds(Loop *L, int iterations, int numSelfLoopCost) {
       BasicBlock *onlyBlock = L->getHeader();
       Function *F = onlyBlock->getParent();
@@ -8577,10 +9581,10 @@ namespace {
         errs() << "Self loop is not canonical. Going for generic transformation with " << iterations << " iterations.\n";
 
       /* Checking preconditions */
-      assert((iterations>1) && "Too small number of iterations to instrument!");
+      //assert((iterations>1) && "Too small number of iterations to instrument!");
 
       if(!lBounds) {
-        errs() << "Bounds are not present. Cannot transform!\n";
+        errs() << "Loop " << onlyBlock->getParent()->getName() << ":" << onlyBlock->getName() << ":- Bounds are not present. Will not transform loop!\n";
         return nullptr;
       }
 
@@ -8617,7 +9621,7 @@ namespace {
 
       errs() << "Attempting to transform self loop " << onlyBlock->getName() << " of " << F->getName() << " with " << iterations << " inner loop iterations --> " << *L;
 
-#ifdef ALL_DEBUG
+#if 0
       ConstantInt* stepCI = dyn_cast<ConstantInt>(StepValue);
       int64_t numStepVal = 0;
       if (stepCI->getBitWidth() <= 64) {
@@ -8683,14 +9687,17 @@ namespace {
       assert(splitFrontInst && "Self loop block does not have any non-phi instructions. Not handled.");
 
       Instruction *splitBackInst = BI;
+      char blockName[256];
 
       /******************* First split *******************/
       BasicBlock *newBlock = SplitBlock(onlyBlock, splitFrontInst, DT, LI, nullptr);
-      newBlock->setName("selfLoopOptBlock");
+      sprintf(blockName, "%s_SelfLoopOpt", onlyBlock->getName());
+      newBlock->setName(blockName);
 
       /******************* Second split *******************/
       BasicBlock *endBlock = SplitBlock(newBlock, splitBackInst, DT, LI, nullptr);
-      endBlock->setName("selfLoopOptExitBlock");
+      sprintf(blockName, "%s_SelfLoopExit", onlyBlock->getName());
+      endBlock->setName(blockName);
 
       /* Creating condition argument in the outer loop header */
       auto loopHdrCondArgInst = onlyBlock->getFirstNonPHI();
@@ -8793,6 +9800,7 @@ namespace {
 
       Instruction *toBeReplacedTerm = newBlock->getTerminator();
       ReplaceInstWithInst(toBeReplacedTerm, newBranch);
+      replaceInstrumentation(toBeReplacedTerm, newBranch);
 
       //DT->recalculate(*(newBlock->getParent()));
       //if(SE) SE->forgetLoop(L);
@@ -8874,24 +9882,29 @@ namespace {
 
       /* instrumenting the new outer loop */
       Value *loopIterations = nullptr;
+      int extraCost=0;
       if(!isCanonical) {
         Value *loopIntv = IREnd.CreateSub(localIndVar, indVarPhiInst, "loop_intv");
         loopIterations = IREnd.CreateSDiv(loopIntv, StepValue, "loop_iter");
+        extraCost+=2;
       }
       else {
         loopIterations = IREnd.CreateSub(localIndVar, indVarPhiInst, "loop_intv");
+        extraCost+=1;
       }
 
       Value *loopIterationsExt = loopIterations;
       Value *loopBodyCost = IREnd.getInt64(numSelfLoopCost);
       if(loopIterations->getType() != loopBodyCost->getType()) {
         loopIterationsExt = IREnd.CreateZExt(loopIterations, loopBodyCost->getType(), "zeroExtendSLI");
+        extraCost+=1;
       }
       Value *loopCost = IREnd.CreateMul(loopIterationsExt, loopBodyCost);
+      extraCost+=1;
 
       /* register the outer loop for the cost instrumentation phase */
       UnitLCC* newUnitLCC = static_cast<UnitLCC*>(newLCC);
-      newUnitLCC->instrumentValueForIC(loopCost);
+      newUnitLCC->instrumentValueForIC(loopCost, extraCost);
       std::vector<LCCNode*> containers;
       containers.push_back(newLCC);
       bbToContainersMap[endBlock] = containers;
@@ -8981,9 +9994,13 @@ namespace {
 
       Instruction *toBeReplacedTerm = newBlock->getTerminator();
       ReplaceInstWithInst(toBeReplacedTerm, newBranch);
+      replaceInstrumentation(toBeReplacedTerm, newBranch);
 
-      newBlock->setName("selfLoopOptBlock");
-      endBlock->setName("selfLoopOptExitBlock");
+      char blockName[256];
+      sprintf(blockName, "%s_SelfLoopOpt", onlyBlock->getName());
+      newBlock->setName(blockName);
+      sprintf(blockName, "%s_SelfLoopExit", onlyBlock->getName());
+      endBlock->setName(blockName);
 
       for (auto PN : pnList) {
         PHINode *newPN = PHINode::Create(PN->getType(), 2, "phiIVClone", &newBlock->front());
@@ -9111,9 +10128,13 @@ namespace {
 
       Instruction *toBeReplacedTerm = newBlock->getTerminator();
       ReplaceInstWithInst(toBeReplacedTerm, newBranch);
+      replaceInstrumentation(toBeReplacedTerm, newBranch);
 
-      newBlock->setName("selfLoopOptBlock");
-      endBlock->setName("selfLoopOptExitBlock");
+      char blockName[256];
+      sprintf(blockName, "%s_SelfLoopOpt", onlyBlock->getName());
+      newBlock->setName(blockName);
+      sprintf(blockName, "%s_SelfLoopExit", onlyBlock->getName());
+      endBlock->setName(blockName);
 
       for (auto PN : pnList) {
         PHINode *newPN = PHINode::Create(PN->getType(), 2, "phiIVClone", &newBlock->front());
@@ -9544,9 +10565,12 @@ namespace {
       }
 #endif
 
+      /* Create the list of instructions that enable or disable instrumentation, once per function */
+      findPragmaInstr(&F);
       transformGraph(&F);
       initializeLCCGraph(&F);
       runPasses(&F);
+      deletePragmaInstr(&F);
 #if 0
         //errs() << "Begin Analysis for " << F->getName() << " :-\n";
         if (F.getName().compare("slave2")==0 || F.getName().compare("jacobcalc2")==0 || F.getName().compare("laplacalc")==0 || F.getName().compare("jacobcalc")==0)
@@ -9585,6 +10609,9 @@ namespace {
         IR.CreateCall(printf_func, args);
       }
 #endif
+
+      if(costVal->getType() != Load->getType())
+        costVal = IR.CreateZExt(costVal, Load->getType(), "zeroExtend");
 
       Value *Inc = IR.CreateAdd(costVal, Load);
 
@@ -9658,22 +10685,8 @@ namespace {
       return Inc;
     }
 
-    int getCostOfInstrumentation() {
-      int instrumentationCost = 0;
-      if(checkIfInstGranIsDet())
-        instrumentationCost = 9;
-      else if(checkIfInstGranIsIntermediate())
-        instrumentationCost = 15;
-      else if(checkIfInstGranCycleBasedCounter())
-        instrumentationCost = 35;
-      if(InstGranularity != NAIVE_ACCURATE && InstGranularity != OPTIMIZE_ACCURATE)
-        assert((instrumentationCost!=0) && "Instrumentation cost is not available for this type of configuration");
-      /* naive-acc & opt-acc have the overhead added in the external lib calls */
-      return instrumentationCost;
-    }
-
     /* NonTLLC configuration must initialize & instrument Locals at function calls before & after the pass */
-    void pushToMLCfromTLLCifTSCExceeded(Instruction *I, Value *loadedLC, LoadInst* loadDisFlag = nullptr ) {
+    void pushToMLCfromTLLCifTSCExceeded(Instruction *I, Value *loadedLC, Value* targetInterval, LoadInst* loadDisFlag = nullptr) {
 
       if(!checkIfInstGranIsIntermediate()) {
         errs() << "pushToMLCfromTLLCifTSCExceeded is not implemented for this Inst Gran!\n";
@@ -9686,72 +10699,95 @@ namespace {
       assert((TargetIntervalInCycles) && "Target interval is not provided.");
 
       IRBuilder<> IR(I);
-#ifdef SHIFT
-      int threshold = 0.9*TargetIntervalInCycles;
-#else
-      int threshold = 0.9*TargetIntervalInCycles;
-#endif
-      Value *cycleInterval = IR.getInt64(threshold);
+      Value *threshold = M->getGlobalVariable("ci_cycles_threshold");
+      Value *cycleInterval = IR.CreateLoad(threshold, "cycleIntv");
+      //int threshold = 0.9*TargetIntervalInCycles;
+      //Value *cycleInterval = IR.getInt64(threshold);
 
-      CallInst *now = IR.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
+      CallInst *now = IR.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {}, nullptr, "currCycle");
       GlobalVariable *thenVar = F->getParent()->getGlobalVariable("LastCycleTS");
-      LoadInst *then = IR.CreateLoad(thenVar);
-      Value* timeDiff = IR.CreateSub(now, then);
+      LoadInst *then = IR.CreateLoad(thenVar, "lastCycle");
+      Value* timeDiff = IR.CreateSub(now, then, "elapsedCycles");
 
-      Value *condition = IR.CreateICmpUGE(timeDiff, cycleInterval, "exceeded_cycle");
+      Value *condition = IR.CreateICmpUGE(timeDiff, cycleInterval, "exceededCycleCond");
       //Instruction *ti = llvm::SplitBlockAndInsertIfThen(condition, I, false, nullptr, nullptr, LI);
       Instruction *thenTerm, *elseTerm;
       llvm::SplitBlockAndInsertIfThenElse(condition, I, &thenTerm, &elseTerm);
-      elseTerm->getParent()->setName("reduceClock");
       IR.SetInsertPoint(elseTerm);
 
-#ifdef SHIFT
-      int cycleToIRConst;
-      bool shiftLeft = false;
-      if(TargetInterval > TargetIntervalInCycles) {
-        cycleToIRConst = TargetInterval/TargetIntervalInCycles;
-        shiftLeft = true;
-      }
-      else {
-        cycleToIRConst = TargetIntervalInCycles/TargetInterval;
-        shiftLeft = false;
-      }
-      Value *cycleIntervalTotal = IR.getInt64(TargetIntervalInCycles);
-      Value* remTime = IR.CreateSub(cycleIntervalTotal, timeDiff);
-      Value *reduction = remTime;
-      if(cycleToIRConst!=1) {
-        int shiftBits = (log2(cycleToIRConst));
+#ifdef NEW_PROBE
+      elseTerm->getParent()->setName("updateNextIntv");
+    #ifdef SHIFT
+      int shiftBits = 2; // for a 4:1 IR:Cycle ratio
+      Value* remTime = IR.CreateSub(cycleInterval, timeDiff);
+      Value *valFactor = IR.getInt64(shiftBits);
+      Value *remTimeInIR = IR.CreateShl(remTime, valFactor);
+      Value *newTargetIR = IR.CreateAdd(targetInterval, remTimeInIR);
+    #elif defined(REDUCE_BY_PROBE_INTV)
+      Value *instrCost = IR.getInt64(CommitInterval-getProbeIntermediateInstrCost());
+      Value *newTargetIR = IR.CreateAdd(targetInterval, instrCost);
+    #elif defined(CYCLES_ACCURATE)
+      GlobalVariable *lastIRIncr = I->getModule()->getGlobalVariable("LastIRIncr");
+      Value *irIntv = IR.CreateLoad(lastIRIncr, "elapsedIR");
+      Value *irIntvFP = IR.CreateSIToFP(irIntv, IR.getDoubleTy(), "elapsedIRInFP");
+      Value *timeDiffFP = IR.CreateSIToFP(timeDiff, IR.getDoubleTy(), "elapsedCyclesInFP");
 
-        Value *valFactor = IR.getInt64(shiftBits);
-        if(shiftLeft)
-          reduction = IR.CreateShl(remTime, valFactor);
-        else
-          reduction = IR.CreateLShr(remTime, valFactor);
-      }
+      /* timeDiff cycles were executed in irIntv IR instructions */
+      Value* ratioIRCyclesFP = IR.CreateFDiv(irIntvFP, timeDiffFP, "ratioIRCycles");
 
-      Value *newLocalLC = IR.CreateSub(loadedLC, reduction);
+      Value* remTime = IR.CreateSub(cycleInterval, timeDiff, "remCycles");
+      Value* remTimeFP = IR.CreateSIToFP(remTime, IR.getDoubleTy(), "remCyclesInFP");
+      Value* remTimeInIRFP = IR.CreateFMul(remTimeFP, ratioIRCyclesFP, "remIRInFP");
+      Value* remTimeInIR = IR.CreateFPToSI(remTimeInIRFP, targetInterval->getType(), "remIR");
+      //Value *instrCost = IR.getInt64(getProbeIntermediateInstrCost());
+      //Value* newIncrIR = IR.CreateSub(remTimeInIR, instrCost);
+      //Value *newTargetIR = IR.CreateAdd(targetInterval, newIncrIR);
+      Value *newTargetIR = IR.CreateAdd(targetInterval, remTimeInIR, "updatedDeadlineInIR");
+      IR.CreateStore(remTimeInIR, I->getModule()->getGlobalVariable("LastIRIncr"));
+    #else
+      Value *resetIR = M->getGlobalVariable("ci_reset_ir_interval");
+      Value *resetVal = IR.CreateLoad(resetIR);
+      Value *instrCost = IR.getInt64(getProbeIntermediateInstrCost());
+      Value *irIncr = IR.CreateAdd(resetVal, instrCost);
+      Value *newTargetIR = IR.CreateAdd(targetInterval, irIncr);
+    #endif
+      Value *nextIntv = M->getGlobalVariable("NextInterval");
+      IR.CreateStore(newTargetIR, nextIntv);
 #else
-      /* Reset counter */
-      //float thresh_perc = (float)FiberConfig/100;
-      //float thresh_perc = (float)50/100;
-      //int instrumentationCost = (thresh_perc*TargetInterval) + getCostOfInstrumentation();
-      int instrumentationCost = (TargetInterval/2) + getCostOfInstrumentation();
-      //int resetCost = TargetIntervalInCycles-threshold + 15;
-      Value *newLocalLC = IR.getInt64(instrumentationCost);
-#endif
+    #ifdef SHIFT
+      int shiftBits = 2;
+      Value* remTime = IR.CreateSub(cycleInterval, timeDiff);
+      Value *valFactor = IR.getInt64(shiftBits);
+      Value *remTimeInIR = IR.CreateShl(remTime, valFactor);
+      elseTerm->getParent()->setName("reduceClock");
+      Value *newLocalLC = IR.CreateSub(loadedLC, remTimeInIR);
+    #elif defined(REDUCE_BY_PROBE_INTV) // not a good variant
+      Value *instrCost = IR.getInt64(CommitInterval-getProbeIntermediateInstrCost());
+      Value *newLocalLC = IR.CreateSub(loadedLC, instrCost);
+    #elif defined(CYCLES_ACCURATE)
+      //Builder.CreateStore(irIntv, I->getModule()->getGlobalVariable("LastIRIncr"));
+      errs() << "This is not implemented yet!! Aborting.";
+      exit(1);
+    #else
+      Value *resetIR = M->getGlobalVariable("ci_reset_ir_interval");
+      Value *resetVal = IR.CreateLoad(resetIR);
+      Value *instrCost = IR.getInt64(getProbeIntermediateInstrCost());
+      Value *newLocalLC = IR.CreateAdd(resetVal, instrCost);
+    #endif
       if(gIsOnlyThreadLocal) {
         Value *lc = M->getGlobalVariable("LocalLC");
         IR.CreateStore(newLocalLC, lc);
       }
       else
         IR.CreateStore(newLocalLC, gLocalCounter[F]);
+#endif
       
       /* reset Cycle count, only if condition succeeds */
-      pushToMLCfromTLLC(thenTerm, loadedLC, loadDisFlag, now);
+      pushToMLCfromTLLC(thenTerm, loadedLC, targetInterval, loadDisFlag, now);
     }
     
     /* currTSC: current clock value that should be set when the condition for pushing succeeded */
-    void pushToMLCfromTLLC(Instruction *I, Value *loadedLC, LoadInst* loadDisFlag = nullptr, Value* currTSC = nullptr) {
+    void pushToMLCfromTLLC(Instruction *I, Value *loadedLC, Value *targetInterval, LoadInst* loadDisFlag = nullptr, Value* currTSC = nullptr) {
       Module *M = I->getModule();
       Function &F = *(I->getParent()->getParent());
       I->getParent()->setName("pushBlock");
@@ -9771,7 +10807,7 @@ namespace {
         }
       }
 
-      int instrumentationCost = getCostOfInstrumentation();
+      int instrumentationCost = getProbeIntermediateInstrCost();
 
       /* Load local counter */
       Value *valLC;
@@ -9781,12 +10817,26 @@ namespace {
       }
 
       Value *valZero = Builder.getInt64(instrumentationCost);
+#ifndef NEW_PROBE
       if(gIsOnlyThreadLocal) {
         Builder.CreateStore(valZero, lc);
       }
       else {
         Builder.CreateStore(valZero, gLocalCounter[&F]);
       }
+#else
+      Value *ci_ir_interval = M->getGlobalVariable("ci_ir_interval");
+      Value *irIntv = Builder.CreateLoad(ci_ir_interval, "targetInIR"); // PI
+      Value *nextIntv = Builder.CreateAdd(targetInterval, irIntv, "updatedDeadlineInIR");
+      Builder.CreateStore(nextIntv, I->getModule()->getGlobalVariable("NextInterval"));
+      //Value *newLC = Builder.CreateAdd(loadedLC, valZero);
+      //Builder.CreateStore(newLC, lc);
+#endif
+#ifdef CYCLES_ACCURATE
+      if(InstGranularity == OPTIMIZE_INTERMEDIATE) {
+        Builder.CreateStore(irIntv, I->getModule()->getGlobalVariable("LastIRIncr"));
+      }
+#endif
 
       if(currTSC) {
         Module *M = I->getModule();
@@ -9810,9 +10860,14 @@ namespace {
       /* Code for calling custom function at push time */
       std::vector<llvm::Value*> args;
       args.push_back(valLC);
+#if 1
       Value* hookFuncPtr = action_hook_prototype(I);
       auto hookFunc = Builder.CreateLoad(hookFuncPtr, "ci_handler");
       Builder.CreateCall(hookFunc, args);
+#else
+      Value* hookFunc = action_hook_prototype(I->getModule());
+      Builder.CreateCall(hookFunc, args);
+#endif
 
       /* Enable CI */
       if(loadDisFlag) {
@@ -9834,6 +10889,18 @@ namespace {
           Builder.CreateStore(loadDisFlag, gLocalFLag[&F]);
         }
       }
+
+#ifdef PROFILING
+      if(gIsOnlyThreadLocal) {
+        GlobalVariable *pc = nullptr;
+        LoadInst *pcLoad = nullptr;
+        pc = F.getParent()->getGlobalVariable("pushCount");
+        pcLoad = Builder.CreateLoad(pc);
+        Value *valOne = Builder.getInt64(1);
+        Value *pcInc = Builder.CreateAdd(valOne, pcLoad);
+        Builder.CreateStore(pcInc, pc);  
+      }
+#endif
     }
     
 #if 1
@@ -9918,7 +10985,7 @@ namespace {
       IRBuilder<> IR2(&*itI2);
       CallInst *cyc2 = IR2.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
       Value* costVal = IR2.CreateSub(cyc2, cyc1);
-      instrumentIfLCEnabled(&*itI2, ALL_IR, costVal); // ALL_IR here means the cost value is created & passed to the routine, although the value passed is the cycle count difference & not the IR difference
+      instrumentProbe(&*itI2, ALL_IR, costVal); // ALL_IR here means the cost value is created & passed to the routine, although the value passed is the cycle count difference & not the IR difference
     }
 
     void instrumentExternalCallsWithIntrinsic(std::list<Instruction *> *IList) {
@@ -9976,12 +11043,12 @@ namespace {
         }
         //Value *valTwo = IR2.getInt64(2);
         //Value* libCallOverhead = IR2.CreateShl(cycleDiff, valTwo);
-        instrumentIfLCEnabled(&*itI2, ALL_IR, libCallOverhead); // ALL_IR here means the cost value is created & passed to the routine, although the value passed is the cycle count difference & not the IR difference
+        instrumentProbe(&*itI2, ALL_IR, libCallOverhead); // ALL_IR here means the cost value is created & passed to the routine, although the value passed is the cycle count difference & not the IR difference
         itI2++; // points to the next inst for the second readcycle call
       }
     }
 
-    BasicBlock* instrumentIfLCEnabled(Instruction *I, eInstrumentType instrType, Value *incVal = nullptr) {
+    void instrumentIfLCEnabled(Instruction *I, eInstrumentType instrType, Value *incVal = nullptr) {
       IRBuilder<> IR(I);
       Value *flagSet = IR.getInt32(0);
       LoadInst *loadDisFlag = nullptr;
@@ -10001,7 +11068,7 @@ namespace {
       Function::iterator blockItr(ti->getParent());
       blockItr++;
       blockItr->setName("postClockEnabledBlock");
-      return &*blockItr;
+      //return &*blockItr;
     }
 
     void testNpushMLCfromTLLC(Instruction &I, Value *loadedLC, LoadInst* loadDisFlag = nullptr, bool useTSC = false) {
@@ -10009,18 +11076,30 @@ namespace {
       Value *targetinterval = nullptr;
       if(checkIfInstGranCycleBasedCounter())
         targetinterval = IR.getInt64(TargetIntervalInCycles); // CYCLES
-      else
-        targetinterval = IR.getInt64(TargetInterval); // PI
-      Value *condition = IR.CreateICmpUGT(loadedLC, targetinterval, "commit");
+      else {
+#ifndef NEW_PROBE
+        Value *ci_ir_interval = I.getModule()->getGlobalVariable("ci_ir_interval");
+        targetinterval = IR.CreateLoad(ci_ir_interval,"targetInIR"); // PI
+#else
+        Value *nextInterval = I.getModule()->getGlobalVariable("NextInterval");
+        targetinterval = IR.CreateLoad(nextInterval,"deadlineInIR"); // PI
+#endif
+        //targetinterval = IR.getInt64(TargetInterval); // PI
+      }
+      if(loadedLC->getType() != targetinterval->getType()) {
+        errs() << "Wrongful loaded LC type: " << *loadedLC->getType() << "\n";
+        loadedLC = IR.CreateZExt(loadedLC, targetinterval->getType(), "zeroExtendSLI");
+      }
+      Value *condition = IR.CreateICmpSGT(loadedLC, targetinterval, "commit");
       Instruction *ti = llvm::SplitBlockAndInsertIfThen(condition, &I, false, nullptr, DT, LI);
       IR.SetInsertPoint(ti);
       Function::iterator blockItr(ti->getParent());
       blockItr++;
       blockItr->setName("postInstrumentation");
       if(useTSC)
-        pushToMLCfromTLLCifTSCExceeded(ti, loadedLC, loadDisFlag);
+        pushToMLCfromTLLCifTSCExceeded(ti, loadedLC, targetinterval, loadDisFlag);
       else
-        pushToMLCfromTLLC(ti, loadedLC, loadDisFlag);
+        pushToMLCfromTLLC(ti, loadedLC, targetinterval, loadDisFlag);
       return;
     }
 
@@ -10412,6 +11491,42 @@ namespace {
       Value* clock_args[2] = {clock, clockMsg};
       IR2.CreateCall(printint,ArrayRef<Value*>(clock_args,2));
 #endif
+
+      globalPointer = M->getGlobalVariable("pushCount");
+      clock = IR2.CreateLoad(globalPointer);
+      std::string pc("push_counter_string");
+      clockMsg = IR2.CreateGlobalStringPtr("CI Count", pc);
+#ifdef PRINT_LC_DEBUG_INFO
+      Value* pc_args[3] = {clock, clockMsg, funcName};
+      IR2.CreateCall(printint,ArrayRef<Value*>(pc_args,3));
+#else
+      Value* pc_args pc_args[2] = {clock, clockMsg};
+      IR2.CreateCall(printint,ArrayRef<Value*>(pc_args,2));
+#endif
+
+      /* Print the occurrence counters for debugging purpose - prints counters instrumented in blocks whose hit count needs to be known */
+      int index = 0;
+      char counterPrefix[] = "occurrences";
+      char counterName[32];
+      for(auto fname : debugBBList) {
+        for(auto bname : *(fname.second)) {
+          index++;
+          sprintf(counterName, "%s%d", counterPrefix, index);
+          errs() << "Printing counter " << counterName << " for Function " << fname.first << ", Block " << bname << "\n";
+
+          GlobalVariable *globalPointer = M->getGlobalVariable(counterName);
+          LoadInst *clock = IR2.CreateLoad(globalPointer);
+          std::string slc("debug_counter");
+          llvm::Value *clockMsg = IR2.CreateGlobalStringPtr("Block Occurrence Count", slc);
+#ifdef PRINT_LC_DEBUG_INFO
+          Value* clock_args[3] = {clock, clockMsg, funcName};
+          IR2.CreateCall(printint,ArrayRef<Value*>(clock_args,3));
+#else
+          Value* clock_args[2] = {clock, clockMsg};
+          IR2.CreateCall(printint,ArrayRef<Value*>(clock_args,2));
+#endif
+        }
+      }
     }
 
     void createPrintCalls(Module &M) { /* deprecated */
@@ -10547,6 +11662,119 @@ namespace {
       fout.close();
     }
 
+    bool readDebugInfoFromFile(char* fileName, std::map<std::string, SmallVector<std::string,32> *> &storageDS) {
+
+      std::ifstream fin;
+      fin.open(fileName);
+      if (!fin.good())
+        return false;
+
+      while (!fin.eof())
+      {
+        char buf[128];
+        char *token1, *token2;
+        fin.getline(buf, 128);
+        std::string str(buf);
+        if (std::string::npos != str.find(':')) {
+          token1 = strtok(buf, ":");
+          if(token1) {
+            std::string funcName(token1); 
+            token2 = strtok(0, ":");
+            std::string blockName(token2); 
+            if(storageDS.end() == storageDS.find(funcName)) {
+              storageDS[funcName] = new SmallVector<std::string, 32>();
+            }
+            storageDS[funcName]->push_back(blockName);
+          }
+        }
+      }
+
+      errs() << "Debug Info read from file " << fileName << ":-\n";
+      for(auto fname : storageDS) {
+        for(auto bname : *(fname.second)) {
+          errs() << "Function " << fname.first << ", Block " << bname << "\n";
+        }
+      }
+      fin.close();
+
+      return true;
+    }
+
+    void readDebugInfo(Module &M) {
+
+      char instrFile[] = "/local_home/temp/instrument_list.txt";
+      if(!readDebugInfoFromFile(instrFile, debugInstrList)) {
+        errs() << "Could not find debug information file " << instrFile << " about blocks to be instrumented even in pragma disabled sections\n";
+      }
+
+      char noInstrFile[] = "/local_home/temp/no_instrument_list.txt";
+      if(!readDebugInfoFromFile(noInstrFile, debugNoInstrList)) {
+        errs() << "Could not find debug information file " << noInstrFile << " about blocks to not be instrumented along with those in pragma disabled sections\n";
+      }
+
+      char noLoopTransformFile[] = "/local_home/temp/no_loop_transform_list.txt";
+      if(!readDebugInfoFromFile(noLoopTransformFile, debugNoLoopTransformList)) {
+        errs() << "Could not find debug information file " << noLoopTransformFile << " about loops that should not be transformed\n";
+      }
+
+      char noLoopInstrFile[] = "/local_home/temp/no_loop_instr_list.txt";
+      if(!readDebugInfoFromFile(noLoopInstrFile, debugNoLoopInstrList)) {
+        errs() << "Could not find debug information file " << noLoopInstrFile << " about loops that should not be instrumented - might lead to bad interval accuracy\n";
+      }
+
+      char bbInstrFile[] = "/local_home/temp/count_occurrences.txt";
+      if(!readDebugInfoFromFile(bbInstrFile, debugBBList)) {
+        errs() << "Could not find basic block information file " << bbInstrFile << " to instrument for counting occurrences\n";
+      }
+      else {
+        int index = 0;
+        char counterPrefix[] = "occurrences";
+        char counterName[32];
+        auto initVal = llvm::ConstantInt::get(M.getContext(), llvm::APInt(64, 0, false));
+        for(auto fname : debugBBList) {
+          for(auto bname : *(fname.second)) {
+            index++;
+            sprintf(counterName, "%s%d", counterPrefix, index);
+            errs() << "Initialize counter " << counterName << " for Function " << fname.first << ", Block " << bname << "\n";
+            GlobalVariable *cc = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, counterName);     
+            cc->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+            if(DefineClock) { 
+              cc->setInitializer(initVal);
+            }
+          }
+        }
+      }
+    }
+
+    void instrumentDebugCounters(Module &M) {
+      int index = 0;
+      char counterPrefix[] = "occurrences";
+      char counterName[32];
+      for(auto &F : M) {
+        for(auto fname : debugBBList) {
+          if(F.getName().compare(fname.first)!=0)
+            continue;
+          for(auto &BB : F) {
+            for(auto bname : *(fname.second)) {
+              if(BB.getName().compare(bname)!=0)
+                continue;
+              index++;
+              sprintf(counterName, "%s%d", counterPrefix, index);
+              errs() << "Instrument counter " << counterName << " for Function " << fname.first << ", Block " << bname << "\n";
+              GlobalVariable *cc = nullptr;
+              LoadInst *ccLoad = nullptr;
+              IRBuilder<> IR(BB.getFirstNonPHI());
+              cc = F.getParent()->getGlobalVariable(counterName);
+              ccLoad = IR.CreateLoad(cc);
+              Value *valOne = IR.getInt64(1);
+              Value *ccInc = IR.CreateAdd(valOne, ccLoad);
+              IR.CreateStore(ccInc, cc);  
+            }
+          }
+        }
+      }
+    }
+
     bool readCost() {
       /* There may not be any library cost file supplied */
       if(InCostFilePath.empty()) {
@@ -10661,25 +11889,56 @@ namespace {
 
       GlobalVariable *lc = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "LocalLC");     
       lc->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+#ifdef NEW_PROBE
+      GlobalVariable *nextIntv = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "NextInterval");     
+      nextIntv->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+      if(DefineClock) { 
+        nextIntv->setInitializer(initVal);
+      }
+#endif
+#ifdef CYCLES_ACCURATE
+      GlobalVariable *irIncr = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "LastIRIncr");     
+      irIncr->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+      if(DefineClock) { 
+        irIncr->setInitializer(initVal);
+      }
+#endif
+#if 0
       if(DefineClock) { 
         lc->setInitializer(initVal);
       }
+#endif
 
+#if 0
       GlobalVariable *interrupt_disabled_count = new GlobalVariable(M, Type::getInt32Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "lc_disabled_count");
       interrupt_disabled_count->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+      // The variable is now maintained in the CI library
       if(DefineClock) {
         interrupt_disabled_count->setInitializer(initVal32);
       }
+#endif
+
+      GlobalVariable *ci_reset_ir_interval = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_reset_ir_interval", nullptr, GlobalValue::GeneralDynamicTLSModel, 0, true);     
+      //GlobalVariable *ci_reset_ir_interval = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_reset_ir_interval");
+      //ci_reset_ir_interval->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+
+      GlobalVariable *ci_cycles_threshold = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_cycles_threshold", nullptr, GlobalValue::GeneralDynamicTLSModel, 0, true);     
+      //GlobalVariable *ci_cycles_threshold = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_cycles_threshold");     
+      //ci_cycles_threshold->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+
+      GlobalVariable *ci_ir_interval = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_ir_interval", nullptr, GlobalValue::GeneralDynamicTLSModel, 0, true);     
+      //GlobalVariable *ci_ir_interval = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_ir_interval");     
+      //ci_ir_interval->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
 
 #ifdef PROFILING
-      errs() << "Creating commitCount variable for profiling!!";
+      errs() << "Creating commitCount & pushCount for profiling!!";
       GlobalVariable *cc = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "commitCount");     
-      //GlobalVariable *pc = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "pushCount");     
+      GlobalVariable *pc = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "pushCount");     
       cc->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
-      //pc->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+      pc->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
       if(DefineClock) { 
         cc->setInitializer(initVal);
-        //pc->setInitializer(initVal);
+        pc->setInitializer(initVal);
       }
 #endif
 
@@ -10886,6 +12145,7 @@ namespace {
       return val;
     }
 
+    /* Naive instrumentation */
     void instrumentAllBlocks(Module &M) {
       errs() << "Instrumenting all blocks\n";
 
@@ -10918,7 +12178,7 @@ namespace {
           //int instCost = std::distance(B.begin(), B.end());
           int instCost = 0;
           for(auto &bbI : B) {
-            if(!isa<PHINode>(&bbI)) {
+            if(!isNOOPInstruction(&bbI)) {
               if(isa<LoadInst>(&bbI) || isa<StoreInst>(&bbI)) {
                 instCost += MemOpsCost;
               }
@@ -10929,8 +12189,8 @@ namespace {
                 instCost++;
             }
           }
-          costMap[I] = instCost;
-          //errs() << "Storing cost " << instCost << " for basic block " << B.getName() << " of function " << F.getName() << "\n";
+          costMap[I] = instCost + getProbeFixedInstrCost();
+          errs() << "Storing cost " << instCost << " for basic block " << B.getName() << " of function " << F.getName() << "\n";
         }
 
         /* Instrument costs */
@@ -10943,16 +12203,16 @@ namespace {
             Value *val = Builder.getInt64(instCount);
             switch(InstGranularity) {
               case NAIVE_INTERMEDIATE:
-                instrumentIfLCEnabled(I, PUSH_ON_CYCLES, val);
+                instrumentProbe(I, PUSH_ON_CYCLES, val);
                 break;
               case NAIVE_HEURISTIC_FIBER:
                 instrumentGlobal(I, ALL_IR, val);
                 break;
               case NAIVE_CYCLES:
-                instrumentIfLCEnabled(I, INCR_ON_CYCLES);
+                instrumentProbe(I, INCR_ON_CYCLES);
                 break;
               default: 
-                instrumentIfLCEnabled(I, ALL_IR, val);
+                instrumentProbe(I, ALL_IR, val);
                 break;
             }
           }
@@ -10971,6 +12231,82 @@ namespace {
       }
     }
 
+    void instrumentAllInstructions(Module &M) {
+      errs() << "Instrumenting all instructions\n";
+
+      initializeLastCycleTL(M);
+
+      for(auto &F : M) {
+        if(F.isDeclaration()) continue;
+
+        if(isRestrictedFunction(&F)) continue;
+
+        /* Initialize stat to 0 for every function */
+        instrumentedInst = 0;
+
+        /* Create local variables for loading & storing the thread local counter & flag */
+        initializeLocals(&F);
+
+        /* Find costs */
+        std::map<Instruction*, int> costMap;
+        for(auto &B : F) {
+          Instruction *I = B.getTerminator();
+          for(auto &bbI : B) {
+            int instCost = 0;
+            if(!isNOOPInstruction(&bbI)) {
+              if(isa<LoadInst>(&bbI) || isa<StoreInst>(&bbI)) {
+                instCost = MemOpsCost;
+              }
+              else if(checkIfExternalLibraryCall(&bbI)) {
+                instCost = getLibCallCost();
+              }
+              else 
+                instCost = 1;
+            }
+
+            if(instCost) {
+              costMap[I] = instCost;
+              errs() << "Storing cost " << instCost << " for Inst << " << *I << " basic block " << B.getName() << " of function " << F.getName() << "\n";
+            }
+          }
+        }
+
+        /* Instrument costs */
+        for(auto it = costMap.begin(); it!=costMap.end(); it++) {
+          Instruction *I = it->first;
+          int instCount = it->second;
+          if(instCount!=0) {
+            //errs() << "Loading cost " << instCount << " for basic block " << I->getParent()->getName() << " of function " << I->getFunction()->getName() << "\n";
+            IRBuilder<> Builder(I);
+            Value *val = Builder.getInt64(instCount + getProbeFixedInstrCost());
+            switch(InstGranularity) {
+              case ALL_INST_INTERMEDIATE:
+                instrumentProbe(I, PUSH_ON_CYCLES, val);
+                break;
+              case ALL_INST_TL: 
+                instrumentProbe(I, ALL_IR, val);
+                break;
+              default:
+                errs() << "For instrumenting all instructions, type " << InstGranularity << " is not implemented. Aborting!";
+                exit(1);
+            }
+          }
+        }
+
+        /* Compute stats for naive */
+        computeCostEvalStats(&F); // only because of computeInstrStats's dependence on the Fstat structure created by it
+        computeInstrStats(&F);
+
+        /* instrument locals */
+        instrumentLocals(&F);
+
+        if(InstGranularity == NAIVE_ACCURATE) {
+          instrumentLibCallsWithCycleIntrinsic(&F);
+        }
+      }
+    }
+
+#if 0
     void replaceCIConfigCalls(Function &F) {
       Module *M = F.getParent();
       for(inst_iterator I = inst_begin(F), E = inst_end(F); I != E; I++) {
@@ -11010,7 +12346,6 @@ namespace {
               }
               Builder.CreateStore(disFlagVal, clockDisabledFlag);
               instToDel->eraseFromParent();
-
               /* once the new branch has been instrumented, the inst_iterators will be malformed, & so we start over with a recursive call */
               replaceCIConfigCalls(F);
               break;
@@ -11019,6 +12354,7 @@ namespace {
         }
       }
     }
+#endif
 
     bool checkIfBackedge(BasicBlock* BB) {
 
@@ -11274,6 +12610,7 @@ namespace {
 
         if(numPreds) {
           int avgCost = (sumCost/numPreds);
+          //int avgCost = maxCost;
           if(avgCost) {
             avgCost += currCost;
             errs() << "Average cost (including block cost) for block " << currBB->getName() << " : " << avgCost << "(Sum: " << sumCost << ", #Preds: " << numPreds << ")\n";
@@ -11323,14 +12660,14 @@ namespace {
           Instruction* firstCallInst = nullptr;
 
           for(auto &I : B) {
-            if(!isa<PHINode>(&I)) {
+            if(!isNOOPInstruction(&I)) {
               if(isa<LoadInst>(I) || isa<StoreInst>(I)) {
                 instCost += MemOpsCost;
               }
               else if (isa<CallInst>(&I)) {
                 if (checkIfExternalLibraryCall(&I))
                   instCost += ExtLibFuncCost;
-                else if(isa<DbgInfoIntrinsic>(I))
+                else if(isa<DbgInfoIntrinsic>(I) || isa<IntrinsicInst>(I))
                   instCost++;
                 else
                 {
@@ -11423,8 +12760,8 @@ namespace {
           int instCount = it->second;
           if(instCount!=-1) {
             IRBuilder<> Builder(I);
-            Value *val = Builder.getInt64(instCount);
-            instrumentIfLCEnabled(I, ALL_IR, val);
+            Value *val = Builder.getInt64(instCount + getProbeFixedInstrCost());
+            instrumentProbe(I, ALL_IR, val);
           }
         }
 
@@ -11469,13 +12806,10 @@ namespace {
           //errs() << "Func: " << F.getName() << ", BB: " << B.getName() << "\n";
           for(auto &I : B) {
             if (isa<CallInst>(&I)) {
-              if(isa<DbgInfoIntrinsic>(&I)) {
-                continue;
-              }
-              else if(checkIfExternalLibraryCall(&I))
+              if(checkIfExternalLibraryCall(&I))
                 costMap[&I] = ExtLibFuncCost;
               else
-                costMap[&I] = 1;
+                costMap[&I] = 1; // for intrinsic or internal calls
             }
           }
         }
@@ -11486,8 +12820,9 @@ namespace {
           int instCount = it->second;
           if(instCount) {
             IRBuilder<> Builder(I);
+            //Value *val = Builder.getInt64(instCount + getProbeFixedInstrCost());
             Value *val = Builder.getInt64(instCount);
-            instrumentIfLCEnabled(I, ALL_IR, val);
+            instrumentProbe(I, ALL_IR, val);
           }
         }
 
@@ -11549,7 +12884,7 @@ namespace {
 
         //errs() << "Starting legacy instrumentation\n";
         for(auto I : costMap) {
-          instrumentIfLCEnabled(I, INCR_ON_CYCLES);
+          instrumentProbe(I, INCR_ON_CYCLES);
         }
       }
     }
@@ -11565,6 +12900,7 @@ namespace {
 //#ifdef CRNT_DEBUG
       float thresh_perc = (float)FiberConfig/100;
       errs() << "Fiber config " << thresh_perc << " not used anymore\n";
+      errs() << "Using mem ops cost: " << MemOpsCost << "\n";
 #if 1
       if(ClockType == PREDICTIVE) {
         errs() << "********************** Clock Type: Predictive";
@@ -11594,6 +12930,9 @@ namespace {
           break;
         case NAIVE_TL:
           errs() << ", Instrumentation Granularity : Naive with Thread Local **********************\n";
+          break;
+        case ALL_INST_TL:
+          errs() << ", Instrumentation Granularity : All instructions with Thread Local **********************\n";
           break;
         case LEGACY_HEURISTIC:
           exit(1);
@@ -11630,6 +12969,9 @@ namespace {
         case NAIVE_INTERMEDIATE:
           errs() << ", Instrumentation Granularity : Naive intermediate **********************\n";
           break;
+        case ALL_INST_INTERMEDIATE:
+          errs() << ", Instrumentation Granularity : All instructions intermediate **********************\n";
+          break;
         case NAIVE_HEURISTIC_FIBER:
           errs() << ", Instrumentation Granularity : Naive TL Fiber **********************\n";
           break;
@@ -11641,7 +12983,7 @@ namespace {
           exit(1);
       }
 
-      errs() << "Running with configuration:\nPI: " << TargetInterval << ", CI: " << CommitInterval << ", Allowed Dev: " << ALLOWED_DEVIATION << ", Lib call cost: " << ExtLibFuncCost << ", Target Cycle: " << TargetIntervalInCycles << "\n";
+      errs() << "Running with configuration:\nTarget Interval in IR (unused): " << TargetInterval << ", Probe Interval: " << CommitInterval << ", Allowed Dev: " << ALLOWED_DEVIATION << ", Lib call cost: " << ExtLibFuncCost << ", Target Interval in Cycle (unused): " << TargetIntervalInCycles << "\n";
 #else
       if((ClockType != PREDICTIVE) && (ClockType != INSTANTANEOUS)) {
         errs() << "Invalid clock type!";
@@ -11781,8 +13123,6 @@ namespace {
           //assert((TargetInterval>=TargetIntervalInCycles) && "IR interval should be greater than or equal to Cycle interval");
           gIsOnlyThreadLocal = true;
           instrumentAllBlocks(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11793,8 +13133,6 @@ namespace {
           gIsOnlyThreadLocal = true;
           gUseReadCycles = true;
           instrumentAllBlocks(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11802,17 +13140,21 @@ namespace {
         case NAIVE: {
           gIsOnlyThreadLocal = false;
           instrumentAllBlocks(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
+        }
+
+        case ALL_INST_TL: 
+        case ALL_INST_INTERMEDIATE: 
+        {
+          gIsOnlyThreadLocal = true;
+          instrumentAllInstructions(M);
+          goto finishing_tasks;
         }
 
         case LEGACY_HEURISTIC: {
           gIsOnlyThreadLocal = false;
           instrumentLegacy(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11820,8 +13162,6 @@ namespace {
         case LEGACY_HEURISTIC_TL: {
           gIsOnlyThreadLocal = true;
           instrumentLegacy(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11829,8 +13169,6 @@ namespace {
         case LEGACY_ACCURATE: {
           gIsOnlyThreadLocal = true;
           instrumentLegacyAccurate(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11838,8 +13176,6 @@ namespace {
         case COREDET_HEURISTIC_TL: {
           gIsOnlyThreadLocal = true;
           instrumentCoredet(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11847,8 +13183,6 @@ namespace {
         case COREDET_HEURISTIC: {
           gIsOnlyThreadLocal = false;
           instrumentCoredet(M);
-          for(auto &F : M)
-            replaceCIConfigCalls(F);
           goto finishing_tasks;
           //return true;
         }
@@ -11896,6 +13230,10 @@ namespace {
 #ifdef CRNT_DEBUG
       errs() << "EVALUATION-PASS (in Callgraph order)\n";
 #endif
+#ifdef LC_DEBUG
+      errs() << "Reading Debug Info!!\n";
+      readDebugInfo(M);
+#endif
 
       for(auto funcInfo : CGOrderedFunc) {
         Function *F = M.getFunction(funcInfo.first);
@@ -11923,9 +13261,8 @@ namespace {
         }
       }
 
-      for(auto &F : M) {
-        replaceCIConfigCalls(F);
-      }
+      /* Only works when debug info is read using readDebugInfo */
+      instrumentDebugCounters(M);
 
       /* if a library is analysed, export its costs for use by its applications */
       if(checkIfInstGranIsOpt())

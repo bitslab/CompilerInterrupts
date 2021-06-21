@@ -1,6 +1,6 @@
 #!/bin/bash
 # this script is used for finding performance overhead comparison between CI and Hardware performance counters over varying target intervals (in cycles)
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"comp_with_hw_counters"}"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
 PLOTS_DIR="$CUR_PATH/plots"
@@ -11,19 +11,25 @@ CI_SETTINGS="2"
 PREFIX=""
 RUNS="${RUNS:-10}"
 OUTLIER_THRESHOLD="5"
+THREADS="1"
+#PREFIX="LD_PRELOAD=$LIBCALL_WRAPPER_PATH"
 
 INTERVALS="${INTERVALS:-"2000 5000 10000 15000 20000 50000 75000 100000 150000 300000 500000 750000 1000000"}"
-
-#CI_SETTINGS="2"
 
 source $CUR_PATH/include.sh
 
 #1 - benchmark name, 2 - #thread, 3 - 0:orig run, 1:ci run
 # Do not print anything in this function as a value is returned from this
 summarize_overhead_runs() {
+
+  if [ $# -ne 6 ]; then
+    echo "summarize_overhead_runs() requires 6 arguments"
+  fi
+
   bench=$1
   thread=$2
   suffix_conf=$3
+  ci_setting=$4
 
   # Dry run
   dry_run_exp $bench $suffix_conf > /dev/null
@@ -40,7 +46,7 @@ summarize_overhead_runs() {
   for j in `seq 1 $RUNS`
   do
     # exp run
-    run_exp $bench $suffix_conf $thread > /dev/null
+    run_exp $bench $suffix_conf $thread $ci_setting $5 $6 > /dev/null
 
     time_in_us=`cat $OUT_FILE | grep "$bench runtime: " | cut -d ':' -f 2 | cut -d ' ' -f 2 | tr -d '[:space:]'`
 
@@ -78,54 +84,54 @@ summarize_overhead_runs() {
   avg_time_in_ms=`echo "scale=2;($avg_time_in_us/1000)" | bc`
   echo "Average: $avg_time_in_ms ms, average $avg_cycles cycles, average $avg_ir IR instructions" >> $CMD_LOG
   echo -n $avg_time_in_ms
-  if [ "$avg_cycles" != "" ]; then echo -ne "\t$avg_cycles"; fi
-  if [ "$avg_ir" != "" ]; then echo -ne "\t$avg_ir"; fi
+  if [ "$avg_cycles" != "0" ]; then echo -ne "\t$avg_cycles"; fi
+  if [ "$avg_ir" != "0" ]; then echo -ne "\t$avg_ir"; fi
 }
 
 perf_overhead() {
-  run_type=$1
-  thread=1
-  bench=$2
-  pi=$3
-  ci_setting=$4
 
-  if [ $run_type -eq 0 ] || [ $run_type -eq 2 ]; then
-    avg=$(summarize_overhead_runs $bench $thread 0)
-  else
-    avg=$(summarize_overhead_runs $bench $thread 1)
+  if [ $# -ne 4 ]; then
+    echo "perf_overhead() requires 4 arguments"
   fi
 
-  if [ $run_type -eq 0 ]; then
+  run_type=$1
+  thread=$THREADS
+  bench=$2
+  ci_setting=$3
+  intv=$4
+
+  avg=$(summarize_overhead_runs $bench $thread $run_type $ci_setting $intv $intv)
+
+  if [ $run_type -eq $PTHREAD_RUN ]; then
     EXP_FILE="$DIR/pthread-${bench}"
     echo -e "$avg" >> $EXP_FILE
-  elif [ $run_type -eq 1 ]; then
+  elif [ $run_type -eq $CI_RUN ]; then
     ci_str=$(get_ci_str_in_lower_case $ci_setting)
     EXP_FILE="$DIR/${ci_str}-${bench}"
-    echo -e "$pi\t$avg" >> $EXP_FILE
-  elif [ $run_type -eq 2 ]; then
+    echo -e "$intv\t$avg" >> $EXP_FILE
+  elif [ $run_type -eq $HW_PC_RUN ]; then
     EXP_FILE="$DIR/hwc-${bench}"
-    echo -e "$pi\t$avg" >> $EXP_FILE
+    echo -e "$intv\t$avg" >> $EXP_FILE
   fi
 }
 
 perf_orig_test() {
-  echo "Running original pthread program for $CYCLE cycles, CI Settings $CI_SETTINGS, single thread, app list: $*"
-  thread=1
+  echo "Running original pthread program for $CYCLE cycles, CI Settings $CI_SETTINGS, $THREADS thread, app list: $*"
+  thread=$THREADS
   for bench in $*; do
     echo "runtime" > $DIR/pthread-${bench}
-    echo "Running performance experiment for $bench with $thread threads & orig type" | tee -a $CMD_LOG
+    echo "Running performance experiment for $bench with $THREADS threads & orig type" | tee -a $CMD_LOG
     set_benchmark_info $bench
 
     build_orig $bench $thread
-    perf_overhead 0 $bench
+    perf_overhead $PTHREAD_RUN $bench 0 0
   done
 }
 
 perf_overhead_ci_test() {
-  echo "Experiment for Performance for $CYCLE cycles, CI Settings $CI_SETTINGS, 1 threads, app list: $*"
+  echo "Experiment for Performance for $CYCLE cycles, CI Settings $CI_SETTINGS, $THREADS threads, app list: $*"
 
-  thread=1
-  EXTRA_FLAGS="-DPERF_CNTR"
+  thread=$THREADS
 
   # Run with compiler interrupts
   for ci_setting in $CI_SETTINGS; do
@@ -133,30 +139,29 @@ perf_overhead_ci_test() {
       ci_str=$(get_ci_str_in_lower_case $ci_setting)
       echo -e "interval\truntime\tcycles\tir" > $DIR/${ci_str}-${bench}
       for interval in $INTERVALS; do
-        echo "Running performance experiment for $bench with target interval $interval, single thread & $ci_str type" | tee -a $CMD_LOG
+        echo "Running performance experiment for $bench with target interval $interval, $THREADS thread & $ci_str type" | tee -a $CMD_LOG
         set_benchmark_info $bench
 
-        ci=`echo "scale=0; $interval/5" | bc`
-        build_ci $bench $ci_setting $thread $interval $ci $interval
-        perf_overhead 1 $bench $interval $ci_setting
+        EXTRA_FLAGS="-DPERF_CNTR" build_ci $bench $ci_setting $thread $interval
+        perf_overhead $CI_RUN $bench $ci_setting $interval
       done
     done
   done
 }
 
 perf_overhead_hwc_test() {
-  echo "Experiment for Performance for $CYCLE cycles, CI Settings $CI_SETTINGS, 1 threads, app list: $*"
+  echo "Experiment for Performance for $CYCLE cycles, CI Settings $CI_SETTINGS, $THREADS threads, app list: $*"
 
-  thread=1
+  thread=$THREADS
   # Run with compiler interrupts
   for bench in $*; do
     echo -e "interval\truntime\tcycles\tret_inst" > $DIR/hwc-${bench}
     for interval in $INTERVALS; do
-      echo "Running performance experiment for $bench with target interval $interval, single thread & with hardware performance counters" | tee -a $CMD_LOG
+      echo "Running performance experiment for $bench with target interval $interval, $THREADS thread & with hardware performance counters" | tee -a $CMD_LOG
       set_benchmark_info $bench
 
-      build_hwc $bench $thread $interval
-      perf_overhead 2 $bench $interval
+      EXTRA_FLAGS="-DPAPI" build_orig $bench $thread
+      perf_overhead $HW_PC_RUN $bench 0 $interval
     done
   done
 }
@@ -165,43 +170,10 @@ plot_data() {
   mkdir -p $PLOTS_DIR
   plot_file="$PLOTS_DIR/perf-hwc.pdf"
 
-  command="set terminal pdf;"
-  command=$command"set key horizontal;"
-  command=$command"set output '$plot_file';"
-  command=$command"set style function linespoints;"
-  command=$command"set key center top;"
-  command=$command"set key samplen 2;"
-  command=$command"set datafile missing \"?\";"
-  command=$command"set key font \",16\";"
-  command=$command"set style line 1 lc rgb 'royalblue' lw 2 ps .75;"
-  command=$command"set style line 2 lc rgb 'red' lw 2 ps .75;"
-  command=$command"set xlabel 'average interval size (cycles)';"
-  command=$command"set key on horizontal;"
-  command=$command"set logscale x 2;"
-  command=$command"set key autotitle columnheader;"
-  command=$command"set ylabel 'overhead (%)';"
-  command=$command"set xlabel font \", 17\" offset -1,0,0;"
-  command=$command"set ylabel font \", 17\" offset 1,0,0;"
-  command=$command"set bmargin 5;"
-  command=$command"set yrange [0:500];"
-  #command=$command"set xrange [500:640000];"
-  command=$command"plot "
-
-  for bench in $*
-  do
-    CI_IN_FILE="$DIR/overhead-ci-${bench}"
-    #CI_CYCLES_IN_FILE="$DIR/overhead-ci-cycles-${bench}"
-    PAPI_IN_FILE="$DIR/overhead-hwc-${bench}"
-    command=$command" '$CI_IN_FILE' using 1:2 with lines ls 1 notitle,"
-    command=$command" '$PAPI_IN_FILE' using 1:2 with lp ls 2 notitle,"
-  done
-  command="${command:0:${#command}-1}"
-
-  command=$command";"
-
-  echo $command
-  echo $command | gnuplot
-  printf "${GREEN}Generated plot in $plot_file\n${NC}"
+  ci_path="$DIR/overhead-ci-*"
+  hwc_path="$DIR/overhead-hwc-*"
+  gnuplot -e "ofile='$plot_file'" -e "ci_path='$ci_path'" -e "hwc_path='$hwc_path'" plot_hwc.gp
+  printf "${GREEN}Generated summary overhead data in $ci_path and $hwc_path & plot in $plot_file\n${NC}"
 }
 
 # Assumption: Order of benchmarks in all files are the same
@@ -220,18 +192,20 @@ process_perf_data() {
     hwc_ofile="$DIR/overhead-hwc-${bench}"
 
     pthread_runtime=`awk 'NR==2 {printf "%.2f", $0}' $pthread_file`
-    awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $ci_file > $ci_ofile
+    awk -v orig=$pthread_runtime '
+    NR>1 {
+      if($3=="") {printf "?\t"} else {printf "%.2f\t", $3}
+      if($2==0) {printf "?\n"} else {printf "%.2f\n", ($2-orig)*100/orig}
+      }' $ci_file > $ci_ofile
     #awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $ci_cycles_file > $ci_cycles_ofile
-    awk -v orig=$pthread_runtime 'NR>1 {printf "%.2f\t%.2f\n", $3, ($2-orig)*100/orig}' $hwc_file > $hwc_ofile
+    awk -v orig=$pthread_runtime '
+    NR>1 {
+      if($3=="") {printf "?\t"} else {printf "%.2f\t", $3}
+      if($2==0) {printf "?\n"} else {printf "%.2f\n", ($2-orig)*100/orig}
+    }' $hwc_file > $hwc_ofile
   done
 
   plot_data $*
-
-  if [ 0 -eq 1 ]; then
-    gnuplot -e "ofile='$plot_file'" -e "ci_file='$ci_ofile'" -e "hwc_file='$hwc_ofile'" plot_hwc.gp
-    printf "${GREEN}Generated summary overhead data in $ci_ofile and $hwc_ofile & plot in $plot_file\n${NC}"
-    cat $summary_file
-  fi
 }
 
 mkdir -p $PLOTS_DIR
@@ -259,6 +233,7 @@ if [ $# -ne 0 ]; then
   fi
 fi
 
+#build_libcall_wrapper
 perf_orig_test $benches
 perf_overhead_ci_test $benches
 perf_overhead_hwc_test $benches

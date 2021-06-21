@@ -34,11 +34,11 @@ void init_stats(int);
 #define NUM_HWEVENTS 2
 #define TOT_INST_IDX 0
 #define TOT_CYC_IDX 1
+#define MAX_CPU 56
 #define MAX_COUNT 128 // Change this according to the needs of the benchmark. It represents max number of threads created
 
-extern int event_set[MAX_COUNT];
-extern __thread int counter_id;
-extern int counter_id_alloc;
+extern __thread int events[NUM_HWEVENTS];
+extern __thread int event_set[MAX_COUNT];
 
 typedef void (*ic_overflow_handler_t)(int, void *, long_long, void *);
 int __get_id_and_increment();

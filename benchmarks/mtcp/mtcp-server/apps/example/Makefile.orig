@@ -1,7 +1,6 @@
 # TODO: Make this Makefile.in pretty
 
 TARGETS = epserver epwget
-CC_OPT=-g -O3 -Wall -Werror -fgnu89-inline -DUNMOD
 DPDK=1
 PS=0
 NETMAP=0
@@ -11,6 +10,8 @@ CCP=
 
 CI_LIB_PATH=$(ROOT)/../../../../../lib
 CI_SRC_PATH=$(ROOT)/../../../../../src
+CFLAGS=-DIR_INTV=0 -DCYCLE_INTV=0
+CC_OPT=-g -O3 -Wall -Werror -fgnu89-inline -DUNMOD
 
 # For CI
 export ROOT ?= ${PWD}

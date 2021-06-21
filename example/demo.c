@@ -11,7 +11,9 @@
 
 void interrupt_handler(long ic) {
   /* This print should only appear in the CI integrated build */
-  printf("Compiler interrupt called with instruction count %ld\n", ic);
+  static previous_ic=0;
+  printf("Compiler interrupt called with instruction count %ld\n", ic-previous_ic);
+  previous_ic=ic;
 }
 
 void increment(void *arg)
@@ -55,7 +57,7 @@ void decrement(void *arg)
 int main(int argc, char **argv) {
 
   /* register interrupt handler */
-  register_ci(interrupt_handler);
+  register_ci(1000, 1000, interrupt_handler);
 
   pthread_t t[MAX_THREADS-1];
   int num_threads = MAX_THREADS;

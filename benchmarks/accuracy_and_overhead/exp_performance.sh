@@ -1,6 +1,6 @@
 #!/bin/bash
 # this script is used for finding performance impact of CI, for a configuration to reach the target interval in cycles
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"overhead"}"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
 PLOTS_DIR="$CUR_PATH/plots"
@@ -8,10 +8,9 @@ PLOTS_DIR="$CUR_PATH/plots"
 CYCLE="${CYCLE:-5000}"
 THREADS="${THREADS:-"1 32"}"
 CI_SETTINGS="12 2 6 10 4"
-EXTRA_FLAGS="-DAVG_STATS"
 PREFIX=""
-RUNS="${RUNS:-10}"
-OUTLIER_THRESHOLD="5"
+TOTAL_RUNS="${TOTAL_RUNS:-10}"
+OUTLIER_THRESHOLD="20"
 
 CI_SETTINGS_FOR_INTV_COMP="2 12"
 LARGE_INTV="1000000"
@@ -24,9 +23,26 @@ source $CUR_PATH/include.sh
 #1 - benchmark name, 2 - #thread, 3 - 0:orig run, 1:ci run
 # Do not print anything in this function as a value is returned from this
 summarize_overhead_runs() {
+
+  if [ $# -ne 6 ]; then
+    echo "summarize_overhead_runs() requires 6 arguments"
+  fi
+
   bench=$1
   thread=$2
   suffix_conf=$3
+  ci_setting=$4
+
+  if [ $thread -gt 1 ]; then
+    long_running_app=$(is_a_long_duration_app $bench)
+    if [ $long_running_app -eq 1 ]; then
+      RUNS=10
+    else
+      RUNS=50
+    fi
+  else
+    RUNS=$TOTAL_RUNS
+  fi
 
   # Dry run
   dry_run_exp $bench $suffix_conf > /dev/null
@@ -40,51 +56,54 @@ summarize_overhead_runs() {
   fi
 
   declare duration_set
+  failed_runs=0
   for j in `seq 1 $RUNS`
   do
     # exp run
-    run_exp $bench $suffix_conf $thread > /dev/null
+    #PREFIX="LD_PRELOAD=$LIBCALL_WRAPPER_PATH" run_exp $bench $suffix_conf $thread $ci_setting $5 $6 > /dev/null
+    run_exp $bench $suffix_conf $thread $ci_setting $5 $6 > /dev/null
 
     time_in_us=`cat $OUT_FILE | grep "$bench runtime: " | cut -d ':' -f 2 | cut -d ' ' -f 2 | tr -d '[:space:]'`
 
     if [ -z "$time_in_us" ]; then
-      echo "Run failed. Output: " >> $CMD_LOG
+      printf "${RED}Run $j: Run failed for $bench. Output: ${NC}\n" >> $CMD_LOG
       cat $OUT_FILE >> $CMD_LOG
-      exit
+      printf "${RED}Moving on to next run!${NC}\n" >> $CMD_LOG
+      failed_runs=`expr $failed_runs + 1`
+      continue
     fi
 
     duration_set="$duration_set $time_in_us"
     echo "Run $j: $time_in_us us" >> $CMD_LOG
   done
 
-  avg_time_in_us=$(get_avg $duration_set)
-  header="Outliers from runs of $bench with thread $thread" get_outliers $avg_time_in_us $duration_set
+  avg_time_in_us=$(get_median $duration_set)
+  header="Outliers from runs of $bench with thread $thread, type $suffix_conf/$ci_setting" get_outliers $avg_time_in_us $duration_set
   avg_time_in_ms=`echo "scale=2;($avg_time_in_us/1000)" | bc`
   echo "Average: $avg_time_in_ms ms" >> $CMD_LOG
+  echo "Total failed runs for $bench with thread $thread, type $suffix_conf/$ci_setting: $failed_runs" >> $CMD_LOG
   echo $avg_time_in_ms
 }
 
 perf_overhead() {
+
+  if [ $# -ne 6 ]; then
+    echo "perf_overhead() requires 6 arguments"
+  fi
+
   run_type=$1
   bench=$2
   thread=$3
   ci_setting=$4
 
-  if [ $run_type -eq 0 ]; then
+  if [ $run_type -eq $PTHREAD_RUN ]; then
     EXP_FILE="$DIR/pthread-th$thread"
-  elif [ $run_type -eq 1 ]; then
+  elif [ $run_type -eq $CI_RUN ]; then
     ci_str=$(get_ci_str_in_lower_case $ci_setting)
-    EXP_FILE="$DIR/${ci_str}-th$thread"
-  elif [ $run_type -eq 2 ]; then
-    ci_str=$(get_ci_str_in_lower_case $ci_setting)
-    EXP_FILE="$DIR/no-interrupts-no-probes-${ci_str}-th$thread"
-  else
-    ci_str=$(get_ci_str_in_lower_case $ci_setting)
-    EXP_FILE="$DIR/no-interrupts-${ci_str}-th$thread"
+    EXP_FILE="$DIR/${FILE_PREFIX}${ci_str}-th$thread"
   fi
 
-  avg_duration=$(summarize_overhead_runs $bench $thread $run_type)
-
+  avg_duration=$(summarize_overhead_runs $bench $thread $run_type $ci_setting $5 $6)
   echo -e "$bench\t$avg_duration" >> $EXP_FILE
 }
 
@@ -94,7 +113,7 @@ perf_overhead_of_ci_calls() {
     # Compare with very high push & cycle interval
     for ci_setting in $CI_SETTINGS_FOR_INTV_COMP; do
       ci_str=$(get_ci_str_in_lower_case $ci_setting)
-      rm -f $DIR/no-interrupts-no-probes-${ci_str}-th$thread
+      rm -f $DIR/no-interrupts-${ci_str}-th$thread
 
       for bench in $*; do
         ci_str=$(get_ci_str $ci_setting)
@@ -102,15 +121,9 @@ perf_overhead_of_ci_calls() {
         set_benchmark_info $bench
 
         orig_pi=$(read_tune_param $bench $ci_setting $thread)
-        SMALL_CI=`echo "scale=0; $orig_pi/5" | bc`
-        #LARGE_CI=`echo "scale=0; $LARGE_INTV/5" | bc`
 
-        BACKUP_CYCLE=$CYCLE
-        CYCLE=$LARGE_INTV
-        build_ci $bench $ci_setting $thread $LARGE_INTV $SMALL_CI
-        CYCLE=$BACKUP_CYCLE
-
-        perf_overhead 2 $bench $thread $ci_setting
+        CYCLE=$LARGE_INTV EXTRA_FLAGS="-DAVG_STATS" build_ci $bench $ci_setting $thread $LARGE_INTV
+        FILE_PREFIX="no-interrupts-" perf_overhead $CI_RUN $bench $thread $ci_setting $LARGE_INTV $LARGE_INTV
       done
     done
   done
@@ -125,7 +138,7 @@ perf_orig_test() {
       set_benchmark_info $bench
 
       build_orig $bench $thread
-      perf_overhead 0 $bench $thread
+      perf_overhead $PTHREAD_RUN $bench $thread 0 0 0
     done
   done
 }
@@ -145,8 +158,8 @@ perf_overhead_test() {
         echo "Running performance experiment for $bench with $thread threads & $ci_str type" | tee -a $CMD_LOG
         set_benchmark_info $bench
 
-        build_ci $bench $ci_setting $thread
-        perf_overhead 1 $bench $thread $ci_setting
+        EXTRA_FLAGS="-DAVG_STATS" build_ci $bench $ci_setting $thread
+        perf_overhead $CI_RUN $bench $thread $ci_setting 0 $CYCLE
       done
     done
   done
@@ -174,7 +187,7 @@ process_perf_data() {
             else
               printf("%s\t%0.2f%\n", $1, 0); 
           }' \
-      $pthread_file $ci_file > $ofile
+      $pthread_file $ci_file | tee $ofile
 
       gawk -v str=$(get_ci_str $ci_setting) \
         'ARGIND==1 {bench[$1]=$2}
@@ -203,7 +216,7 @@ process_perf_intv_diff_data() {
       ci_str=$(get_ci_str_in_lower_case $ci_setting)
       ci_file="$DIR/${ci_str}-th$thread"
       pthread_file="$DIR/pthread-th$thread"
-      large_intv_ci_file="$DIR/no-interrupts-no-probes-${ci_str}-th$thread"
+      large_intv_ci_file="$DIR/no-interrupts-${ci_str}-th$thread"
       ofile="$DIR/large_interval_overhead-${ci_str}-th$thread"
 
       printf "${GREEN}Generating overhead file $ofile from $pthread_file & $large_intv_ci_file\n${NC}"
@@ -235,7 +248,7 @@ create_absolute_runtime_table() {
       for p in $prefix
       do
         ifile="$DIR/${p}-th${th}"
-        rt=`grep $bench $ifile | awk '{print $2}'`
+        rt=`grep $bench $ifile | awk '{print int($2)}'`
         echo -ne " $sep $rt" >> $out_file
       done
     done
@@ -272,6 +285,7 @@ perf_orig_test $benches
 perf_overhead_test $benches
 process_perf_data
 create_absolute_runtime_table $benches
+print_end_notice
 
 #perf_overhead_of_ci_calls $benches
 #process_perf_intv_diff_data

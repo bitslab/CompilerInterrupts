@@ -1,7 +1,6 @@
 # TODO: Make this Makefile.in pretty
 
 TARGETS = epserver epwget
-CC_OPT=-g -O3 -Wall -Werror -fgnu89-inline -DCI -DUNMOD
 #CC=gcc -g -O3 -Wall -Werror -fgnu89-inline -DCI
 DPDK=1
 PS=0
@@ -13,13 +12,15 @@ CCP=
 # For CI
 export ROOT ?= ${PWD}
 export INST_LEVEL ?= 2
-export PUSH_INTV ?= 1000
-export CMMT_INTV ?= 200
-export ALLOWED_DEVIATION ?= 0
+export PUSH_INTV ?= 10000
+export CMMT_INTV ?= 1000
+export ALLOWED_DEVIATION ?= 100
 export CLOCK_TYPE ?= 1
 export CONFIG = 2
 export FIBER_CONFIG ?= 0
 export CYCLE_INTV ?= 5000
+CFLAGS=-DIR_INTV=$(PUSH_INTV) -DCYCLE_INTV=$(CYCLE_INTV)
+CC_OPT=-g -O3 -Wall -Werror -fgnu89-inline -DCI -DUNMOD
 
 CI_LIB_PATH=$(ROOT)/../../../../../lib
 CI_SRC_PATH=$(ROOT)/../../../../../src

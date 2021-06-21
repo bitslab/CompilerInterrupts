@@ -18,6 +18,14 @@ run_server_delegation_client_req_latency() {
   popd
 }
 
+profile_for_matching_accuracy() {
+  pushd accuracy_and_overhead
+    ./profile_ir_cycles_ratio.sh
+    echo "Predicted IR intervals that can produce a 5000 cycle interrupt interval are exported in files with prefix predicted-*-5000.txt in $CUR_PATH/accuracy_and_overhead/"
+    echo "These generated files are necessary for the accuracy & overhead experiments!"
+  popd
+}
+
 run_interval_accuracy_test() {
   pushd accuracy_and_overhead
     ./exp_interval_accuracy.sh
@@ -62,10 +70,14 @@ run_mtcp() {
   popd
 }
 
-run_server_delegation_fetch_n_add
-run_server_delegation_client_req_latency
+profile_for_matching_accuracy # run this before the next 3 experiments for overhead & accuracy
 run_interval_accuracy_test
 run_performance_overhead_test
 run_hw_counters_test
+
+run_server_delegation_fetch_n_add
+run_server_delegation_client_req_latency
+
 run_shenango
+
 run_mtcp

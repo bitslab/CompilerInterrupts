@@ -81,7 +81,7 @@ run_delegation_CI_variant(){
   printf "\n\n\"CI-cycles\"\n" > $DATA_FILE
   for cl in 2 4 8 16 32 54; do
     for i in $(seq 1 $ITERATIONS); do
-      ./ffwd_add_iterations_lg_ck_ci_${CI}_preemptive_user_thread_general -s 1 -t $(($cl*$FIBERS_PC)) -p $cl -w 10 -i $CI > /dev/null
+      ./ffwd_add_iterations_lg_ck_ci_${CI}_preemptive_user_thread_general -s 1 -t $(($cl*$FIBERS_PC)) -p $cl -w 10 -i $CI -r $(($CI / 2)) -c $(($CI / 2)) > /dev/null
       cat $OUT_FILE | awk '/clients_nr|hw_threads|server_nr/ {printf "%d ",$2} /ml_ops_per_sec/ {print $2}' >> $TEMP_FILE 
       rm -f $OUT_FILE
       sleep 1s

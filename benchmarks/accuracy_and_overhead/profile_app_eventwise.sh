@@ -1,8 +1,8 @@
 #!/bin/bash
 # this script is meant to profile the events marking the beginning & end of compiler interrupt handler. It is important to build all the benchmarks first, in the CI mode that needs to be debugged. Also, to simultaneously profile the app based on intervals, run the profile_app_intervalwise.sh first, & then start this script. Some of the benchmarks like the water ones, don't seem to work through the script, but works manually, not sure why.
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"perf_profile"}"
-DIR=$CUR_PATH/microbenchmark_stats/$SUB_DIR
+DIR=$CUR_PATH/exp_results/$SUB_DIR
 
 CYCLE="${CYCLE:-5000}"
 THREAD=1
@@ -87,7 +87,7 @@ perf_profile() {
   PREFIX="LD_PRELOAD=$LIBCALL_WRAPPER_PATH $PREFIX"
 
   printf "${GREEN}Experiment run for CI:-\n${NC}" | tee -a $CMD_LOG
-  run_exp $bench $suffix_conf $thread
+  run_exp $bench $suffix_conf $thread $ci_setting 0 $CYCLE
 
   perf probe -d ci_start -d ci_end__return
   perf probe -l
@@ -128,7 +128,7 @@ strace_profile() {
   PREFIX="strace -T -t -k -E LD_PRELOAD=$LIBCALL_WRAPPER_PATH -o $ofile "
 
   printf "${GREEN}Experiment run for CI:-\n${NC}" | tee -a $CMD_LOG
-  run_exp $bench $suffix_conf $thread
+  run_exp $bench $suffix_conf $thread $ci_setting 0 $CYCLE
 
   sleep 10
   echo -e "\n\n\n\n\n"

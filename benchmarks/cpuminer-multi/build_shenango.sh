@@ -24,8 +24,8 @@ cpuminer_shenango_build() {
   cp Makefile.lc Makefile
   make clean -j 20
   cyc=$1
-  pi=`expr $cyc / 4`
-  cmt_intv=`expr $pi / 5`
+  pi=`expr $cyc \* 4`
+  cmt_intv=`expr $cyc / 20`
   echo "PI: $pi, CI: $cmt_intv, CYC: $cyc"
   PUSH_INTV=$pi CMMT_INTV=$cmt_intv CYCLE_INTV=$cyc make -j 20 > make_log_$1 2>make_err_$1
   err_status=`echo $?`

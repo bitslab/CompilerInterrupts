@@ -73,6 +73,7 @@ check_all_builds() {
   fi
   if [ $err -ne 0 ]; then
     echo "$err number of builds failed. Check build_err_log for details."
+    cat build_err_log
     exit
   fi
 }

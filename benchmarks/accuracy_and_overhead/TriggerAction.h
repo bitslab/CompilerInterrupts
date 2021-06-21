@@ -1,4 +1,6 @@
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #include <sys/types.h>
 #include "TriggerActionDecl.h"
 
@@ -35,16 +37,11 @@ __thread double last_avg_ic = 0;
 __thread double last_avg_ret_ic = 0;
 __thread double last_avg_tsc = 0;
 
-__thread int counter_id = 0;
-int counter_id_alloc = 0;
-int __get_id_and_increment() {
-  //using the gcc atomic built-ins
-  return __sync_fetch_and_add(&counter_id_alloc, 1);
-}
+__thread int thread_id = 0;
 
 // To heapify a subtree rooted with node i which is
 // an index in arr[]. n is size of heap
-void heapify(long arr[], int n, int i)
+static void heapify(long arr[], int n, int i)
 {
     int largest = i; // Initialize largest as root
     int l = 2*i + 1; // left = 2*i + 1
@@ -71,7 +68,7 @@ void heapify(long arr[], int n, int i)
 }
 
 // main function to do heap sort
-void heapSort(long arr[], int n)
+static void heapSort(long arr[], int n)
 {
     // Build heap (rearrange array)
     for (int i = n / 2 - 1; i >= 0; i--)
@@ -90,11 +87,45 @@ void heapSort(long arr[], int n)
     }
 }
 
+static int get_ir_interval() {
+  char *ir_interval = getenv("CI_IR_INTERVAL");
+  assert(ir_interval && "CI_IR_INTERVAL environment variable is not set!");
+  int interval = atoi(ir_interval);
+  assert(interval>0 && "CI_IR_INTERVAL cannot be less than or equal to 0!");
+  return interval;
+}
+
+static int get_cycles_interval() {
+  char *cycles_interval = getenv("CI_CYCLES_INTERVAL");
+  assert(cycles_interval && "CI_CYCLES_INTERVAL environment variable is not set!");
+  int interval = atoi(cycles_interval);
+  assert(interval>0 && "CI_CYCLES_INTERVAL cannot be less than or equal to 0!");
+  return interval;
+}
+
+static void pin_thread(unsigned long th_id) {
+  //int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+#ifndef REVERSE_INDEX
+  assert((th_id>=0) && "Thread id cannot be negative");
+  cpu_set_t cpuset;
+  int max_cpus_to_use = MAX_CPU;
+  CPU_ZERO(&cpuset);
+  int cpu = th_id % (max_cpus_to_use-1);
+  CPU_SET(cpu, &cpuset);
+  pthread_t thread = pthread_self();
+  printf("Pinning thread %d to cpu %d\n", th_id, cpu);
+  int ret = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+  if(ret != 0)
+    printf("Unable to set thread affinity for thread %d to cpu %d. Returned: %d. Error: %s\n", th_id, cpu, ret, strerror(errno));
+#endif
+}
+
 #ifdef LIBFIBER
 
 /************************************************ LibFiber ******************************************************/
   void init_stats(int index) {
-    register_ci(compiler_interrupt_handler);
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
+    register_ci(get_ir_interval(), get_cycles_interval(), compiler_interrupt_handler);
   }
 
   void compiler_interrupt_handler(long ic) {
@@ -110,13 +141,18 @@ void heapSort(long arr[], int n)
   __thread int ci_count = 0;
   __thread struct timeval g_tv_prev;
   void init_stats(int index) {
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
 #ifdef SYS_gettid
-    counter_id = syscall(SYS_gettid);
+    thread_id = syscall(SYS_gettid);
 #else
     #error "SYS_gettid unavailable on this system"
 #endif
+
     gettimeofday((struct timeval *) &g_tv_prev, NULL);
-    register_ci(compiler_interrupt_handler);
+
+    pin_thread(thread_id);
+
+    register_ci(get_ir_interval(), get_cycles_interval(), compiler_interrupt_handler);
   }
 
   void compiler_interrupt_handler(long ic) {
@@ -127,7 +163,7 @@ void heapSort(long arr[], int n)
       g_tv_prev.tv_sec = tv_curr.tv_sec;
       g_tv_prev.tv_usec = tv_curr.tv_usec;
 
-      printf("Thread %d: 1000000 CI took %lf sec\n", counter_id, diff_sec);
+      printf("Thread %d: 1000000 CI took %lf sec\n", thread_id, diff_sec);
       ci_count = 0;
     }
     else {
@@ -139,7 +175,7 @@ void heapSort(long arr[], int n)
     struct timeval tv_curr;
     gettimeofday(&tv_curr, NULL);
     double diff_sec = (double)((tv_curr.tv_sec - g_tv_prev.tv_sec)*1000000 + (tv_curr.tv_usec - g_tv_prev.tv_usec))/1000000;
-    printf("Thread %d: %d CI took %lf sec\n", counter_id, ci_count, diff_sec);
+    printf("Thread %d: %d CI took %lf sec\n", thread_id, ci_count, diff_sec);
   }
 
 #elif defined(INTV_SAMPLING)
@@ -155,6 +191,7 @@ void heapSort(long arr[], int n)
     }
 
     last_tsc=0;
+    //printf("Disable function got called!! Yayyy!!\n");
     //compiler_interrupt_handler(0);
   }
 
@@ -163,6 +200,7 @@ void heapSort(long arr[], int n)
 
     asm volatile ( "rdtscp\n" : "=a" (rax_lo), "=d" (rdx_hi), "=c" (aux_cpuid) : : );
     last_tsc = (rdx_hi << 32) + rax_lo;
+    //printf("Enable function got called!! Yayyy!!\n");
 
     //int ecx = (1<<30); // For instruction count // https://software.intel.com/en-us/forums/software-tuning-performance-optimization-platform-monitoring/topic/595214
     //asm volatile("rdpmc\n" : "=a"(rax_lo), "=d"(rdx_hi) : "c"(ecx));
@@ -171,6 +209,7 @@ void heapSort(long arr[], int n)
 
   void init_stats(int index) {
 
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
     /* if the thread local variable has been initialized, it means this is a duplicate call for the same thread */
     if(buffer_tsc)
       return;
@@ -178,11 +217,14 @@ void heapSort(long arr[], int n)
     /* Delete all previous interval stats files */
     char command[500];
 #ifdef SYS_gettid
-    sprintf(command, "exec rm -f %s/interval_stats_thread%ld.txt", OUTPUT_DIRECTORY, syscall(SYS_gettid));
+    thread_id = syscall(SYS_gettid);
+    sprintf(command, "exec rm -f %s/interval_stats_thread%ld.txt", OUTPUT_DIRECTORY, thread_id);
     system(command);
 #else
     #error "SYS_gettid unavailable on this system"
 #endif
+
+    pin_thread(thread_id);
 
     if(!buffer_tsc) 
       buffer_tsc = (uint64_t *)calloc(BUF_SIZE, sizeof(uint64_t));
@@ -190,22 +232,6 @@ void heapSort(long arr[], int n)
       //buffer_ret_ic = (long *)malloc(BUF_SIZE*sizeof(long));
     //if(!buffer_ic) 
       //buffer_ic = (long *)malloc(BUF_SIZE*sizeof(long));
-
-#if 0
-    /* Setting thread affinity when taking interval statistics with respect to hardware performance counters */
-    int cpu_id = __get_id_and_increment();
-    int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-    pthread_t thread = pthread_self();
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    if(cpu_id > max_cpus) {
-      printf("WARNING: Thread id is greater than the number of CPUs.\n");
-      cpu_id = cpu_id % max_cpus;
-    }
-    CPU_SET(cpu_id, &cpuset);
-    if(0 != pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset))
-      printf("Unable to set thread affinity\n");
-#endif
 
     /* This setting is done per thread (using pid parameter of perf_event_open)*/
     struct perf_event_attr attr;
@@ -222,7 +248,7 @@ void heapSort(long arr[], int n)
     ioctl(perf_fds, PERF_EVENT_IOC_RESET, 0); // Resetting counter to zero
     ioctl(perf_fds, PERF_EVENT_IOC_ENABLE, 0); // Start counters
 
-    register_ci(compiler_interrupt_handler);
+    register_ci(get_ir_interval(), get_cycles_interval(), compiler_interrupt_handler);
 
     #if 1
     register_ci_enable_hook(ci_enable_fn);
@@ -273,7 +299,7 @@ void heapSort(long arr[], int n)
     /* Print every interval */
     char name[500];
 #ifdef SYS_gettid
-    sprintf(name, "%s/interval_stats_thread%ld.txt", OUTPUT_DIRECTORY, syscall(SYS_gettid));
+    sprintf(name, "%s/interval_stats_thread%ld.txt", OUTPUT_DIRECTORY, thread_id);
 #else
     #error "SYS_gettid unavailable on this system"
 #endif
@@ -299,7 +325,7 @@ void heapSort(long arr[], int n)
     int i,j,k=0;
     if(buffer_tsc) {
       for(i=0; i<BUCKET_SIZE; i++) {
-        if(buffer_tsc && buffer_tsc[i]>0) {
+        if(buffer_tsc[i]>0) {
           for(j=0; j<buffer_tsc[i]; j++) {
             fprintf(fp, "%d %d %d %d\n", k++, 0, 0, i);
           }
@@ -317,7 +343,7 @@ void heapSort(long arr[], int n)
 
 #elif defined(PERF_CNTR)
   void init_stats(int index) {
-
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
     /* This setting is done per thread (using pid parameter of perf_event_open)*/
     struct perf_event_attr attr;
     memset(&attr, 0, sizeof(struct perf_event_attr));
@@ -332,7 +358,15 @@ void heapSort(long arr[], int n)
     ioctl(perf_fds, PERF_EVENT_IOC_RESET, 0); // Resetting counter to zero
     ioctl(perf_fds, PERF_EVENT_IOC_ENABLE, 0); // Start counters
 
-    register_ci(compiler_interrupt_handler);
+#ifdef SYS_gettid
+    thread_id = syscall(SYS_gettid);
+#else
+    #error "SYS_gettid unavailable on this system"
+#endif
+
+    pin_thread(thread_id);
+
+    register_ci(get_ir_interval(), get_cycles_interval(), compiler_interrupt_handler);
   }
 
   __thread int64_t sample_count = -1;
@@ -371,7 +405,15 @@ void heapSort(long arr[], int n)
 
   /* this function gets called from all threads, but twice from main. disregard it the second time */
   void init_stats(int index) {
-    register_ci(compiler_interrupt_handler);
+#ifdef SYS_gettid
+    thread_id = syscall(SYS_gettid);
+#else
+    #error "SYS_gettid unavailable on this system"
+#endif
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
+    pin_thread(thread_id);
+
+    register_ci(get_ir_interval(), get_cycles_interval(), compiler_interrupt_handler);
   }
 
   /*********************** For Trigger, with every interval stat being directly stored **********************/
@@ -401,39 +443,26 @@ void heapSort(long arr[], int n)
 
   /* For PAPI */
   __thread int events[NUM_HWEVENTS] = { PAPI_TOT_CYC, PAPI_TOT_INS };
-  int event_set[MAX_COUNT];
+  __thread int event_set[MAX_COUNT];
+
+  __thread int counter_id = 0;
+  __thread int counter_id_alloc = 0;
+  int __get_id_and_increment() {
+    //using the gcc atomic built-ins
+    return __sync_fetch_and_add(&counter_id_alloc, 1);
+  }
 
   void init_stats(int index) {
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
+#ifdef SYS_gettid
+    thread_id = syscall(SYS_gettid);
+#else
+    #error "SYS_gettid unavailable on this system"
+#endif
 
-    /* first call from main */
-    static int is_main_first_occ = 1;
-
-    /* return if this is the second call to main */
-    if(index == 0 && is_main_first_occ > 1)
-      return;
-
-    if(index == 0)
-      instruction_counter_init();
-
-    /* increment this counter in the first call from main */
-    if(index == 0)
-      is_main_first_occ++;
-
+    pin_thread(thread_id);
+    instruction_counter_init();
     instruction_counter_register_thread();
-
-    /* Setting thread affinity when taking interval statistics with respect to hardware performance counters */
-    pthread_t thread = pthread_self();
-    int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    if(index > max_cpus) {
-      printf("WARNING: Thread id is greater than the number of CPUs.\n");
-      index = index % max_cpus;
-    }
-    CPU_SET(index, &cpuset);
-    if(0 != pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) {
-      printf("Unable to set thread affinity\n");
-    }
   }
 
   __thread int64_t sample_count = -1;
@@ -450,12 +479,11 @@ void heapSort(long arr[], int n)
   void papi_interrupt_handler(int i, void *v1, long_long ll, void *v2) {
     long long counter_values[NUM_HWEVENTS];
     if (PAPI_read(event_set[counter_id], counter_values) != PAPI_OK){
-      perror("PAPI: failed to read counter...");
+      //printf("PAPI_read failed with error %s\n", strerror(errno));
       return;
     }
     //assert(counter_values[TOT_INST_IDX] >= 0 && counter_values[TOT_CYC_IDX] >= 0);
     //printf("Counter: %lld, Cycles: %lld\n", counter_values[TOT_INST_IDX], counter_values[TOT_CYC_IDX]);
-    //hw_interrupt_handler(counter_values[TOT_INST_IDX], counter_values[TOT_CYC_IDX]);
     assert(counter_values[TOT_CYC_IDX] >= 0);
     assert(counter_values[TOT_INST_IDX] >= 0);
     __reset();
@@ -464,11 +492,18 @@ void heapSort(long arr[], int n)
 
   void print_timing_stats(void) {
     /* Print every interval */
-    printf("samples:%d, avg_intv_cycles:%0.1lf, avg_intv_ret_ic:%0.1lf\n", sample_count, last_avg_tsc, last_avg_ret_ic);
+    printf("samples:%ld, avg_intv_cycles:%0.1lf, avg_intv_ret_ic:%0.1lf\n", sample_count, last_avg_tsc, last_avg_ret_ic);
   }
 
   /* Called once in the program, from main() */
   int instruction_counter_init() {
+
+    static int first = 0;
+
+    if(first!=0)
+      return 0;
+    else
+      first++;
 
     int retval = PAPI_library_init( PAPI_VER_CURRENT );
 
@@ -482,19 +517,16 @@ void heapSort(long arr[], int n)
       return -1;
     }
 
-    memset(event_set, PAPI_NULL, sizeof(int) * MAX_COUNT);
-    counter_id = __get_id_and_increment(); // set counter_id of main to 1
-
     return 0;
   }
 
   /* Called per thread */
   int instruction_counter_register_thread(){
 
+    counter_id = __get_id_and_increment(); // counter_id becomes 0 the first time
     if(counter_id) // thread has already been registered
       return 0;
 
-    counter_id = __get_id_and_increment();
     PAPI_register_thread();
 
     /*set domain*/
@@ -502,58 +534,50 @@ void heapSort(long arr[], int n)
       perror("PAPI: domain set failed...");
       return -1;
     }
+
     /* Create an EventSet */ 
+    memset(event_set, PAPI_NULL, sizeof(int) * MAX_COUNT);
     int err = PAPI_create_eventset(&event_set[counter_id]);
     if (err != PAPI_OK) {
       perror("PAPI: event set failed...");
-      printf("create eventset failure code: %d\n", err);
+      printf("create eventset failed with error: %s\n", strerror(errno));
       return -1;
     }
 
     int event_codes[NUM_HWEVENTS] = {PAPI_TOT_INS, PAPI_TOT_CYC};
     if (PAPI_add_events(event_set[counter_id], event_codes, NUM_HWEVENTS) != PAPI_OK) {
       perror("PAPI: add events failed...");
+      printf("add eventset failed for thread %ld with error: %s\n", thread_id, strerror(errno));
       return -1;
     }
 
-    int ret = instruction_counter_set_handler(papi_interrupt_handler);
-
-    return ret;
-  }
-
-  int instruction_counter_set_handler(ic_overflow_handler_t handler){
-    //printf("Using PAPI interval threshold: %d\n", IC_THRESHOLD);
+    printf("Using PAPI interval threshold %d for thread %ld (counter id: %d, %d)\n", get_cycles_interval(), thread_id, counter_id, counter_id_alloc);
     //printf("Setting handler for thread %d\n", counter_id);
-    int ret = PAPI_overflow(event_set[counter_id], PAPI_TOT_CYC, IC_THRESHOLD, 0, handler);
+    int ret = PAPI_overflow(event_set[counter_id], PAPI_TOT_CYC, get_cycles_interval(), 0, papi_interrupt_handler);
     //printf("Have set handler for thread %d\n", counter_id);
     if (ret != PAPI_OK){
       printf("PAPI_overflow returned : %d for counter id %d\n", ret, counter_id);
-      perror("PAPI: failed to register handler function for overflow...");
+      printf("PAPI: failed to register handler function for overflow with error %s\n", strerror(errno));
       return -1;
     }
-    return instruction_counter_start();
+
+    ret = PAPI_start(event_set[counter_id]);
+    if (ret != PAPI_OK && ret != PAPI_EISRUN) {
+      perror("PAPI: failed to start counters...");
+      printf("start counters failed with error %s\n", strerror(errno));
+      return -1;
+    }
+    return 0;
   }
 
   int __reset() {
     if (PAPI_reset(event_set[counter_id]) != PAPI_OK){
-      perror("PAPI: failed to read counter...");
+      //perror("PAPI: failed to read counter...");
       return -1;
     }
     else{
       return 0;
     }
-  }
-
-  int instruction_counter_start() {
-    //printf("Starting counter for thread %d\n", counter_id);
-    int ret = PAPI_start(event_set[counter_id]);
-    //printf("Started counter for thread %d\n", counter_id);
-    if (ret != PAPI_OK && ret != PAPI_EISRUN) {
-      perror("PAPI: failed to start counters...");
-      printf("start counters failure code %d\n", ret);
-      return -1;
-    }
-    return 0;
   }
 
   int instruction_counter_stop() {
@@ -571,6 +595,13 @@ void heapSort(long arr[], int n)
 
   /************************************* Default implementations ***********************************/
   void init_stats(int index) {
+    //intvActionHook(0); // clang bug: __attribute__((used)) not working
+#ifdef SYS_gettid
+    thread_id = syscall(SYS_gettid);
+#else
+    #error "SYS_gettid unavailable on this system"
+#endif
+    pin_thread(thread_id);
   }
 
   void print_timing_stats(void) {

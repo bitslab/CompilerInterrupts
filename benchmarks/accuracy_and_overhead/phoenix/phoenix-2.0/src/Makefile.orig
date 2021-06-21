@@ -6,6 +6,8 @@ ifeq ($(LINKAGE),dynamic)
 CFLAGS += -fPIC
 endif
 
+CFLAGS += $(EXTRA_FLAGS)
+
 .PHONY: default all clean
 
 SRCS := \

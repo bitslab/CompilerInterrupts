@@ -1,3 +1,7 @@
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/types.h>
+
 /* interrupt handler prototype */
 typedef void (*ci_handler)(long);
 
@@ -8,11 +12,12 @@ typedef void (*ci_margin_hook)(void);
 extern "C" {
 #endif
 
-/* for internal use by CI Pass - left here only for debugging */
+/* for internal use by CI Pass */
+extern __thread int LocalLC;
 extern __thread int lc_disabled_count;
 
 /* register interrupt handler */
-int register_ci(ci_handler func);
+int register_ci(int, int, ci_handler);
 
 /* de-register interrupt handler */
 void deregister();
@@ -35,8 +40,20 @@ void instr_disable();
 /* enable probe instrumentation */
 void instr_enable();
 
-/* for internal use by CI Pass - left here only for debugging */
+/* CI pass interrupt handler */
 extern __thread ci_handler intvActionHook;
+
+/* CI pass IR interrupt interval */
+extern __thread uint64_t ci_ir_interval;
+
+/* CI (cycles) pass IR reset interval when the target cycles is not exceeded */
+extern __thread uint64_t ci_reset_ir_interval;
+
+/* CI (cycles) pass Cycles interrupt interval */
+extern __thread uint64_t ci_cycles_interval;
+
+/* CI (cycles) pass Cycles interrupt threshold to fire the interrupt or reset the IR counter */
+extern __thread uint64_t ci_cycles_threshold;
 
 #ifdef __cplusplus
 }

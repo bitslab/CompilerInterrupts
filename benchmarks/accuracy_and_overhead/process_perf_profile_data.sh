@@ -1,13 +1,13 @@
 #!/bin/bash
 
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"perf_profile"}"
-DIR=$CUR_PATH/microbenchmark_stats/$SUB_DIR
+DIR=$CUR_PATH/exp_results/$SUB_DIR
 CI_SETTINGS="2 12"
 CMD_LOG="$DIR/perf_record_processing_info.txt"
 
-THREAD="32"
-CI_SETTINGS="12"
+THREAD="1"
+#CI_SETTINGS="2 12"
 
 source $CUR_PATH/include.sh
 
@@ -345,6 +345,9 @@ find_long_calls_in_strace() {
   echo "Exporting all expensive system calls with cumulative duration of all calls in sorted order to $strace_stat_file"
   echo -e "\nExpensive calls in $strace_ofile: " >> $strace_stat_file
   awk '{sub(/\(.*/,"",$3); print $1, $3}' $strace_ofile | sort -k 2 | awk '{if ($2==last) {dur[$2]+=$1} else {dur[$2]=$1; last=$2}} END { for(d in dur) print d, dur[d]}' | sort -k 2 >> $strace_stat_file
+
+  echo "Number of system calls executed:-" | tee -a $strace_stat_file
+  awk '!/^ >/ {sub(/\(.*$/,"",$2); print $2}' $strace_ifile | sort | uniq -c | tee -a $strace_stat_file
 }
 
 benches="$splash2_benches $phoenix_benches $parsec_benches"
@@ -371,7 +374,7 @@ if [ $# -ne 0 ]; then
   fi
 fi
 
-strace_stat_file="strace.stat"
+strace_stat_file="$DIR/strace.stat"
 rm -f $strace_stat_file
 
 for ci_setting in $CI_SETTINGS; do
@@ -393,22 +396,22 @@ for ci_setting in $CI_SETTINGS; do
     strace_ifile="${filename}.strace"
     strace_ofile="${filename}.trace"
     echo "Processing perf profile data for $bench" | tee -a $CMD_LOG
-    #dump_data
-
-    #find_long_intervals_and_syscalls
-    #find_long_intervals_and_calls
+    
     find_long_calls_in_strace
 
-    #find_long_intervals_for_entry_system_calls
-    #find_system_calls_started_in_long_intv
 
+#    dump_data
+#    find_long_intervals_and_syscalls
+#    find_long_intervals_and_calls
+#    find_long_intervals_for_entry_system_calls
+#    find_system_calls_started_in_long_intv
     echo -e "\n\n" | tee -a $CMD_LOG
 
-    #find_long_inner_calls
-    #find_long_inner_calls_details
-    #find_long_outer_calls
+#    find_long_inner_calls
+#    find_long_inner_calls_details
+#    find_long_outer_calls
 
-    #find_all_exec
+#    find_all_exec
 
     popd > /dev/null
   done

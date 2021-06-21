@@ -81,6 +81,22 @@ __thread unsigned long timeofday;
   void dummy(long ic) {
   }
 
+  static int get_ir_interval() {
+    char *ir_interval = getenv("CI_IR_INTERVAL");
+    assert(ir_interval && "CI_IR_INTERVAL environment variable is not set!");
+    int interval = atoi(ir_interval);
+    assert(interval>0 && "CI_IR_INTERVAL cannot be less than or equal to 0!");
+    return interval;
+  }
+
+  static int get_cycles_interval() {
+    char *cycles_interval = getenv("CI_CYCLES_INTERVAL");
+    assert(cycles_interval && "CI_CYCLES_INTERVAL environment variable is not set!");
+    int interval = atoi(cycles_interval);
+    assert(interval>0 && "CI_CYCLES_INTERVAL cannot be less than or equal to 0!");
+    return interval;
+  }
+
   __thread static int debug_print=0;
   void compiler_interrupt_handler(long ic) {
 
@@ -224,7 +240,7 @@ void init_stats() {
   //}
   mine_thread = pthread_self();
   printf("CREATED MINER THREAD(%lu) CI\n", mine_thread);
-  register_ci(&compiler_interrupt_handler);
+  register_ci(get_ir_interval(), get_cycles_interval(), &compiler_interrupt_handler);
 #else
   printf("Original version of miner is running\n");
 #endif

@@ -203,7 +203,7 @@ main(int argc, char **argv)
 
 	ret = probe_all_rte_devices(rte_argv, &rte_argc);
 
-#if 0
+#if 1
   for (i = 0; i<rte_argc; i++) {
     printf("%d: %s\n", i, rte_argv[i]);
   }

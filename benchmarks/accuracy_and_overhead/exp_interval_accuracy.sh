@@ -1,9 +1,8 @@
 #!/bin/bash
 # this script is used for finding interval accuracy w.r.t target interval in cycles
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"intv_accuracy"}"
 DIR=$CUR_PATH/exp_results/$SUB_DIR
-WRITE_DIR=/local_home/exp_results/$SUB_DIR
 PLOTS_DIR="$CUR_PATH/plots"
 STAT_FILE="$DIR/interval_accuracy_statistics.txt"
 
@@ -16,6 +15,7 @@ EXTRA_FLAGS="-DINTV_SAMPLING"
 #THREADS="1"
 
 source $CUR_PATH/include.sh
+WRITE_DIR=$AO_OUTPUT_DIRECTORY/$SUB_DIR
 
 #1 - benchmark name, 2 - ci setting, 3 - #thread
 emit_interval() {
@@ -24,17 +24,19 @@ emit_interval() {
   thread=$3
   suffix_conf=1 # always run in CI mode
 
+  PREFIX="LD_PRELOAD=$LIBCALL_WRAPPER_PATH"
+
   #prefix="timeout 5m taskset 0x00000001 "
   # The benchmarks export interval stats in this directory
   # TODO: Make the path configurable using environment variable
-  OUT_DIR="/local_home/exp_results/interval_stats"
+  OUT_DIR="$AO_OUTPUT_DIRECTORY/interval_stats"
 
   dry_run_exp $bench $suffix_conf
 
   # Remove dry run accuracy files
   rm -f $OUT_DIR/*
 
-  run_exp $bench $suffix_conf $thread
+  run_exp $bench $suffix_conf $thread $ci_setting 0 $CYCLE
 
   # Change default file names to meaningful names & move them to configured directory, create cdf & get statistics
   ci_str=$(get_ci_str_in_lower_case $ci_setting)
@@ -55,8 +57,12 @@ emit_interval() {
 
     uncollected_samples=`awk '/Uncollected/ {print $3}' $new_name`
     ci_calls=`awk '/Total CI calls/ {print $4}' $new_name`
-    total_uncollected_samples=`expr $total_uncollected_samples + $uncollected_samples`
-    total_ci_calls=`expr $total_ci_calls + $ci_calls`
+    if [ ! -z $uncollected_samples ]; then
+      total_uncollected_samples=`expr $total_uncollected_samples + $uncollected_samples`
+    fi
+    if [ ! -z $ci_calls ]; then
+      total_ci_calls=`expr $total_ci_calls + $ci_calls`
+    fi
     printf "${GREEN}Generated accuracy data points in $new_name ( uncollected samples: $uncollected_samples, ci calls: $ci_calls )\n${NC}" | tee -a $CMD_LOG $STAT_FILE
 
     #create_cdf $new_name $cdf_name
@@ -202,6 +208,7 @@ if [ $# -ne 0 ]; then
   fi
 fi
 
+build_libcall_wrapper
 interval_accuracy_test $benches
 print_end_notice
 process_accuracy_data

@@ -1,8 +1,8 @@
 #!/bin/bash
 # this script is used for checking instrumentation related statistics at compile & runtime
-CUR_PATH=`pwd`
+CUR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")/
 SUB_DIR="${SUB_DIR:-"instrumentation_stats"}"
-DIR=$CUR_PATH/microbenchmark_stats/$SUB_DIR
+DIR=$CUR_PATH/exp_results/$SUB_DIR
 RUN_STAT_FILE="$DIR/run_stats"
 INSTR_STAT_FILE="$DIR/instr_stats"
 
@@ -78,7 +78,7 @@ build_n_run() {
         build_ci $bench $ci_setting $thread
 
         dry_run_exp $bench $suffix_conf
-        run_exp $bench $suffix_conf $thread
+        run_exp $bench $suffix_conf $thread $ci_setting
         mv $OUT_FILE $DIR/${bench}_ci${ci_setting}_th${thread}_output
       done
     done
@@ -214,7 +214,7 @@ commit_push_stats() {
         build_ci $bench $ci_setting $thread
 
         dry_run_exp $bench $suffix_conf
-        run_exp $bench $suffix_conf $thread
+        run_exp $bench $suffix_conf $thread $ci_setting
 
         new_ofile="$DIR/${bench}_ci${ci_setting}_th${thread}_probe_output"
         mv $OUT_FILE $new_ofile

@@ -177,39 +177,4 @@ inline void emit_inline(void *key, void *val);
  */
 int default_partition(int reduce_tasks, void* key, int key_size);
 
-#if 0
-/* For CI */
-/* For Trigger */
-extern __thread uint64_t last_tsc;
-extern __thread uint64_t last_ret_ic;
-extern __thread double last_avg_ic;
-extern __thread double last_avg_ret_ic;
-extern __thread double last_avg_tsc;
-extern __thread char first_tsc;
-#define BUF_SIZE 5000000
-
-void compiler_interrupt_handler(long ic);
-void print_timing_stats(void);
-void init_stats();
-
-/* For PAPI */
-#define NUM_HWEVENTS  2
-#define TOT_INST_IDX 0
-#define TOT_CYC_IDX 1
-#define MAX_COUNT (128*2) // Change this according to the needs of the benchmark. It represents max number of threads*2 (since 2 sets are created one after the other ends)
-
-/* For PAPI */
-extern __thread int events[NUM_HWEVENTS];
-extern int event_set[MAX_COUNT];
-extern __thread int counter_id;
-typedef void (*ic_overflow_handler_t)(int, void *, long_long, void *);
-int instruction_counter_init();
-int __reset();
-int instruction_counter_register_thread();
-int instruction_counter_start();
-int instruction_counter_stop();
-int instruction_counter_set_handler(ic_overflow_handler_t handler);
-void papi_interrupt_handler(int i, void *v1, long_long ll, void *v2);
-#endif
-
 #endif // _MAP_REDUCE_SCHEDULER_H_

@@ -128,7 +128,7 @@ for mode in $MODES
 do
   if [ $mode -eq 1 ]; then
     mode_str="mod"
-    REQUESTS=100000
+    REQUESTS=500000
   else
     mode_str="unmod"
     REQUESTS=500000

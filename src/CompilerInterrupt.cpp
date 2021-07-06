@@ -7094,7 +7094,7 @@ namespace {
     /* All initialization related instrumentation prior to analysis and instrumentation passes */
     void initializeInstrumentation(Module &M) {
       auto initVal = llvm::ConstantInt::get(M.getContext(), llvm::APInt(64, 0, false));
-      auto initVal32 = llvm::ConstantInt::get(M.getContext(), llvm::APInt(32, 0, false));
+      //auto initVal32 = llvm::ConstantInt::get(M.getContext(), llvm::APInt(32, 0, false));
 
       GlobalVariable *lc = new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "LocalLC");     
       lc->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);

@@ -16,6 +16,8 @@ extern "C" {
 extern __thread int LocalLC;
 extern __thread int lc_disabled_count;
 
+/* All the APIs are thread-specific i.e. they configure the thread they are called on */
+
 /* register interrupt handler */
 int register_ci(int, int, ci_handler);
 

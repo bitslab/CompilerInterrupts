@@ -5,12 +5,15 @@ if [[ "$EUID" -ne 0 ]]; then
   exit
 fi
 
-curr_path=`pwd`
+CURR_PATH=`pwd`/$(dirname "${BASH_SOURCE[0]}")
 
 # Allow reading instruction counters
 echo "2" > /sys/bus/event_source/devices/cpu/rdpmc
 # Allow PAPI from reading performance counters
 echo "0" > /proc/sys/kernel/perf_event_paranoid
+
+mkdir -p $CURR_PATH/../lib
+chmod 777 $CURR_PATH/../lib
 
 ENV_FILE="env_var.sh"
 touch $ENV_FILE

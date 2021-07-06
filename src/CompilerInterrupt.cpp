@@ -7104,9 +7104,9 @@ namespace {
 
       GlobalVariable *interrupt_disabled_count = new GlobalVariable(M, Type::getInt32Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "lc_disabled_count");
       interrupt_disabled_count->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
-      if(DefineClock) {
-        interrupt_disabled_count->setInitializer(initVal32);
-      }
+      //if(DefineClock) {
+      //  interrupt_disabled_count->setInitializer(initVal32);
+      //}
 
 #ifdef PROFILING
       errs() << "Creating commitCount variable for profiling!!";
@@ -8195,9 +8195,9 @@ namespace {
         }
       }
 
-      for(auto &F : M) {
-        replaceCIConfigCalls(F);
-      }
+      //for(auto &F : M) {
+      //  replaceCIConfigCalls(F);
+      //}
 
       /* if a library is analysed, export its costs for use by its applications */
       if(checkIfInstGranIsOpt())

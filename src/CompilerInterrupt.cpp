@@ -307,7 +307,7 @@ static cl::opt<int>
     TargetInterval("push-intv",
                    cl::desc("Interval in terms of number of instruction cost, "
                             "for push to global logical clock"),
-                   cl::value_desc("positive integer"));
+                   cl::value_desc("positive integer"), cl::Optional);
 static cl::opt<int> TargetIntervalInCycles(
     "target-cycles", cl::desc("Target interval in cycles"),
     cl::value_desc("positive integer"), cl::init(0), cl::Optional);
@@ -10028,7 +10028,7 @@ struct CompilerInterrupt : public ModulePass {
   bool readCost() {
     /* There may not be any library cost file supplied */
     if (InCostFilePath.empty()) {
-      errs() << "No library file supplied\n";
+      // errs() << "No library file supplied\n";
       return true;
     }
     std::ifstream fin;

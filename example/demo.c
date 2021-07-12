@@ -11,8 +11,8 @@
 
 void interrupt_handler(long ic) {
   /* This print should only appear in the CI integrated build */
-  static long previous_ic=0;
-  printf("Compiler interrupt called with instruction count %ld\n", ic-previous_ic);
+  static __thread long previous_ic=0;
+  printf("CI: last interval = %ld IR\n", ic-previous_ic);
   previous_ic=ic;
 }
 
@@ -35,7 +35,7 @@ void increment(void *arg)
   for(i=0; i<iterations; i++) {
     counter += rand() % 10;
   }
-  printf("Counter: %d\n", counter);
+  printf("increment():- thread:%d -> counter: %d\n", (int)arg, counter);
 }
 
 void decrement(void *arg)
@@ -67,15 +67,16 @@ void decrement(void *arg)
   for(i=0; i<iterations; i++) {
     counter -= rand() % 10;
   }
-  printf("Counter: %d\n", counter);
+  printf("decrement():- thread:%d -> counter: %d\n", (int)arg, counter);
 }
 
 int main(int argc, char **argv) {
 
   /* register interrupt handler */
-  register_ci(10000, 10000, interrupt_handler);
+  register_ci(1000, 1000, interrupt_handler);
 
-  pthread_t t[MAX_THREADS-1];
+  pthread_t t1[MAX_THREADS-1];
+  pthread_t t2[MAX_THREADS-1];
   int num_threads = MAX_THREADS;
   if(argc==2) {
     num_threads = atoi(argv[1]);
@@ -87,20 +88,20 @@ int main(int argc, char **argv) {
 
   printf("Starting %d increment threads\n", num_threads);
   for(int i=0; i<(num_threads-1); i++) {
-    pthread_create(&t[i], NULL, (void* (*)(void*))increment, (void*)&i);
-  }
-
-  for(int i=0; i<(num_threads-1); i++) {
-    pthread_join(t[i], NULL);
+    pthread_create(&t1[i], NULL, (void* (*)(void*))increment, (void*)i);
   }
 
   printf("Starting %d decrement threads\n", num_threads);
   for(int i=0; i<(num_threads-1); i++) {
-    pthread_create(&t[i], NULL, (void* (*)(void*))decrement, (void*)&i);
+    pthread_create(&t2[i], NULL, (void* (*)(void*))decrement, (void*)i);
   }
 
   for(int i=0; i<(num_threads-1); i++) {
-    pthread_join(t[i], NULL);
+    pthread_join(t1[i], NULL);
+  }
+
+  for(int i=0; i<(num_threads-1); i++) {
+    pthread_join(t2[i], NULL);
   }
 
   return 0;

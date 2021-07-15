@@ -369,17 +369,17 @@ std::map<Loop *, InstructionCost *>
 std::map<Loop *, InstructionCost *>
     seseLoop; /* list of branch header blocks which need to instrument the
                  direct branch. The Value is the instrumented branch */
-std::map<std::string, const InstructionCost *> libraryInstructionCosts;
+std::map<StringRef, const InstructionCost *> libraryInstructionCosts;
 std::map<Function *, FuncInfo *> computedFuncInfo;
 std::map<StringRef, bool>
     CGOrderedFunc; // list of functions in call graph order
 std::map<Function *, struct fstats> FuncStat;
 SmallPtrSet<BasicBlock *, 32> blackListedBlocks;
-std::map<std::string, SmallVector<std::string, 32> *> debugInstrList;
-std::map<std::string, SmallVector<std::string, 32> *> debugNoInstrList;
-std::map<std::string, SmallVector<std::string, 32> *> debugNoLoopTransformList;
-std::map<std::string, SmallVector<std::string, 32> *> debugNoLoopInstrList;
-std::map<std::string, SmallVector<std::string, 32> *> debugBBList;
+std::map<StringRef, SmallVector<StringRef, 32> *> debugInstrList;
+std::map<StringRef, SmallVector<StringRef, 32> *> debugNoInstrList;
+std::map<StringRef, SmallVector<StringRef, 32> *> debugNoLoopTransformList;
+std::map<StringRef, SmallVector<StringRef, 32> *> debugNoLoopInstrList;
+std::map<StringRef, SmallVector<StringRef, 32> *> debugBBList;
 SmallVector<StringRef, 20>
     threadFunc; // contains list of all functions that begin a thread & main()
 StringMap<unsigned char> ciFuncInApp; // list of functions used as compiler
@@ -1207,7 +1207,7 @@ bool checkIfExternalLibraryCall(Instruction *I) {
 }
 
 /* only for debugging - find all external library calls */
-void findAllLibraryCalls(Module &M) {
+__unused void findAllLibraryCalls(Module &M) {
   errs() << "Finding all library calls\n";
   for (auto &F : M) {
     if (F.isDeclaration())
@@ -1379,7 +1379,7 @@ bool checkIfInstGranIsDet() {
 }
 
 /* Cost of the probe when the IR interval is exceeded and CI is called */
-int getProbeIntermediateInstrCost() {
+__unused int getProbeIntermediateInstrCost() {
   int instrumentationCost = 0;
   if (checkIfInstGranIsDet())
     instrumentationCost = 3;
@@ -2498,6 +2498,7 @@ public:
       auto midLCC = midLCCIt->first;
       midLCC->setParentLCC(this);
     }
+    _postdomBlock = nullptr; // unused
   }
 
   /* -------- Implementation of virtual functions -------*/
@@ -3285,7 +3286,7 @@ struct CompilerInterrupt : public ModulePass {
   std::map<Function *, Value *>
       localClock; // list of local variables to be passed as parameter,
                   // corresponding to each function in threadFunc
-  std::map<std::string, bool> isRecursiveFunc;
+  std::map<StringRef, bool> isRecursiveFunc;
   /* Basic block may have fence instructions, which will require multiple
    * containers for a single block. Order of blocks must be preserved for which
    * vector is used */
@@ -4743,7 +4744,7 @@ struct CompilerInterrupt : public ModulePass {
         if (!isThread && !isRecursive && (entryLCC == currLCC)) {
           InstructionCost *cost = currLCC->getCostForPC(false);
           int numCost = hasConstCost(cost);
-          InstructionCost *simplifiedCost;
+          InstructionCost *simplifiedCost = nullptr;
           if (numCost <= 0)
             simplifiedCost = simplifyCost(F, cost);
 
@@ -5127,7 +5128,7 @@ struct CompilerInterrupt : public ModulePass {
 
   bool isBlockListed(
       BasicBlock *BB,
-      std::map<std::string, SmallVector<std::string, 32> *> &storageDS) {
+      std::map<StringRef, SmallVector<StringRef, 32> *> &storageDS) {
     Function *F = BB->getParent();
     if (storageDS.end() != storageDS.find(F->getName())) {
       auto blockNames = storageDS[F->getName()];
@@ -5204,7 +5205,7 @@ struct CompilerInterrupt : public ModulePass {
     const llvm::LoopInfo &cLI = *LI;
 
     int bbcount = 0, blbbCount = 0;
-    SmallVector<std::string, 32> *debugNoInstBB = nullptr;
+    SmallVector<StringRef, 32> *debugNoInstBB = nullptr;
 
     /* If more blocks are added for not instrumenting through file */
     if (debugNoInstrList.end() != debugNoInstrList.find(F->getName()))
@@ -6476,7 +6477,7 @@ struct CompilerInterrupt : public ModulePass {
 
     DT->recalculate(*F);
     PDT->recalculate(*F);
-    BPI->calculate(*F, *LI);
+    BPI->calculate(*F, *LI, nullptr, DT, PDT);
   }
 
   /* run all the passes of LCC creation, cost analysis & probe instrumentation
@@ -7144,7 +7145,7 @@ struct CompilerInterrupt : public ModulePass {
     Function *F = start->getParent();
     DT->recalculate(*F);
     PDT->recalculate(*F);
-    BPI->calculate(*F, *LI);
+    BPI->calculate(*F, *LI, nullptr, DT, PDT);
 
 #ifdef DBG_DETAILED
     /********************************* Debug prints
@@ -7220,7 +7221,7 @@ struct CompilerInterrupt : public ModulePass {
     Function *F = start->getParent();
     DT->recalculate(*F);
     PDT->recalculate(*F);
-    BPI->calculate(*F, *LI);
+    BPI->calculate(*F, *LI, nullptr, DT, PDT);
 
 #ifdef DBG_DETAILED
     /********************************* Debug prints
@@ -8040,7 +8041,7 @@ struct CompilerInterrupt : public ModulePass {
 
     DT->recalculate(*(onlyBlock->getParent()));
     PDT->recalculate(*(onlyBlock->getParent()));
-    BPI->calculate(*(onlyBlock->getParent()), *LI);
+    BPI->calculate(*(onlyBlock->getParent()), *LI, nullptr, DT, PDT);
     // SE->forgetLoop(L);
     formLCSSARecursively(*L, *DT, LI, SE);
     simplifyLoop(L, DT, LI, SE, nullptr, nullptr, true);
@@ -9201,8 +9202,8 @@ struct CompilerInterrupt : public ModulePass {
 #if 1
     char fName[] = "intvActionHook";
     Value *hookFuncPtr = action_hook_prototype(I, fName);
-    auto hookFunc = Builder.CreateLoad(hookFuncPtr, "ci_handler");
-    Builder.CreateCall(hookFunc, args);
+    auto hookFunc = Builder.CreateLoad(hookFuncPtr->getType()->getPointerElementType(), hookFuncPtr, "ci_handler");
+    Builder.CreateCall(cast<FunctionType>(hookFunc->getType()->getPointerElementType()), hookFunc, args);
 #else
     Value *hookFunc = action_hook_prototype(I->getModule(), "intvActionHook");
     Builder.CreateCall(hookFunc, args);
@@ -9298,6 +9299,7 @@ struct CompilerInterrupt : public ModulePass {
         costVal); // ALL_IR here means the cost value is created & passed to the
                   // routine, although the value passed is the cycle count
                   // difference & not the IR difference
+    return nullptr;
   }
 
   /* instrument probes with cycle counter for only external library calls */
@@ -9445,7 +9447,7 @@ struct CompilerInterrupt : public ModulePass {
           if (NodeVec.size() > 1) {
             isRecursiveFunc[F->getName()] = true;
             errs() << "Recursive func name: " << F->getName() << "\n";
-          } else if (NodeVec.size() == 1 && CGI.hasLoop()) {
+          } else if (NodeVec.size() == 1 && CGI.hasCycle()) {
             isRecursiveFunc[F->getName()] = true;
             errs() << "Self-Recursive func name: " << F->getName() << "(" << F
                    << ") --> " << isRecursiveFunc[F->getName()] << "\n";
@@ -9472,7 +9474,7 @@ struct CompilerInterrupt : public ModulePass {
   void cloneFunctions(Module &M) {
     errs() << "\n************************** CLONING FUNCTIONS "
               "****************************\n";
-    llvm::StringRef suffix("_uninstrumented");
+    std::string suffix("_uninstrumented");
     for (auto funcIt = CGOrderedFunc.begin(); funcIt != CGOrderedFunc.end();
          funcIt++) {
       auto fName = (*funcIt).first;
@@ -9483,7 +9485,7 @@ struct CompilerInterrupt : public ModulePass {
         continue;
 
       ValueToValueMapTy VMap;
-      std::string cloneFName(fName);
+      std::string cloneFName(fName.str());
       cloneFName.append(suffix);
       Function *dupFunc = CloneFunction(F, VMap, nullptr);
       dupFunc->setName(cloneFName);
@@ -9900,7 +9902,7 @@ struct CompilerInterrupt : public ModulePass {
 
   bool readDebugInfoFromFile(
       char *fileName,
-      std::map<std::string, SmallVector<std::string, 32> *> &storageDS) {
+      std::map<StringRef, SmallVector<StringRef, 32> *> &storageDS) {
 
     std::ifstream fin;
     fin.open(fileName);
@@ -9919,7 +9921,7 @@ struct CompilerInterrupt : public ModulePass {
           token2 = strtok(0, ":");
           std::string blockName(token2);
           if (storageDS.end() == storageDS.find(funcName)) {
-            storageDS[funcName] = new SmallVector<std::string, 32>();
+            storageDS[funcName] = new SmallVector<StringRef, 32>();
           }
           storageDS[funcName]->push_back(blockName);
         }

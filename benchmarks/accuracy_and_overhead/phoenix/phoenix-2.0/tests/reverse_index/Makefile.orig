@@ -82,7 +82,7 @@ PATH_OUT = ./$(OSTYPE)/
 
 OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution
 
-CFLAGS += -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -I$(CI_LIB_HOME)/src -I$(CI_HOME)
+CFLAGS += -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -DREVERSE_INDEX -I$(CI_LIB_HOME)/src -I$(CI_HOME)
 #LIBS = -lm -lpthread -lrt -lcpc
 LIBS = -lm -lpthread -lrt -lpapi -L../../lib/ -L$(CI_LIB_HOME)/lib -Wl,-rpath=$(CI_LIB_HOME)/lib -lci $(EXTRA_LD_FLAGS)
 

@@ -11,7 +11,17 @@
 
 void interrupt_handler(long ic) {
   /* This print should only appear in the CI integrated build */
-  printf("Compiler interrupt called with instruction count %ld\n", ic);
+  static long previous_ic=0;
+  printf("Compiler interrupt called with instruction count %ld\n", ic-previous_ic);
+  previous_ic=ic;
+}
+
+void pre_disable() {
+  printf("This function is being called before ci_diable()!\n");
+}
+
+void post_enable() {
+  printf("This function is being called after ci_enable()!\n");
 }
 
 void increment(void *arg)
@@ -20,6 +30,8 @@ void increment(void *arg)
   int counter = 0;
   int thr_no = (int)arg;
   int iterations = BASE_VAL + (rand()%10);
+  register_ci(10000, 10000, interrupt_handler);
+
   for(i=0; i<iterations; i++) {
     counter += rand() % 10;
   }
@@ -32,10 +44,16 @@ void decrement(void *arg)
   int counter = 0;
   int thr_no = (int)arg;
   int iterations = BASE_VAL + (rand()%10);
+  register_ci(10000, 10000, interrupt_handler);
+
   /* disable CI for the remaining code */
   ci_disable();
 
 #ifdef CHECK_ENABLE // define this flag to check ci_enable functionality
+  /* Register CI hooks */
+  register_ci_disable_hook(pre_disable);
+  register_ci_enable_hook(post_enable);
+
   /* There must be as many enable calls after a fixed number of disable calls, to make ci work. More number of enable calls will not make a difference */
   ci_disable(); /* will make no difference since CI is already disabled */
   ci_enable(); /* won't be enabled yet since there were two disable calls before this */
@@ -55,7 +73,7 @@ void decrement(void *arg)
 int main(int argc, char **argv) {
 
   /* register interrupt handler */
-  register_ci(interrupt_handler);
+  register_ci(10000, 10000, interrupt_handler);
 
   pthread_t t[MAX_THREADS-1];
   int num_threads = MAX_THREADS;
@@ -69,7 +87,7 @@ int main(int argc, char **argv) {
 
   printf("Starting %d increment threads\n", num_threads);
   for(int i=0; i<(num_threads-1); i++) {
-    pthread_create(&t[i], NULL, (void* (*)(void*))increment, (void*)i);
+    pthread_create(&t[i], NULL, (void* (*)(void*))increment, (void*)&i);
   }
 
   for(int i=0; i<(num_threads-1); i++) {
@@ -78,7 +96,7 @@ int main(int argc, char **argv) {
 
   printf("Starting %d decrement threads\n", num_threads);
   for(int i=0; i<(num_threads-1); i++) {
-    pthread_create(&t[i], NULL, (void* (*)(void*))decrement, (void*)i);
+    pthread_create(&t[i], NULL, (void* (*)(void*))decrement, (void*)&i);
   }
 
   for(int i=0; i<(num_threads-1); i++) {

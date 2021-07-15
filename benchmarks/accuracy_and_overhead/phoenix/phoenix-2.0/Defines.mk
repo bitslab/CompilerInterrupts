@@ -112,9 +112,10 @@ ALLOWED_DEVIATION ?= 100
 CLOCK ?= 1
 FIBER_CONFIG ?= 0
 CONFIG ?= 2
-EXTRA_FLAGS ?= -DAVG_STATS
+EXTRA_FLAGS ?=
+CFLAGS += $(EXTRA_FLAGS)
 #CFLAGS += -g $(EXTRA_FLAGS) -I$(CI_HOME) -I$(CI_LIB_HOME)
-CFLAGS += $(EXTRA_FLAGS) -I$(CI_LIB_HOME)/src -I$(CI_HOME) -I$(CI_LIB_HOME)/../src -I$(CI_HOME)/../
+CFLAGS += -I$(CI_LIB_HOME)/src -I$(CI_HOME) -I$(CI_LIB_HOME)/../src -I$(CI_HOME)/../
 
 LIBS +=  -Wl,-rpath=./$(LIB_DIR)/ -L$(CI_LIB_HOME)/../lib/ -Wl,-rpath=$(CI_LIB_HOME)/../lib/ -lci $(EXTRA_LD_FLAGS)
 #LDFLAGS := -lm -static -lpapi

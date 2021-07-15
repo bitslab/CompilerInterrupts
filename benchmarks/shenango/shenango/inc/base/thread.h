@@ -82,7 +82,6 @@ extern __thread unsigned int thread_numa_node;
 /**
  * returns the tid
  */
-#if 1
 static inline pid_t gettid(void)
 {
 	pid_t tid;
@@ -95,4 +94,3 @@ static inline pid_t gettid(void)
 
 	return tid;
 }
-#endif

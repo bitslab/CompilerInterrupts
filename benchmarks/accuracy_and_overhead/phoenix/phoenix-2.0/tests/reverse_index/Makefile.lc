@@ -95,7 +95,7 @@ OPT_FLAGS = -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-e
 
 LC_FLAGS = -load $(CI_LIB_HOME)/lib/CompilerInterrupt.so -S -logicalclock -config $(CONFIG) -clock-type $(CLOCK) -inst-gran $(INST_LEVEL) -all-dev $(ALLOWED_DEVIATION) -push-intv $(PUSH_INTV) -commit-intv $(CMMT_INTV) -target-cycles $(CYCLE_INTV) -mem-ops-cost 1 -fiber-config $(FIBER_CONFIG) 
 
-CFLAGS += -g -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -I$(CI_HOME) -I$(CI_LIB_HOME)/src
+CFLAGS += -g -Wall $(ARCH) -O3 -D_GNU_SOURCE $(EXTRA_FLAGS) -DREVERSE_INDEX -I$(CI_HOME) -I$(CI_LIB_HOME)/src
 #LIBS = -lm -lpthread -lrt -lcpc
 LIBS = -lm -lpthread -lrt -lpfm -L$(CI_LIB_HOME)/lib -Wl,-rpath=$(CI_LIB_HOME)/lib -lci $(EXTRA_LD_FLAGS)
 

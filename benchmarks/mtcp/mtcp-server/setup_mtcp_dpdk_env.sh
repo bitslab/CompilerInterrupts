@@ -3,9 +3,6 @@
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-#export RTE_TARGET="x86_64-native-linuxapp-gcc"
-#export RTE_SDK=$CUR_PATH"/dpdk"
-
 # Get to script directory
 cd $(dirname ${BASH_SOURCE[0]})/
 

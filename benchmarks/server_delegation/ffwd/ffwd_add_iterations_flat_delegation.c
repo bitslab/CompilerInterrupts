@@ -51,6 +51,8 @@ typedef struct data
 fiber_barrier_t barrier;
 
 struct timespec t_start, t_end; 
+int ir = 0;
+int cycles = 0;
 int num_of_servers = 1;
 int num_of_hw_threads;
 int num_of_threads;
@@ -102,7 +104,7 @@ uint64_t ffwd_incr(uint64_t server, uint64_t addr) {
 volatile int variable[SIZE] = {0};
 #endif
 
-int client_work, interrupt_fr;
+int client_work, interrupt_fr = 0;
 uint64_t doorbell_checks = 0;
 
 #if !defined(NUMA_ALLOC_VARIABLES)
@@ -424,9 +426,21 @@ int main (int argc, char ** argv){
     }
 
     int c, i;
-    while((c = getopt(argc, argv, "a:s:t:d:w:i:p:g:h:")) != -1){
+    while((c = getopt(argc, argv, "a:s:t:d:w:i:p:g:r:c:h")) != -1){
         switch (c)
         {
+            case 'r':
+            {
+                ir = atoi(optarg);
+                break;
+            }
+#if 1
+            case 'c':
+            {
+                cycles = atoi(optarg);
+                break;
+            }
+#endif
             case 's':
             {
                 num_of_servers = atoi(optarg);
@@ -470,6 +484,7 @@ int main (int argc, char ** argv){
             }
         }
     }
+    //printf("Using IR interval %d, cycle interval: %d\n", ir, cycles);
 
     num_of_hwth_to_check = num_of_threads+1;
 
@@ -528,7 +543,7 @@ int main (int argc, char ** argv){
 //        printf("server %d on core %d\n", i, flat_server_core[i]);
     }
 
-    register_ci(interrupt_handler);
+    register_ci(ir, cycles, interrupt_handler);
     ci_disable();
     int num_of_client_servers = 0;
 #ifdef FLAT_DELEGATION

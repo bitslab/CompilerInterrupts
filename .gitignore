@@ -34,3 +34,6 @@
 # Directories
 exp_results
 plots
+
+# Makefiles that will be overwritten
+benchmarks/cpuminer-multi/Makefile

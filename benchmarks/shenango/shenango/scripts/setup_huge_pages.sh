@@ -87,7 +87,6 @@ set_numa_pages()
 	echo "Reserving hugepages"
   cat .echo_tmp
 	sudo sh .echo_tmp
-	#cat .echo_tmp
 	rm -f .echo_tmp
 
 	for d in /sys/devices/system/node/node? ; do

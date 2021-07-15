@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source $(dirname "${BASH_SOURCE[0]}")/../../src/env_var.sh
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -17,11 +19,11 @@ ERROR_LOG="${ERROR_LOG:-"$DIR/error_log.txt"}"
 CMD_LOG="${CMD_LOG:-"$DIR/cmd_log.txt"}"
 OUTLIER_LOG="${OUTLIER_LOG:-"$DIR/outlier.txt"}"
 OUT_FILE="${OUT_FILE:-"$DIR/out"}"
-LIBCALL_WRAPPER_PATH="$CUR_PATH/../libcall_wrapper.so"
+LIBCALL_WRAPPER_PATH="$CUR_PATH/libcall_wrapper.so"
 
-PHOENIX_INPUT_PATH="$CUR_PATH/inputs/phoenix"
-PARSEC_INPUT_PATH="$CUR_PATH/inputs/parsec"
-SPLASH2_INPUT_PATH="$CUR_PATH/inputs/splash2"
+PHOENIX_INPUT_PATH="$AO_INPUT_DIRECTORY/phoenix/"
+PARSEC_INPUT_PATH="$AO_INPUT_DIRECTORY/parsec/"
+SPLASH2_INPUT_PATH="$AO_INPUT_DIRECTORY/splash2/"
 
 OPT_TL=2
 NAIVE_TL=4
@@ -33,8 +35,14 @@ NAIVE_ACC=11
 OPT_INTERMEDIATE=12
 NAIVE_INTERMEDIATE=13
 OPT_CYCLES=17
+ALL_INST_TL=19
+ALL_INST_CYCLES=20
 
-#splash2_benches="water-nsquared water-spatial ocean-cp ocean-ncp raytrace radix fft lu-c lu-nc radiosity barnes volrend fmm cholesky"
+# Run types
+PTHREAD_RUN=0
+CI_RUN=1
+HW_PC_RUN=2
+
 splash2_benches="water-nsquared water-spatial ocean-cp ocean-ncp barnes volrend fmm raytrace radiosity radix fft lu-c lu-nc cholesky"
 phoenix_benches="reverse_index histogram kmeans pca matrix_multiply string_match linear_regression word_count"
 parsec_benches="blackscholes fluidanimate swaptions canneal streamcluster dedup"
@@ -62,6 +70,7 @@ get_median() {
   awk 'BEGIN {OFMT="%f"} {lines[i++]=$1} 
   END { if(i>2) { for(l in lines){if(l/(i-1) >= 0.5) { print lines[l]; exit } } }
         else {print lines[0]; exit} }'`
+  echo "Median over {$@} with $# elements: $median" >> $CMD_LOG
   echo $median
 }
 
@@ -77,13 +86,19 @@ get_median_debug() {
 }
 
 get_avg() {
-  avg=`echo "$@" | awk '{ split($0,elems," "); 
-    len=length(elems)
-    for(i=1;i<=len;i++) {sum+=elems[i]}
-    if(len==0) {print ""}
-    else {printf "%.2f", sum/(i-1)}
-  }'`
-  echo "Average over $@: $avg" >> $CMD_LOG
+  num_elem=0
+  for elem in $@; do
+    num_elem=`expr $num_elem + 1`
+    sum_str="$sum_str$elem + "
+  done
+  if [ $num_elem -ne 0 ]; then
+    sum_str="${sum_str:0:${#sum_str}-2}"
+    avg=`echo "scale=2;(($sum_str)/$num_elem)" | bc`
+    echo "Average over $sum_str with $num_elem elements: $avg" >> $CMD_LOG
+  else
+    echo "No elements present to compute average!!" >> $CMD_LOG
+    avg=0
+  fi
   echo $avg
 }
 
@@ -242,6 +257,8 @@ get_ci_str() {
     11) ci_type="naive-acc";;
     12) ci_type="CI-cycles";;
     13) ci_type="Naive-cycles";;
+    19) ci_type="All-inst";;
+    20) ci_type="All-inst-cycles";;
     *)
       echo "Wrong CI Type $1"
       exit
@@ -266,6 +283,8 @@ read_tune_param() {
     11) ci_type="naive-acc";;
     12) ci_type="CI-cycles";;
     13) ci_type="Naive-cycles";;
+    19) ci_type="All-inst";;
+    20) ci_type="All-inst-cycles";;
     *)
       echo "Wrong CI Type $1"
       exit
@@ -274,7 +293,9 @@ read_tune_param() {
   if [ $2 -eq 8 ]; then
     intv=5000
   else
-    tune_file="${CUR_PATH}/${ci_type}-tuning-th$3-${CYCLE}.txt"
+    tune_file="${CUR_PATH}/predicted-${ci_type}-th$3-${CYCLE}.txt"
+    #tune_file="${CUR_PATH}/${ci_type}-tuning-th$3-${CYCLE}.txt"
+    #tune_file="${CUR_PATH}/Naive-tuning-th$3-${CYCLE}.txt"
     while read line; do
       present=`echo $line | grep $1 | wc -l`
       if [ $present -eq 1 ]; then
@@ -292,13 +313,13 @@ get_executable_name() {
   declare suffix
   set_benchmark_info $program
   if [ "$BENCH_SUITE" == "splash2" ]; then
-    if [ $suffix_conf -eq 0 ]; then
+    if [ $suffix_conf -ne $CI_RUN ]; then
       suffix="-orig"
     else
       suffix="-lc"
     fi
   elif [ "$BENCH_SUITE" == "parsec" ]; then
-    if [ $suffix_conf -eq 0 ]; then
+    if [ $suffix_conf -ne $CI_RUN ]; then
       suffix="_llvm"
     else
       suffix="_ci"
@@ -307,18 +328,77 @@ get_executable_name() {
   echo "${program}${suffix}"
 }
 
+kill_all_processes() {
+  all_apps="$splash2_benches $phoenix_benches $parsec_benches"
+
+  proc_running=0
+  for app in $all_apps; do
+    proc_present=`ps -aef | grep $app | grep -v grep`
+    if [ ! -z "$proc_present" ]; then
+      printf "${RED}ATTENTION: Process is running!! ($proc_present) Will try to kill them.${NC}\n" | tee -a $CMD_LOG
+      proc_running=1
+      break
+    fi
+    if [ $proc_running -eq 0 ]; then
+      #echo "No proc running"
+      return
+    fi
+  done
+
+  for app in $all_apps; do
+    ci_exec_name=$(get_executable_name $app $CI_RUN)
+    orig_exec_name=$(get_executable_name $app $PTHREAD_RUN)
+    #echo "Killing $ci_exec_name $orig_exec_name"
+    sudo pkill $ci_exec_name 
+    sudo pkill $orig_exec_name
+    proc_present=`ps -aef | grep $app | grep -v grep`
+    while [ ! -z "$proc_present" ]; do
+      printf "${RED}ATTENTION: Process ($app) is still running!! ($proc_present) Trying to kill again.${NC}\n" | tee -a $CMD_LOG
+    done
+  done
+
+  sleep 2
+}
+
+is_a_long_duration_app() {
+  case "$1" in
+    "swaptions") echo "1";;
+    "lu-c") echo "1";;
+    "radix") echo "1";;
+    "canneal") echo "1";;
+    *) echo 0;;
+  esac
+}
+
 # $1-program name
 # $2-no. of threads
 # $3-0 if orig program is run, 1 if CI-based program is run
+# $4-target interval in IR (mandatory - set to 0 when not used)
+# $5-target interval in cycles (mandatory - set to 0 when not used)
 # PREFIX variable (opt) to have any prefix for the command to be run
 get_program_cmd() {
+
   program=$1
   th=$2
   suffix_conf=$3
 
+  if [ $# -ne 5 ];then
+    echo "Usage: get_program_cmd <bench> <thread> <run type> <0 or IR interval> <0 or cycle interval>"
+    exit
+  fi 
+
   rm -f $OUT_FILE
   executable_name=$(get_executable_name $program $suffix_conf)
-  prefix="$PREFIX timeout 2m "
+
+  unset prefix
+
+  if [ $4 -ne 0 ];then
+    prefix=$prefix"CI_IR_INTERVAL=$4 "
+  fi
+
+  # for safety purposes, there is an assert in code if this variable is not set for any CI run
+  prefix=$prefix"CI_CYCLES_INTERVAL=$5 "
+  prefix=$prefix"$PREFIX timeout 2m "
 
   case "$program" in
     water-nsquared)
@@ -337,9 +417,7 @@ get_program_cmd() {
       command="$prefix ./$executable_name < ${SPLASH2_INPUT_PATH}/$program/input.$th > $OUT_FILE"
     ;;
     volrend)
-      # TODO: volrend show weird problems while accessing absolute path of the file in the guess account. Fix this.
-      #command="$prefix ./$executable_name $th ${SPLASH2_INPUT_PATH}/$program/inputs/head > $OUT_FILE"
-      command="$prefix ./$executable_name $th ../../../../inputs/splash2/volrend/inputs/head > $OUT_FILE"
+      command="$prefix ./$executable_name $th ${SPLASH2_INPUT_PATH}/$program/inputs/head > $OUT_FILE"
     ;;
     fmm)
       command="$prefix ./$executable_name < ${SPLASH2_INPUT_PATH}/$program/inputs/input.65535.$th > $OUT_FILE"
@@ -453,38 +531,67 @@ dry_run_exp() {
   set_benchmark_info $bench
   pushd $BENCH_DIR > /dev/null
 
-  command=$(get_program_cmd $bench 1 $runtype)
+  command=$(get_program_cmd $bench 1 $runtype 100000 100000) # the hardcoded parameters do not matter
   run_command ${command}
 
   popd > /dev/null
 }
 
-#$1-program name, $2 - 0:orig run, 1:ci run, $3-no. of thread
+#$1: program name, $2: run type - pthread, ci, hw perf counter, $3:#thread, $4:ci setting if run type is ci, $5 - target ir (read from file, if 0), $6 - target cycle
 #program output will be written in $OUT_FILE
 #PREFIX variable (opt) to contain any required prefix to the command
 run_exp() {
-  if [ $# -ne 3 ]; then
-    printf "${RED}run_exp requires 3 arguments.\n${NC}"
+  if [ $# -ne 6 ]; then
+    printf "${RED}run_exp requires 6 arguments.\nCurrent arguments: $@\n${NC}"
     exit
   fi
 
-  bench=$1
-  runtype=$2
-  thread=$3
+  local bench=$1
+  local runtype=$2
+  local thread=$3
+  local ci_setting=$4
+  local intv_ir=$5
+  local intv_cycle=$6
 
-  printf "${GREEN}Experiment run:-\n${NC}" | tee -a $CMD_LOG
+  kill_all_processes
+
+  if [ $runtype -eq $CI_RUN ]; then
+    # Sanity checks
+    if [ $ci_setting -eq 0 ]; then
+      echo "run_exp(): CI Type cannot be 0 for a CI run. Aborting."; exit
+    fi
+    if [ $ci_setting -eq $OPT_INTERMEDIATE ] && [ $intv_cycle -eq 0 ]; then
+      echo "run_exp(): Target interval in cycles cannot be 0 for a CI-cycles run. Aborting."; exit
+    fi
+    if [ $intv_ir -eq 0 ]; then
+      # Read from file
+      echo "Reading target interval in IR from file" >> $CMD_LOG
+      intv_ir=$(read_tune_param $bench $ci_setting $thread)
+    fi
+  elif [ $runtype -eq $PTHREAD_RUN ]; then
+    intv_ir=0
+    intv_cycle=0
+  elif [ $runtype -eq $HW_PC_RUN ]; then
+    if [ $intv_cycle -eq 0 ]; then
+      echo "run_exp(): Target interval in cycles cannot be 0 for a HW performance counter based run. Aborting."; exit
+    fi
+  else
+    echo "run_exp(): Run type $run_type is not valid. Aborting."; exit
+  fi
+
+
+  printf "${GREEN}Experiment run (Target Cycles: $intv_cycle, Target IR: $intv_ir):-\n${NC}" | tee -a $CMD_LOG
 
   set_benchmark_info $bench
   pushd $BENCH_DIR > /dev/null
 
-  command=$(get_program_cmd $bench $thread $runtype)
+  command=$(get_program_cmd $bench $thread $runtype $intv_ir $intv_cycle)
   run_command ${command}
 
   popd > /dev/null
 }
 
 build_orig() {
-  #run periodic
   BENCH=$1
   THREAD=$2
 
@@ -492,17 +599,18 @@ build_orig() {
 
   pushd $BUILD_DIR > /dev/null
 
-  echo -e "\nBuilding $BENCH for Orig for $THREAD thread(s): " | tee -a $CMD_LOG $BUILD_LOG
+  echo -e "\nBuilding $BENCH for PThread for $THREAD thread(s): " | tee -a $CMD_LOG $BUILD_LOG
 
+  BUILD_PREFIX="EXTRA_FLAGS=\"$EXTRA_FLAGS\""
   if [ "$BENCH_SUITE" == "splash2" ]; then
     cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.orig $BENCH-clean;"
-    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.orig $BENCH"
+    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.orig $BENCH"
   elif [ "$BENCH_SUITE" == "phoenix" ]; then
-    cmd="make -f Makefile.orig clean >$BUILD_LOG 2>$ERROR_LOG;"
+    cmd="$BUILD_PREFIX make -f Makefile.orig clean >$BUILD_LOG 2>$ERROR_LOG;"
     cmd=$cmd"make -f Makefile.orig >$BUILD_LOG 2>$ERROR_LOG"
   elif [ "$BENCH_SUITE" == "parsec" ]; then
     cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.llvm clean;"
-    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.llvm $BENCH"
+    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.llvm $BENCH"
   fi
   run_command $cmd
 
@@ -510,7 +618,6 @@ build_orig() {
 }
 
 build_ci() {
-  #run periodic
   BENCH=$1
   CI_SETTING=$2
   THREAD=$3
@@ -521,21 +628,23 @@ build_ci() {
 
   if [ $# -eq 3 ]; then
     PI=$(read_tune_param $BENCH $CI_SETTING $THREAD)
-    CI=`echo "scale=0; $PI/5" | bc`
+    #CI=`echo "scale=0; $PI/5" | bc`
+    #CI=`echo "scale=0; $CYCLE/5" | bc`
   else
     PI=$4
-    CI=$5
   fi
 
-  cycle=$CYCLE
-
-  if [ $# -eq 6 ]; then
-    cycle=$6
+  if [ $PI -ge 5000 ]; then
+    CI=1000
+  elif [ $PI -ge 1000 ]; then
+    CI=500
+  else
+    CI=100
   fi
 
   AD=$(get_allowed_dev_setting $CI_SETTING)
 
-  BUILD_PREFIX="ALLOWED_DEVIATION=$AD CLOCK_TYPE=1 PUSH_INTV=$PI CMMT_INTV=$CI CYCLE_INTV=$cycle INST_LEVEL=$CI_SETTING EXTRA_FLAGS=\"$EXTRA_FLAGS\""
+  BUILD_PREFIX="ALLOWED_DEVIATION=$AD CLOCK_TYPE=1 PUSH_INTV=$PI CMMT_INTV=$CI CYCLE_INTV=$CYCLE INST_LEVEL=$CI_SETTING EXTRA_FLAGS=\"$EXTRA_FLAGS\""
   echo -e "\nBuilding $BENCH for $THREAD thread(s) with $BUILD_PREFIX: " | tee -a $CMD_LOG $BUILD_LOG
 
   if [ "$BENCH_SUITE" == "splash2" ]; then
@@ -550,34 +659,7 @@ build_ci() {
   fi
   run_command $cmd
 
-  popd > /dev/null
-}
-
-build_hwc() {
-  #run periodic
-  BENCH=$1
-  THREAD=$2
-  PI=$3
-
-  set_benchmark_info $BENCH
-
-  pushd $BUILD_DIR > /dev/null
-
-  EXTRA_FLAGS="-DPAPI -DIC_THRESHOLD=$PI"
-  BUILD_PREFIX="EXTRA_FLAGS=\"$EXTRA_FLAGS\""
-  echo -e "\nBuilding $BENCH for $THREAD thread(s) with $BUILD_PREFIX: " | tee -a $CMD_LOG $BUILD_LOG
-
-  if [ "$BENCH_SUITE" == "splash2" ]; then
-    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.orig $BENCH-clean;"
-    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.orig $BENCH"
-  elif [ "$BENCH_SUITE" == "phoenix" ]; then
-    cmd="make -f Makefile.orig clean >$BUILD_LOG 2>$ERROR_LOG;"
-    cmd=$cmd"$BUILD_PREFIX make -f Makefile.orig >$BUILD_LOG 2>$ERROR_LOG"
-  elif [ "$BENCH_SUITE" == "parsec" ]; then
-    cmd="BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG make -f Makefile.llvm clean;"
-    cmd=$cmd"BUILD_LOG=$BUILD_LOG ERROR_LOG=$ERROR_LOG $BUILD_PREFIX make -f Makefile.llvm $BENCH"
-  fi
-  run_command $cmd
+  cat $BUILD_LOG $ERROR_LOG > $DIR/log-$BENCH-ci$CI_SETTING-th$THREAD.txt
 
   popd > /dev/null
 }
@@ -637,14 +719,19 @@ create_cdf() {
 }
 
 build_libcall_wrapper() {
-  gcc -fPIC -shared $CUR_PATH/../libcall_wrapper.c $CUR_PATH/../ci_lib.c -o $LIBCALL_WRAPPER_PATH -ldl
+  gcc -fPIC -shared $CUR_PATH/libcall_wrapper.c -I$CUR_PATH/../../src/ -o $LIBCALL_WRAPPER_PATH -ldl
 }
 
 print_end_notice() {
   printf "${GREEN}
     Check $CMD_LOG for errors (Search with \"Command failed\").
-    Check $OUTLIER_LOG for outliers (Search for \"#outliers\") or \"No CI called\" or \"Main thread interval\" or \"Last thread interval\".\n
+    Check $OUTLIER_LOG for outliers (Search for \"#outliers\") or \"No CI called\" or \"Main thread interval\" or \"Last thread interval\" or \"Total failed runs\".\n
     Any build logs & error logs can be found in $BUILD_LOG & $ERROR_LOG respectively.\n${NC}"
+  if [ -f $OUTLIER_LOG ]; then
+    print "Printing outlier log from $OUTLIER_LOG"
+    cat $OUTLIER_LOG
+  fi
+
 }
 
 quit_if_not_superuser() {

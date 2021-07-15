@@ -2,10 +2,18 @@
 #include "mtcp_api.h"
 #include "TriggerActionDecl.h"
 
+#ifndef CYCLE_INTV
+#error CYCLE_INTV is undefined 
+#endif
+
+#ifndef IR_INTV
+#error IR_INTV is undefined 
+#endif
+
 void init_stats() {
 #ifdef CI
-  printf("CI version of app is running\n");
-  register_ci(compiler_interrupt_handler);
+  printf("CI version of app is running. Using IR interval: %d, Cycles interval: %d\n", IR_INTV, CYCLE_INTV);
+  register_ci(IR_INTV, CYCLE_INTV, compiler_interrupt_handler);
 #else
   printf("Original version of app is running\n");
 #endif

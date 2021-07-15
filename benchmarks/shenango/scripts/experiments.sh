@@ -6,6 +6,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 CUR_PATH=`pwd`
+PI_CYC_RATIO="0.125"
 EXP_DIR="${CUR_PATH}/exp_results"
 PLOTS_DIR="${CUR_PATH}/plots"
 ERROR_LOG="${EXP_DIR}/error_log"
@@ -549,7 +550,13 @@ run_iokernel_preload() {
   else
     pushd ${CUR_PATH}/../../cpuminer-multi/
     # Names of the log files are used elsewhere. Do not change them without changing everywhere else.
-    cmd="./cpuminer -t 1 -a sha256d -o stratum+tcp://connect.pool.bitcoin.com:3333 -u 15dFNAbSnC7MngwHjoM2gZSuCEg5mmAEKc -p c=BTC 2>&1 | ts %s > cpuminer-iokernel.frames.log &"
+    if [ -z ${CYCLES_INTV+x} ]; then
+      echo "CYCLES_INTV is not set. CPUMiner cannot compile without it. Aborting."
+      exit
+    fi
+    IR_INTV=`echo "$CYCLES_INTV" "$PI_CYC_RATIO" | awk '{printf "%d", int($1*$2)}'`
+    printf "${GREEN}Using IR interval $IR_INTV for target interval $CYCLES_INTV${NC}\n"
+    cmd="CI_IR_INTERVAL=$IR_INTV CI_CYCLES_INTERVAL=$CYCLES_INTV ./cpuminer -t 1 -a sha256d -o stratum+tcp://connect.pool.bitcoin.com:3333 -u 15dFNAbSnC7MngwHjoM2gZSuCEg5mmAEKc -p c=BTC 2>&1 | ts %s > cpuminer-iokernel.frames.log &"
     if [ $# -ne 2 ]; then
       run_command $cmd
       sleep 10
@@ -643,7 +650,7 @@ cpuminer_shenango_experiment()
     cmd="cp $CPUMINER_PATH/cpuminer-${intv} $CPUMINER_PATH/cpuminer"
     run_command $cmd
 
-    run_iokernel_preload 1
+    CYCLES_INTV=$intv run_iokernel_preload 1
 
     sleep 5
     start_time_cpuminer=`date +%s`
@@ -1267,12 +1274,13 @@ run_experiment_over_ci() {
     samples=1
     curr=$start_point
 
-#total_points=6
-#curr="0.9"
+#total_points=2
+#curr_set="0.0 0.6 1.4"
 
     i=0
 
     for i in $(seq 1 $total_points); do
+    #for curr in $curr_set; do
       if [ "$curr" == "0.0" ]; then
         target="0.01"
       elif [ "$curr" == "0.01" ]; then 
@@ -1285,9 +1293,10 @@ run_experiment_over_ci() {
       dir="${EXP_DIR}/cpuminer${intv}/$target"
       echo "Running experiment for client with cpuminer based iokernel, start_mpps $start_point, target_mpps $target, samples: $samples"
 
+      printf "${GREEN}Using cpuminer-${intv}${NC}\n"
       cmd="cp $CPUMINER_PATH/cpuminer-${intv} $CPUMINER_PATH/cpuminer"
       run_command $cmd
-      run_server 1
+      CYCLES_INTV=$intv run_server 1
 
       sleep 5
 
@@ -1471,15 +1480,14 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+echo "Creating directory $EXP_DIR"
+mkdir -p $EXP_DIR
 rm -f $ERROR_LOG
 
 USER_NAME=`logname`
 
 #top -b -n 1 -i -u '!${USER_NAME}'
 #top -b -n 1 -i
-
-#run_shenango_swaptions
-#exit
 
 if [ $# -eq 0 ]; then
   echo "Running entire set of experiments for shenango"

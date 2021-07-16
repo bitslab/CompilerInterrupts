@@ -1207,7 +1207,7 @@ bool checkIfExternalLibraryCall(Instruction *I) {
 }
 
 /* only for debugging - find all external library calls */
-__unused void findAllLibraryCalls(Module &M) {
+__attribute__((unused)) void findAllLibraryCalls(Module &M) {
   errs() << "Finding all library calls\n";
   for (auto &F : M) {
     if (F.isDeclaration())
@@ -1379,7 +1379,7 @@ bool checkIfInstGranIsDet() {
 }
 
 /* Cost of the probe when the IR interval is exceeded and CI is called */
-__unused int getProbeIntermediateInstrCost() {
+__attribute__((unused)) int getProbeIntermediateInstrCost() {
   int instrumentationCost = 0;
   if (checkIfInstGranIsDet())
     instrumentationCost = 3;

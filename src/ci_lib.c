@@ -26,6 +26,7 @@ void dummy(long instruction_count) {
 extern "C" {
 #endif
 
+/* for internal use by CI Pass */
 __thread int LocalLC = 0;
 __thread int lc_disabled_count = 0;
 
@@ -45,11 +46,8 @@ void register_ci(int ir_interval, int cycles_interval, ci_handler ci_func) {
   ci_ir_interval = ir_interval;
   ci_reset_ir_interval = ir_interval / 2;
   ci_cycles_interval = cycles_interval;
-  ci_cycles_threshold = (0.9 * cycles_interval);
-  printf(
-      "Using IR interval: %llu, cycles interval: %llu, "
-      "IR reset value: %llu, cycles threshold: %llu\n",
-      ci_ir_interval, ci_cycles_interval, ci_reset_ir_interval, ci_cycles_threshold);
+  ci_cycles_threshold = (0.9*cycles_interval);
+  //printf("Using IR interval: %ld, cycles interval: %ld, IR reset value: %ld, cycles threshold: %ld\n", ci_ir_interval, ci_cycles_interval, ci_reset_ir_interval, ci_cycles_threshold);
   intvActionHook = interrupt_handler;
 }
 

@@ -5126,9 +5126,9 @@ struct CompilerInterrupt : public ModulePass {
     }
   }
 
-  bool isBlockListed(
-      BasicBlock *BB,
-      std::map<StringRef, SmallVector<StringRef, 32> *> &storageDS) {
+  bool
+  isBlockListed(BasicBlock *BB,
+                std::map<StringRef, SmallVector<StringRef, 32> *> &storageDS) {
     Function *F = BB->getParent();
     if (storageDS.end() != storageDS.find(F->getName())) {
       auto blockNames = storageDS[F->getName()];
@@ -9202,8 +9202,12 @@ struct CompilerInterrupt : public ModulePass {
 #if 1
     char fName[] = "intvActionHook";
     Value *hookFuncPtr = action_hook_prototype(I, fName);
-    auto hookFunc = Builder.CreateLoad(hookFuncPtr->getType()->getPointerElementType(), hookFuncPtr, "ci_handler");
-    Builder.CreateCall(cast<FunctionType>(hookFunc->getType()->getPointerElementType()), hookFunc, args);
+    auto hookFunc =
+        Builder.CreateLoad(hookFuncPtr->getType()->getPointerElementType(),
+                           hookFuncPtr, "ci_handler");
+    Builder.CreateCall(
+        cast<FunctionType>(hookFunc->getType()->getPointerElementType()),
+        hookFunc, args);
 #else
     Value *hookFunc = action_hook_prototype(I->getModule(), "intvActionHook");
     Builder.CreateCall(hookFunc, args);

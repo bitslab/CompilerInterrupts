@@ -1,4 +1,10 @@
-LLVM_CONFIG=llvm-config-9
+ifeq ($(shell uname), Darwin)
+LLVM_CONFIG=llvm-config
+LOADABLE_MODULE_OPTIONS=-bundle -undefined dynamic_lookup
+else
+LLVM_CONFIG=llvm-config-12
+LOADABLE_MODULE_OPTIONS=-shared -O1
+endif
 
 ifndef VERBOSE
 	QUIET:=@
@@ -11,12 +17,6 @@ COMMON_FLAGS=-g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -f
 LDFLAGS+=$(shell $(LLVM_CONFIG) --ldflags)
 CXXFLAGS+=$(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cxxflags)
 CPPFLAGS+=$(shell $(LLVM_CONFIG) --cppflags) -I$(SRC_DIR)
-
-ifeq ($(shell uname), Darwin)
-LOADABLE_MODULE_OPTIONS=-bundle -undefined dynamic_lookup
-else
-LOADABLE_MODULE_OPTIONS=-shared -O1
-endif
 
 CI_PASS_OBJECTS=CompilerInterrupt.o
 CI_PASS=CompilerInterrupt.so
@@ -41,11 +41,11 @@ $(LIB_DIR)/$(CI_PASS): $(CI_PASS_OBJECTS)
 	$(QUIET)gcc -c -fPIC $< -o $@
 
 $(LIB_DIR)/$(CI_LIB_DYN): $(CI_LIB_OBJECTS)
-	@echo "Creating CI API dynamic library $@"
+	@echo "Creating Compiler Interrupt API dynamic library $@"
 	$(QUIET)gcc -shared $< -o $@
 
 $(LIB_DIR)/$(CI_LIB_STATIC): $(CI_LIB_OBJECTS)
-	@echo "Creating CI API static library $@"
+	@echo "Creating Compiler Interrupt API static library $@"
 	$(QUIET)ar -rcs $@ $<
 
 clean:

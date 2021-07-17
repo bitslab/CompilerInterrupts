@@ -11668,5 +11668,5 @@ Pass *createCompilerInterruptPass() { return new CompilerInterrupt(); }
 } // namespace llvm
 
 char CompilerInterrupt::ID = 0;
-static RegisterPass<CompilerInterrupt> Y("logicalclock", "Logical Clock pass",
-                                         true, false);
+static RegisterPass<CompilerInterrupt>
+    Y("compilerinterrupt", "Compiler Interrupt Pass", true, false);

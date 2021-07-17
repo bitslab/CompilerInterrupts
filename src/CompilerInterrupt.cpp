@@ -1,4 +1,4 @@
-/* compiler interrupt pass */
+/* Compiler Interrupt Pass */
 
 #include "unistd.h"
 #include <fstream>
@@ -62,8 +62,8 @@ namespace {
 #define DBG_RT_PRINT_STATS
 
 // For runtime selective debugging: read debug configurations from files &
-selectively turn optimizations or transformations on or off #define
-DBG_RT_SELECTIVE_DEBUGGING
+// selectively turn optimizations or transformations on or off
+#define DBG_RT_SELECTIVE_DEBUGGING
 
 // For debugging this pass: print statistics
 #define DBG_PRINT_PASS_STATS
@@ -81,11 +81,11 @@ DBG_RT_SELECTIVE_DEBUGGING
 #define DBG_TEMP
 
 // For CI-cycles, reset the logical clock by the remaining interval left in
-cycles, after translating it to IR in 4:1 IR:cycles ratio
+// cycles, after translating it to IR in 4:1 IR:cycles ratio
 #define SHIFT
 
-// For CI-cycles, reset the logical clock by the configured probe interval. Did
-not turn out to be a good configuration
+// For CI-cycles, reset the logical clock by the configured probe interval.
+// Did not turn out to be a good configuration
 #define REDUCE_BY_PROBE_INTV
 */
 
@@ -108,8 +108,8 @@ not turn out to be a good configuration
 /************ Section: Structure & Class Definitions ************/
 
 /* Contains list of different types of instrumentation levels - on
- * adding/removing new configurations, update checkIfInstGranIs*() class of
- * functions */
+ * adding/removing new configurations, update checkIfInstGranIs*()
+ * class of functions */
 enum instrumentationLevel {
   OPTIMIZE_HEURISTIC = 1,         /* deprecated */
   OPTIMIZE_HEURISTIC_WITH_TL = 2, /* 2 - CI */
@@ -133,9 +133,9 @@ enum instrumentationLevel {
       17, /* 17 - instrument based on IR, but check cycles at runtime */
   NAIVE_CYCLES =
       18, /* 18 - instrument based on IR, but check cycles at runtime */
-  ALL_INST_TL = 19,           /* 19 -  instrument all instructions */
-  ALL_INST_INTERMEDIATE = 20, /* 20 -  instrument all instructions based on IR,
-                                but check cycles at runtime */
+  ALL_INST_TL = 19,           /* 19 - instrument all instructions */
+  ALL_INST_INTERMEDIATE = 20, /* 20 - instrument all instructions based on IR,
+                                 but check cycles at runtime */
   UNDEFINED_INST_TYPE
 };
 
@@ -187,8 +187,8 @@ enum eClockType {
                      to the logical clock) have been executed */
 };
 
-/* Structure to capture, store & interpret SCEVs received from ScalarEvolution
- * pass */
+/* Structure to capture, store & interpret SCEVs received from
+ * ScalarEvolution pass */
 struct InstructionCost {
   enum type {
     ADD = scAddExpr,
@@ -275,7 +275,7 @@ struct FuncInfo {
   InstructionCost *cost;
 };
 
-/*********** Section: Command line configuration parameters **********/
+/*********** Section: Command line configuration parameters ***********/
 
 static cl::opt<int> InstGranularity(
     "inst-gran",
@@ -372,7 +372,7 @@ std::map<Loop *, InstructionCost *>
 std::map<StringRef, const InstructionCost *> libraryInstructionCosts;
 std::map<Function *, FuncInfo *> computedFuncInfo;
 std::map<StringRef, bool>
-    CGOrderedFunc; // list of functions in call graph order
+    CGOrderedFunc; /* list of functions in call graph order */
 std::map<Function *, struct fstats> FuncStat;
 SmallPtrSet<BasicBlock *, 32> blackListedBlocks;
 std::map<StringRef, SmallVector<StringRef, 32> *> debugInstrList;
@@ -380,12 +380,13 @@ std::map<StringRef, SmallVector<StringRef, 32> *> debugNoInstrList;
 std::map<StringRef, SmallVector<StringRef, 32> *> debugNoLoopTransformList;
 std::map<StringRef, SmallVector<StringRef, 32> *> debugNoLoopInstrList;
 std::map<StringRef, SmallVector<StringRef, 32> *> debugBBList;
-SmallVector<StringRef, 20>
-    threadFunc; // contains list of all functions that begin a thread & main()
-StringMap<unsigned char> ciFuncInApp; // list of functions used as compiler
-                                      // interrupt in application code
+SmallVector<StringRef, 20> threadFunc; /* contains list of all functions that
+                                          begin a thread & main() */
+StringMap<unsigned char> ciFuncInApp;  /* list of functions used as compiler
+                                          interrupt in application code */
 std::map<Function *, AllocaInst *> gLocalCounter;
 std::map<Function *, AllocaInst *> gLocalFLag;
+
 int func_opts = 0; /* stat for number of functions which has fixed numeric cost
                       & can be optimized */
 int preprocessing = 0;  /* stat on the number of times the graph has been
@@ -398,8 +399,8 @@ int applycontrule2 = 0; /* Signifies conditionals container rule */
 int rule2savedInst = 0; /* Represents the number of blocks saved from
                            instrumentation using rule 2*/
 int applyrule3 = 0;     /* Signifies loops with known number of iterations */
-int applycontrule3 =
-    0; /* Signifies containers for loops with known number of iterations */
+int applycontrule3 = 0; /* Signifies containers for loops with
+                           known number of iterations */
 int rule3savedInst = 0; /* Represents the number of blocks saved from
                            instrumentation using rule 4 */
 int applyrule4 = 0;     /* not used */
@@ -411,15 +412,16 @@ int applyrule6 = 0;     /* Signifies Y rule */
 int applyrule7 = 0;     /* Signifies complex conditionals */
 int applycontrule7 = 0; /* Signifies complex conditionals container rule */
 int rule7savedInst = 0; /* Represents the number of blocks saved from
-                           instrumentation using rule 7*/
+                           instrumentation using rule 7 */
 int ruleCoredet = 0;
-int unhandled_loop =
-    0; /* Exception case of loop header having multiple predecessors */
+int unhandled_loop = 0;   /* Exception case of loop header
+                             having multiple predecessors */
 int instrumentedInst = 0; /* global stats variable used for sanity checks */
-int numUninstrumentedFunc =
-    0; /* Number of functions whose cost was optimized out */
+int numUninstrumentedFunc = 0;  /* Number of functions whose cost
+                                   was optimized out */
 int self_loop_transform = 0;    /* Signifies path rule */
 int generic_loop_transform = 0; /* Signifies path rule */
+
 bool gIsOnlyThreadLocal = false;
 bool gUseReadCycles = false;
 
@@ -510,8 +512,8 @@ BasicBlock *getFuncExitBlock(Function *F) {
       if (!exitBB)
         exitBB = &BB;
       else
-        return nullptr; /* since multiple return blocks are present, so return
-                           null */
+        return nullptr; /* since multiple return blocks are present,
+                           so return null */
     }
   }
   return exitBB;
@@ -613,14 +615,15 @@ InstructionCost *scevToCost(const SCEV *scev) {
       return new InstructionCost(InstructionCost::ARG, a->getArgNo());
     }
 #if 0
-        else if(const GlobalValue *g = dyn_cast<GlobalValue>(c->getValue())) {
-          errs() << "Got SCUnknown Global value type. Global Value: " << *g << "\n";
-          return new InstructionCost(InstructionCost::UNKNOWN);
-        }
-        else if(const GlobalVariable *gv = dyn_cast<GlobalVariable>(c->getValue())) {
-          errs() << "Got SCUnknown Global variable type. Global variable: " << *gv << "\n";
-          return new InstructionCost(InstructionCost::UNKNOWN);
-        }
+    else if (const GlobalValue *g = dyn_cast<GlobalValue>(c->getValue())) {
+      errs() << "Got SCUnknown Global value type. Global Value: " << *g << "\n";
+      return new InstructionCost(InstructionCost::UNKNOWN);
+    } else if (const GlobalVariable *gv =
+                   dyn_cast<GlobalVariable>(c->getValue())) {
+      errs() << "Got SCUnknown Global variable type. Global variable: " << *gv
+             << "\n";
+      return new InstructionCost(InstructionCost::UNKNOWN);
+    }
 #endif
     else {
       // errs() << "Got SCUnknown Unknown type. Value id: " <<
@@ -631,26 +634,30 @@ InstructionCost *scevToCost(const SCEV *scev) {
   }
   case scAddRecExpr: {
 #if 0
-        const SCEVAddRecExpr *c = dyn_cast<const SCEVAddRecExpr>(scev);
-        auto v = expandAddRecExprLiterally(c);
-        errs() << "Literal Representation of ADD REC: " << *v << "\n";
-        InstructionCost::opvector ops;
-        ops.push_back(scevToCost(c->getStart()));
-        ops.push_back(scevToCost(c->getStepRecurrence(*SE)));
-        InstructionCost *cost;
-        if (c->isAffine())
-          cost = new InstructionCost((InstructionCost::type)scev->getSCEVType(), ops, c->getLoop(), InstructionCost::LINEAR, c->getNoWrapFlags());
-        else {
-          cost = new InstructionCost(InstructionCost::UNKNOWN);
+    const SCEVAddRecExpr *c = dyn_cast<const SCEVAddRecExpr>(scev);
+    auto v = expandAddRecExprLiterally(c);
+    errs() << "Literal Representation of ADD REC: " << *v << "\n";
+    InstructionCost::opvector ops;
+    ops.push_back(scevToCost(c->getStart()));
+    ops.push_back(scevToCost(c->getStepRecurrence(*SE)));
+    InstructionCost *cost;
+    if (c->isAffine())
+      cost = new InstructionCost((InstructionCost::type)scev->getSCEVType(),
+                                 ops, c->getLoop(), InstructionCost::LINEAR,
+                                 c->getNoWrapFlags());
+    else {
+      cost = new InstructionCost(InstructionCost::UNKNOWN);
 #if 0
-          /* Not processing higher order ones */
-          else if(c->isQuadratic())
-            cost = new InstructionCost((InstructionCost::type)scev->getSCEVType(), ops, c->getLoop(), InstructionCost::QUADRATIC, c->getNoWrapFlags());
-          else
-            cost = new InstructionCost((InstructionCost::type)scev->getSCEVType(), ops, c->getLoop(), InstructionCost::HIGHER_DEGREE, c->getNoWrapFlags());
+      /* Not processing higher order ones */
+      else if (c->isQuadratic()) cost = new InstructionCost(
+          (InstructionCost::type)scev->getSCEVType(), ops, c->getLoop(),
+          InstructionCost::QUADRATIC, c->getNoWrapFlags());
+      else cost = new InstructionCost(
+          (InstructionCost::type)scev->getSCEVType(), ops, c->getLoop(),
+          InstructionCost::HIGHER_DEGREE, c->getNoWrapFlags());
 #endif
-        }
-        return cost;
+    }
+    return cost;
 #else
     return new InstructionCost(InstructionCost::UNKNOWN);
 #endif
@@ -966,11 +973,13 @@ const SCEV *costToSCEV(const InstructionCost *cost,
   }
   case InstructionCost::ADD_REC_EXPR: {
 #if 0
-        const SCEV *start = costToSCEV(cost->_operands[0], args);
-        const SCEV *step = costToSCEV(cost->_operands[1], args);
-        if(start == SE->getCouldNotCompute() || step == SE->getCouldNotCompute()) return SE->getCouldNotCompute();
-        const SCEV *scev = SE->getAddRecExpr(start, step, cost->_loop, cost->_flags);
-        return scev;
+    const SCEV *start = costToSCEV(cost->_operands[0], args);
+    const SCEV *step = costToSCEV(cost->_operands[1], args);
+    if (start == SE->getCouldNotCompute() || step == SE->getCouldNotCompute())
+      return SE->getCouldNotCompute();
+    const SCEV *scev =
+        SE->getAddRecExpr(start, step, cost->_loop, cost->_flags);
+    return scev;
 #else
     return SE->getCouldNotCompute();
 #endif
@@ -1182,16 +1191,16 @@ bool checkIfExternalLibraryCall(Instruction *I) {
       int foundInModule = CGOrderedFunc.count(calledFunction->getName());
       if (foundInOwnLib || foundInModule) {
 #if 0
-          if(foundInOwnLib != 0) {
-            errs() << "Function is part of internal library. Count: " << foundInOwnLib << "\n";
-          }
-          else if(foundInModule != 0) {
-            errs() << "Function is found in this module. Count: " << foundInModule << "\n";
-          }
-          else {
-            errs() << "Code error\n";
-            exit(1);
-          }
+        if (foundInOwnLib != 0) {
+          errs() << "Function is part of internal library. Count: "
+                 << foundInOwnLib << "\n";
+        } else if (foundInModule != 0) {
+          errs() << "Function is found in this module. Count: " << foundInModule
+                 << "\n";
+        } else {
+          errs() << "Code error\n";
+          exit(1);
+        }
 #endif
         // errs() << calledFunction->getName() << "() is an internal library
         // function\n";
@@ -1290,11 +1299,12 @@ InstructionCost *getInstCostForIC(Instruction *I) {
     }
   }
 #if 0
-    else if(isa<FPMathOperator>(I)) {
-      int fpCost = 1;
-      errs() << "Instrumenting cost " << fpCost << " for floating point type " << *(I->getType()) << " for Inst " << *I << "\n";
-      return getConstantInstCost(fpCost);
-    }
+  else if (isa<FPMathOperator>(I)) {
+    int fpCost = 1;
+    errs() << "Instrumenting cost " << fpCost << " for floating point type "
+           << *(I->getType()) << " for Inst " << *I << "\n";
+    return getConstantInstCost(fpCost);
+  }
 #endif
   else {
     /************************** For all other instructions
@@ -1596,7 +1606,7 @@ public:
     auto connPredEdgeInfo = predConnLCC->getPredEdgeInfo();
 
     /* Copying child's connections to itself. If the predecessor already exists,
-     * append the successor'c connections only */
+     * append the successor's connections only */
     for (auto predOfPredIt = connPredSet.begin();
          predOfPredIt != connPredSet.end(); predOfPredIt++) {
       // errs() << "1. For each pred (" << predOfPredIt->first->getID() <<
@@ -1605,7 +1615,8 @@ public:
       if (predIt == predSet.end())
         predSet.insert(*predOfPredIt);
       else {
-        /* if connection's predecessor already exists in its own predessor list
+        /* if connection's predecessor already exists in its own predecessor
+         * list
          */
         auto connList = predIt->second;
         connList.insert(predOfPredIt->second.begin(),
@@ -1616,14 +1627,16 @@ public:
 
     predEdgeInfo.insert(connPredEdgeInfo.begin(), connPredEdgeInfo.end());
 #if 0
-      for(auto predEdgeIt = connPredEdgeInfo.begin(); predEdgeIt != connPredEdgeInfo.end(); predEdgeIt++) {
-        lccEdge oldEdge = predEdgeIt->first;
-        bool isFencePresent = predEdgeIt->second;
-        /* replace connected lcc of original edge to predConnLCC */
-        lccEdge newEdge = std::make_pair(oldEdge.first, predConnLCC);
-        assert((predEdgeInfo.find(newEdge) == predEdgeInfo.end()) && "Same predecessor edge cannot already exist!");
-        predEdgeInfo[newEdge] = isFencePresent;
-      }
+    for (auto predEdgeIt = connPredEdgeInfo.begin();
+         predEdgeIt != connPredEdgeInfo.end(); predEdgeIt++) {
+      lccEdge oldEdge = predEdgeIt->first;
+      bool isFencePresent = predEdgeIt->second;
+      /* replace connected lcc of original edge to predConnLCC */
+      lccEdge newEdge = std::make_pair(oldEdge.first, predConnLCC);
+      assert((predEdgeInfo.find(newEdge) == predEdgeInfo.end()) &&
+             "Same predecessor edge cannot already exist!");
+      predEdgeInfo[newEdge] = isFencePresent;
+    }
 #endif
 
     /* Replacing predecessor's (successor) links from child container to itself
@@ -1642,7 +1655,7 @@ public:
     auto connSuccEdgeInfo = succConnLCC->getSuccEdgeInfo();
 
     /* Copying child's connections to itself. If the successor already exists,
-     * append the successor'c connections only */
+     * append the successor's connections only */
     for (auto succOfSuccIt = connSuccSet.begin();
          succOfSuccIt != connSuccSet.end(); succOfSuccIt++) {
       auto succIt = succSet.find(succOfSuccIt->first);
@@ -2060,10 +2073,10 @@ public:
       _lastInst = newI;
 
 #if 0
-      /* Testing */
-      for(auto it : _instrInfo) {
-        errs() << "replaceInst: to be instrumented " << *(it.first) << "\n";
-      }
+    /* Testing */
+    for (auto it : _instrInfo) {
+      errs() << "replaceInst: to be instrumented " << *(it.first) << "\n";
+    }
 #endif
 
     auto instrInfoIt = _instrInfo.find(oldI);
@@ -2228,12 +2241,12 @@ public:
       long numInstCost = getConstCost(instCost);
 
 #if 0
-        if(InstGranularity == OPTIMIZE_ACCURATE) {
-          if(checkIfExternalLibraryCall(&*instItr)) {
-            instItr++;
-            continue;
-          }
+      if (InstGranularity == OPTIMIZE_ACCURATE) {
+        if (checkIfExternalLibraryCall(&*instItr)) {
+          instItr++;
+          continue;
         }
+      }
 #endif
 
       /* if this is the last instruction, commit sum cost */
@@ -2247,15 +2260,16 @@ public:
         break;
       }
 #if 0
-        else if (checkIfExternalLibraryCall(&*instItr)) {
-          totalNumCost += numInstCost;
-          if(totalNumCost > 1) { /* since minimum call cost is 1 */
-            InstructionCost* prevCost = getConstantInstCost(totalNumCost);
-            errs() << "Instrumenting library function call: " << *instItr << " with cost " << totalNumCost << "\n";
-            setInstrInfo(&*instItr, prevCost);
-            totalNumCost = 0;
-          }
+      else if (checkIfExternalLibraryCall(&*instItr)) {
+        totalNumCost += numInstCost;
+        if (totalNumCost > 1) { /* since minimum call cost is 1 */
+          InstructionCost *prevCost = getConstantInstCost(totalNumCost);
+          errs() << "Instrumenting library function call: " << *instItr
+                 << " with cost " << totalNumCost << "\n";
+          setInstrInfo(&*instItr, prevCost);
+          totalNumCost = 0;
         }
+      }
 #endif
       /* Instrument if the cost exceeded commit interval. Else keep evaluating.
        */
@@ -2635,13 +2649,13 @@ public:
 
     auto entryLCCCost = _entryLCC->getCostForIC(false, initialCost);
 #if 0
-      /* if there is a direct edge, then the entry cost to branches must be made 0. 
-       * Otherwise, the branches might over commit costs, which will again be instrumented
-       * in the direct branch */
-      if(_hasDirectEdge) {
-        _entryLCC->instrumentForIC(entryLCCCost);
-        entryLCCCost = getConstantInstCost(0);
-      }
+    /* if there is a direct edge, then the entry cost to branches must be made
+     * 0. Otherwise, the branches might over commit costs, which will again be
+     * instrumented in the direct branch */
+    if (_hasDirectEdge) {
+      _entryLCC->instrumentForIC(entryLCCCost);
+      entryLCCCost = getConstantInstCost(0);
+    }
 #endif
 
     bool first = true;
@@ -3057,8 +3071,8 @@ public:
 
       if (loopNeedsTransform) {
 #if 0
-          /* postpone preheader cost to postexit */
-          postExitLCCCost = _postExitLCC->getCostForIC(false, preHeaderLCCCost);
+        /* postpone preheader cost to postexit */
+        postExitLCCCost = _postExitLCC->getCostForIC(false, preHeaderLCCCost);
 #else
         _preHeaderLCC->instrumentForIC(preHeaderLCCCost);
         postExitLCCCost = _postExitLCC->getCostForIC(false, zeroCost);
@@ -3149,15 +3163,15 @@ public:
         }
 
 #if 0
-          /* postpone preheader cost commit */
-          int remCostForExit = numPreHeaderCost + numHeaderCost;
-          if(remCostForExit > CommitInterval) {
-            _preHeaderLCC->instrumentForIC(preHeaderLCCCost);
-            remCostForExit = numHeaderCost;
-          }
-          InstructionCost* costToPostExit = getConstantInstCost(remCostForExit);
-          /* since header is colocated with exit, header will run an extra time */
-          postExitLCCCost = _postExitLCC->getCostForIC(false, costToPostExit);
+        /* postpone preheader cost commit */
+        int remCostForExit = numPreHeaderCost + numHeaderCost;
+        if (remCostForExit > CommitInterval) {
+          _preHeaderLCC->instrumentForIC(preHeaderLCCCost);
+          remCostForExit = numHeaderCost;
+        }
+        InstructionCost *costToPostExit = getConstantInstCost(remCostForExit);
+        /* since header is colocated with exit, header will run an extra time */
+        postExitLCCCost = _postExitLCC->getCostForIC(false, costToPostExit);
 #else
         _preHeaderLCC->instrumentForIC(preHeaderLCCCost);
         /* Since header is colocated with exit, there will be one pending header
@@ -3234,8 +3248,8 @@ public:
           }
         }
 #if 0
-          /* postpone preheader cost commit */
-          postExitLCCCost = _postExitLCC->getCostForIC(false, preHeaderLCCCost);
+        /* postpone preheader cost commit */
+        postExitLCCCost = _postExitLCC->getCostForIC(false, preHeaderLCCCost);
 #else
         _preHeaderLCC->instrumentForIC(preHeaderLCCCost);
         postExitLCCCost = _postExitLCC->getCostForIC(false, zeroCost);
@@ -3340,37 +3354,37 @@ struct CompilerInterrupt : public ModulePass {
 
   /************ Sub Section: Logical Clock Utility Functions ***********/
 
-  bool presentInGlobalLCCList(LCCNode *depricatedLCC) {
-    Function *F = depricatedLCC->getFunction();
+  bool presentInGlobalLCCList(LCCNode *deprecatedLCC) {
+    Function *F = deprecatedLCC->getFunction();
     assert(globalOuterLCCList.count(F) &&
            "Function has no containers to be removed");
-    auto depricatedLCCIt = find(globalOuterLCCList[F].begin(),
-                                globalOuterLCCList[F].end(), depricatedLCC);
-    if (depricatedLCCIt == globalOuterLCCList[F].end())
+    auto deprecatedLCCIt = find(globalOuterLCCList[F].begin(),
+                                globalOuterLCCList[F].end(), deprecatedLCC);
+    if (deprecatedLCCIt == globalOuterLCCList[F].end())
       return false;
     else
       return true;
   }
 
   std::vector<LCCNode *>::iterator
-  eraseFromGlobalLCCList(LCCNode *depricatedLCC) {
-    Function *F = depricatedLCC->getFunction();
+  eraseFromGlobalLCCList(LCCNode *deprecatedLCC) {
+    Function *F = deprecatedLCC->getFunction();
     assert(globalOuterLCCList.count(F) &&
            "Function has no containers to be removed");
-    auto depricatedLCCIt = find(globalOuterLCCList[F].begin(),
-                                globalOuterLCCList[F].end(), depricatedLCC);
-    assert((depricatedLCCIt != globalOuterLCCList[F].end()) &&
+    auto deprecatedLCCIt = find(globalOuterLCCList[F].begin(),
+                                globalOuterLCCList[F].end(), deprecatedLCC);
+    assert((deprecatedLCCIt != globalOuterLCCList[F].end()) &&
            "Node had already been removed from global list of containers");
-    globalOuterLCCList[F].erase(depricatedLCCIt);
+    globalOuterLCCList[F].erase(deprecatedLCCIt);
 #ifdef DBG_VERBOSE
-    // auto num = globalOuterLCCList[F].count(depricatedLCC);
+    // auto num = globalOuterLCCList[F].count(deprecatedLCC);
     errs() << "Erasing ";
-    printUnitLCCSet(depricatedLCC);
+    printUnitLCCSet(deprecatedLCC);
     errs() << " from global list of outer LCCs\n";
     errs() << "Number of outer level LCCS: " << globalOuterLCCList[F].size()
            << "\n";
 #endif
-    return depricatedLCCIt;
+    return deprecatedLCCIt;
   }
 
   /************* Sub Section: Production Rule System *************/
@@ -3380,12 +3394,13 @@ struct CompilerInterrupt : public ModulePass {
   bool checkNCreatePathLCC(LCCNode *currentLCC) {
 
 #if 0
-      /* For debug purpose only */
-      LCCNode* exitLCC = currentLCC->getInnerMostExitLCC();
-      if(exitLCC) {
-        auto exitBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
-        errs() << "checkNCreatePathLCC(): checking for " << exitBlock->getName() << "\n";
-      }
+    /* For debug purpose only */
+    LCCNode *exitLCC = currentLCC->getInnerMostExitLCC();
+    if (exitLCC) {
+      auto exitBlock = (static_cast<UnitLCC *>(exitLCC))->getBlock();
+      errs() << "checkNCreatePathLCC(): checking for " << exitBlock->getName()
+             << "\n";
+    }
 #endif
 
     /*********************** Check for path *************************/
@@ -3496,8 +3511,7 @@ struct CompilerInterrupt : public ModulePass {
   }
 #endif
 
-  /********************************************* The next 4 functions are copied
-   * from BasicBlockUtils.cpp ********************************************/
+  /******** The next 4 functions are copied from BasicBlockUtils.cpp ********/
   /// Update DominatorTree, LoopInfo, and LCCSA analysis information.
   void UpdateAnalysisInformation(BasicBlock *OldBB, BasicBlock *NewBB,
                                  ArrayRef<BasicBlock *> Preds,
@@ -3956,42 +3970,43 @@ struct CompilerInterrupt : public ModulePass {
 
       /******************** Create new connections *********************/
 #if 0
-        errs() << "\nBranch Container for test (" << newLCC->getID() << "):- ";
-        errs() << "Entry LCC(" << currentLCC->getID() << "): (";
-        printUnitLCCSet(currentLCC);
-        errs() << "), Middle LCC( ";
-        for(auto middleLCCIt = middleLCCInfo.begin(); middleLCCIt != middleLCCInfo.end(); middleLCCIt++) {
-          printUnitLCCSet(middleLCCIt->first);
-          errs() << "(" << middleLCCIt->first->getID() << ")\t";
-        }
-        errs() << "), Exit LCC(" << postDomLCC->getID() << "): (";
-        printUnitLCCSet(postDomLCC);
-        errs() << ")\n";
-        auto predSet = currentLCC->getPredSet();
-        errs() << "Preds entry LCC:-\n";
-        for(auto predConnLCC : predSet) {
-          auto connLCC = predConnLCC.first;
-          errs() << "Conn LCC: ";
-          printUnitLCCSet(connLCC);
-          errs() << "\n";
-          for(auto predLCC : predConnLCC.second) {
-            errs() << "\t";
-            printUnitLCCSet(predLCC);
-            errs() << ": Its succ set:-\n";
-            auto succSet = predLCC->getSuccSet();
-            for(auto succConnLCC : succSet) {
-              auto connSuccLCC = succConnLCC.first;
-              errs() << "\t\tSucc Conn LCC: ";
-              printUnitLCCSet(connSuccLCC);
+      errs() << "\nBranch Container for test (" << newLCC->getID() << "):- ";
+      errs() << "Entry LCC(" << currentLCC->getID() << "): (";
+      printUnitLCCSet(currentLCC);
+      errs() << "), Middle LCC( ";
+      for (auto middleLCCIt = middleLCCInfo.begin();
+           middleLCCIt != middleLCCInfo.end(); middleLCCIt++) {
+        printUnitLCCSet(middleLCCIt->first);
+        errs() << "(" << middleLCCIt->first->getID() << ")\t";
+      }
+      errs() << "), Exit LCC(" << postDomLCC->getID() << "): (";
+      printUnitLCCSet(postDomLCC);
+      errs() << ")\n";
+      auto predSet = currentLCC->getPredSet();
+      errs() << "Preds entry LCC:-\n";
+      for (auto predConnLCC : predSet) {
+        auto connLCC = predConnLCC.first;
+        errs() << "Conn LCC: ";
+        printUnitLCCSet(connLCC);
+        errs() << "\n";
+        for (auto predLCC : predConnLCC.second) {
+          errs() << "\t";
+          printUnitLCCSet(predLCC);
+          errs() << ": Its succ set:-\n";
+          auto succSet = predLCC->getSuccSet();
+          for (auto succConnLCC : succSet) {
+            auto connSuccLCC = succConnLCC.first;
+            errs() << "\t\tSucc Conn LCC: ";
+            printUnitLCCSet(connSuccLCC);
+            errs() << "\n";
+            for (auto succLCC : succConnLCC.second) {
+              errs() << "\t\t\t";
+              printUnitLCCSet(succLCC);
               errs() << "\n";
-              for(auto succLCC : succConnLCC.second) {
-                errs() << "\t\t\t";
-                printUnitLCCSet(succLCC);
-                errs() << "\n";
-              }
             }
           }
         }
+      }
 #endif
       newLCC->makeNewSuccConnections(
           postDomLCC); /* succLCC is the exit LCC for newLCC */
@@ -4624,7 +4639,7 @@ struct CompilerInterrupt : public ModulePass {
         if (alreadyVisited == numPredLCCs)
           continue;
 
-        /* check if any of the predecessor has multitple successors */
+        /* check if any of the predecessor has multiple successors */
         int minCost = -1, maxCost = -1, sumCost = 0, numPreds = 0;
         bool predHasBackedge = false, hasSiblings = false;
         for (auto predIt = pred_begin(currBB), predEt = pred_end(currBB);
@@ -4992,10 +5007,10 @@ struct CompilerInterrupt : public ModulePass {
     loadCounterInLocal(I, localCounterFlag, "lc_disabled_count");
 
 #if 0
-      /* At the end of the function */ - /* return should handle this */
-      I = &(F->back().back());
-      storeCounterFromLocal(I, localCounterVar, "LocalLC");
-      storeCounterFromLocal(I, localCounterFlag, "lc_disabled_count");
+    /* At the end of the function */ -/* return should handle this */
+        I = &(F->back().back());
+    storeCounterFromLocal(I, localCounterVar, "LocalLC");
+    storeCounterFromLocal(I, localCounterFlag, "lc_disabled_count");
 #endif
 
     handleUnreachable(F);
@@ -5069,12 +5084,13 @@ struct CompilerInterrupt : public ModulePass {
             instrument = false;
           }
 #if 0
-            else if (isa<UnreachableInst>(I)) {
-              instIt--; // the instruction before the unreachable instruction makes it unreachable
-              storeCounterFromLocal(&*instIt, gLocalCounter[F], "LocalLC");
-              storeCounterFromLocal(&*instIt, gLocalFLag[F], "lc_disabled_count");
-              instrument=false;
-            }
+          else if (isa<UnreachableInst>(I)) {
+            instIt--; // the instruction before the unreachable instruction
+                      // makes it unreachable
+            storeCounterFromLocal(&*instIt, gLocalCounter[F], "LocalLC");
+            storeCounterFromLocal(&*instIt, gLocalFLag[F], "lc_disabled_count");
+            instrument = false;
+          }
 #endif
         }
 #else
@@ -5335,27 +5351,31 @@ struct CompilerInterrupt : public ModulePass {
 
     for (auto &currBB : *F) {
 #if 0
-        if(InstGranularity == OPTIMIZE_HEURISTIC || InstGranularity == OPTIMIZE_HEURISTIC_WITH_TL) {
-          /* For debugging, don't instrument self loop blocks */
-          Loop *L = LI->getLoopFor(&currBB);
-          if(L) {
-            BasicBlock* headerBBL = L->getHeader();
-            if(headerBBL == &currBB) { /* necessary for a self loop */
-              bool isSelfLoop = false;
-              succ_iterator succBB = succ_begin(headerBBL), succEndBB = succ_end(headerBBL);
-              for (; succBB != succEndBB; ++succBB) {
-                if (*succBB==headerBBL) {
-                  isSelfLoop = true;
-                  break;
-                }
+      if (InstGranularity == OPTIMIZE_HEURISTIC ||
+          InstGranularity == OPTIMIZE_HEURISTIC_WITH_TL) {
+        /* For debugging, don't instrument self loop blocks */
+        Loop *L = LI->getLoopFor(&currBB);
+        if (L) {
+          BasicBlock *headerBBL = L->getHeader();
+          if (headerBBL == &currBB) { /* necessary for a self loop */
+            bool isSelfLoop = false;
+            succ_iterator succBB = succ_begin(headerBBL),
+                          succEndBB = succ_end(headerBBL);
+            for (; succBB != succEndBB; ++succBB) {
+              if (*succBB == headerBBL) {
+                isSelfLoop = true;
+                break;
               }
-              if(isSelfLoop) {
-                errs() << "Not instrumenting function for self-loop basic block " << currBB.getName() << " of Function " << F->getName() << "\n";
-                continue;
-              }
+            }
+            if (isSelfLoop) {
+              errs() << "Not instrumenting function for self-loop basic block "
+                     << currBB.getName() << " of Function " << F->getName()
+                     << "\n";
+              continue;
             }
           }
         }
+      }
 #endif
 
       auto LCCs = bbToContainersMap[&currBB];
@@ -5412,10 +5432,12 @@ struct CompilerInterrupt : public ModulePass {
             instrumentCI(I, val);
             numInstrumented++;
 #if 0
-              }
-              else {
-                errs() << "Not Instrumenting block " << I->getParent()->getName() << " of " << F->getName() << " with cost " << *instCost << "\n";
-              }
+          }
+          else {
+            errs() << "Not Instrumenting block " << I->getParent()->getName()
+                   << " of " << F->getName() << " with cost " << *instCost
+                   << "\n";
+          }
 #endif
           }
 
@@ -5697,9 +5719,11 @@ struct CompilerInterrupt : public ModulePass {
         errs() << "#total rule3 : " << rule3Count << " times (saved "
                << rule3SavedCount << " containers)\n";
 #if 0
-          //errs() << "#rule4 : " << rule4Count << " times (saved " << rule4SavedCount << " containers)\n";
-          //errs() << "#rule5 : " << rule5Count << " times (saved " << rule5SavedCount << " containers)\n"; 
-          //errs() << "#rule6 : " << rule6Count << " times (saved " << rule6Count << " containers)\n";
+      // errs() << "#rule4 : " << rule4Count << " times (saved " <<
+      // rule4SavedCount << " containers)\n"; errs() << "#rule5 : " << rule5Count
+      // << " times (saved " << rule5SavedCount << " containers)\n"; errs() <<
+      // "#rule6 : " << rule6Count << " times (saved " << rule6Count << "
+      // containers)\n";
 #endif
         errs() << "#total rule7 : " << rule7Count << " times (saved "
                << rule7SavedCount << " containers)\n";
@@ -5820,28 +5844,30 @@ struct CompilerInterrupt : public ModulePass {
     }
 
 #if 0
-      /* Temporary - on debug purpose */
-      BasicBlock* frontBlock = &(headerBBL->getParent()->getEntryBlock());
-      if (headerBBL->getParent()->getName().compare("add_to_sum")==0 && headerBBL->getName().compare("for.body")==0)
-      {
-        errs() << "Adding self loop debug test for " << headerBBL->getName() << " (" << headerBBL->getParent()->getName() << ")\n";
-        Module *M = headerBBL->getModule();
-        BasicBlock::iterator inst(frontBlock->getFirstNonPHI());
-        inst++;
-        inst++;
-        auto newI=&*inst;
-        
-        IRBuilder<> IR(newI);
-        Function *printf_func = printf_prototype(M);
-        llvm::Value *formatStr = IR.CreateGlobalStringPtr("\nTESTING : %ld\n", "test");
-        GlobalVariable *tllc = M->getGlobalVariable("LocalLC");
-        auto lc_val = IR.CreateLoad(tllc);
-        std::vector<llvm::Value*> args;
-        args.push_back(formatStr);
-        args.push_back(lc_val);
-        auto call = IR.CreateCall(printf_func, args);
-        call->setTailCall();
-      }
+  /* Temporary - on debug purpose */
+  BasicBlock *frontBlock = &(headerBBL->getParent()->getEntryBlock());
+  if (headerBBL->getParent()->getName().compare("add_to_sum") == 0 &&
+      headerBBL->getName().compare("for.body") == 0) {
+    errs() << "Adding self loop debug test for " << headerBBL->getName() << " ("
+           << headerBBL->getParent()->getName() << ")\n";
+    Module *M = headerBBL->getModule();
+    BasicBlock::iterator inst(frontBlock->getFirstNonPHI());
+    inst++;
+    inst++;
+    auto newI = &*inst;
+
+    IRBuilder<> IR(newI);
+    Function *printf_func = printf_prototype(M);
+    llvm::Value *formatStr =
+        IR.CreateGlobalStringPtr("\nTESTING : %ld\n", "test");
+    GlobalVariable *tllc = M->getGlobalVariable("LocalLC");
+    auto lc_val = IR.CreateLoad(tllc);
+    std::vector<llvm::Value *> args;
+    args.push_back(formatStr);
+    args.push_back(lc_val);
+    auto call = IR.CreateCall(printf_func, args);
+    call->setTailCall();
+  }
 #endif
 
     if (selfLoopInfo == selfLoop.end()) {
@@ -5878,10 +5904,11 @@ struct CompilerInterrupt : public ModulePass {
     }
 
 #if 0
-      /* No self loop optimization for now. Remove the next three lines to enable it. */
-      unitLoopLCC->instrumentForIC(selfLoopCost);
-      selfLoop.erase(selfLoopInfo);
-      return;
+  /* No self loop optimization for now. Remove the next three lines to enable
+   * it. */
+  unitLoopLCC->instrumentForIC(selfLoopCost);
+  selfLoop.erase(selfLoopInfo);
+  return;
 #endif
 
     assert((numSelfLoopCost <= CommitInterval) &&
@@ -5897,8 +5924,8 @@ struct CompilerInterrupt : public ModulePass {
     // will be instrumented with body cost\n";
 
 #if 0
-      /* For Debugging - comment this out once done */
-      profile_loop_advanced(L);
+  /* For Debugging - comment this out once done */
+  profile_loop_advanced(L);
 #endif
 
     /* Find number of backedges */
@@ -6052,10 +6079,11 @@ struct CompilerInterrupt : public ModulePass {
     UnitLCC *unitLoopLCC = static_cast<UnitLCC *>(loopLCC);
 
 #if 0
-      /* No sese loop optimization for now. Remove the next three lines to enable it. */
-      unitLoopLCC->instrumentForIC(seseLoopCost);
-      seseLoop.erase(seseLoopInfo);
-      return;
+  /* No sese loop optimization for now. Remove the next three lines to enable
+   * it. */
+  unitLoopLCC->instrumentForIC(seseLoopCost);
+  seseLoop.erase(seseLoopInfo);
+  return;
 #endif
 
     assert((numSESELoopCost <= CommitInterval) &&
@@ -6071,8 +6099,8 @@ struct CompilerInterrupt : public ModulePass {
     // will be instrumented with body cost\n";
 
 #if 0
-      /* For Debugging - comment this out once done */
-      profile_loop_advanced(L);
+  /* For Debugging - comment this out once done */
+  profile_loop_advanced(L);
 #endif
 
     int innerIterationThresh = 10;
@@ -6148,38 +6176,40 @@ struct CompilerInterrupt : public ModulePass {
     }
 
 #if 0
-      errs() << "Loops in function:- \n";
-      std::set<Loop*> visitedLoops;
-      std::set<Loop*> unvisitedLoops;
-      if (LI->begin() == LI->end())
-        return;
-      
-      for (LoopInfo::iterator itLI = LI->begin(), itLIEnd = LI->end(); itLI != itLIEnd; ++itLI) {
-        Loop *firstLoop = *itLI;
-        unvisitedLoops.insert(firstLoop);
-        errs() << "Start Loop: " << *firstLoop << "\n";
-      }
+  errs() << "Loops in function:- \n";
+  std::set<Loop *> visitedLoops;
+  std::set<Loop *> unvisitedLoops;
+  if (LI->begin() == LI->end())
+    return;
 
-      while (!unvisitedLoops.empty()) {
-        auto itUVL = unvisitedLoops.begin();
-        Loop *L = *itUVL;
-        errs() << "Size of unvisited loops set: " << unvisitedLoops.size() << "\n";
-        errs() << "Loop: " << *L << "\n";
-        unvisitedLoops.erase(itUVL); 
-        auto presentInVisited = visitedLoops.find(L);
-        if(presentInVisited == visitedLoops.end()) {
-          visitedLoops.insert(L);
-        }
+  for (LoopInfo::iterator itLI = LI->begin(), itLIEnd = LI->end();
+       itLI != itLIEnd; ++itLI) {
+    Loop *firstLoop = *itLI;
+    unvisitedLoops.insert(firstLoop);
+    errs() << "Start Loop: " << *firstLoop << "\n";
+  }
 
-        //errs() << "Neighbour size: " << ;
-        for (LoopInfo::iterator itL = L->begin(), itLEnd = L->end(); itL != itLEnd; ++itL) {
-          Loop* neighbourL = *itL;
-          //auto presentInUnvisited = unvisitedLoops.find(neighbourL);
-          //if(presentInUnvisited == unvisitedLoops.end()) {
-            unvisitedLoops.insert(neighbourL);
-          //}
-        }
-      }
+  while (!unvisitedLoops.empty()) {
+    auto itUVL = unvisitedLoops.begin();
+    Loop *L = *itUVL;
+    errs() << "Size of unvisited loops set: " << unvisitedLoops.size() << "\n";
+    errs() << "Loop: " << *L << "\n";
+    unvisitedLoops.erase(itUVL);
+    auto presentInVisited = visitedLoops.find(L);
+    if (presentInVisited == visitedLoops.end()) {
+      visitedLoops.insert(L);
+    }
+
+    // errs() << "Neighbour size: " << ;
+    for (LoopInfo::iterator itL = L->begin(), itLEnd = L->end(); itL != itLEnd;
+         ++itL) {
+      Loop *neighbourL = *itL;
+      // auto presentInUnvisited = unvisitedLoops.find(neighbourL);
+      // if(presentInUnvisited == unvisitedLoops.end()) {
+      unvisitedLoops.insert(neighbourL);
+      //}
+    }
+  }
 #endif
 
     int selfLoopCount = selfLoop.size();
@@ -6360,16 +6390,16 @@ struct CompilerInterrupt : public ModulePass {
       name.append("DirectSucc");
 
 #if 0
-        /* Just prints for debugging */
-        if(Loop *L = LI->getLoopFor(head)) {
-          errs() << "Before creating new block " << name << ", loop was: " << *L;
-          if(auto exitingBB = L->getExitingBlock())
-            errs() << "Loop had exiting block " << exitingBB->getName() << "\n";
-          if(auto latchBB = L->getLoopLatch())
-            errs() << "Loop had latch block " << latchBB->getName() << "\n";
-          if(auto exitBB = L->getExitBlock())
-            errs() << "Loop had exit block " << exitBB->getName() << "\n";
-        }
+    /* Just prints for debugging */
+    if (Loop *L = LI->getLoopFor(head)) {
+      errs() << "Before creating new block " << name << ", loop was: " << *L;
+      if (auto exitingBB = L->getExitingBlock())
+        errs() << "Loop had exiting block " << exitingBB->getName() << "\n";
+      if (auto latchBB = L->getLoopLatch())
+        errs() << "Loop had latch block " << latchBB->getName() << "\n";
+      if (auto exitBB = L->getExitBlock())
+        errs() << "Loop had exit block " << exitBB->getName() << "\n";
+    }
 #endif
 
       BasicBlock *directBlock =
@@ -6422,9 +6452,11 @@ struct CompilerInterrupt : public ModulePass {
 
       PHINode *PN;
 #if 0
-				for (BasicBlock::iterator phiIt = tail->begin(); (PN = dyn_cast<PHINode>(phiIt)); ++phiIt) {
-					errs() << "For direct block's " << directBlock->getName() << " --> phi inst: " << *PN << "\n";
-        }
+    for (BasicBlock::iterator phiIt = tail->begin();
+         (PN = dyn_cast<PHINode>(phiIt)); ++phiIt) {
+      errs() << "For direct block's " << directBlock->getName()
+             << " --> phi inst: " << *PN << "\n";
+    }
 #endif
 
       /* Loop over any phi node in the basic block, updating the BB field of
@@ -6456,11 +6488,13 @@ struct CompilerInterrupt : public ModulePass {
       }
 
 #if 0
-        BPI->calculate(*F, *LI);
-        errs() << "Checking edge probability between " << head->getName() << " and new block " << directBlock->getName() << "\n";
-        getEdgeProbability(head, directBlock);
-        errs() << "Checking edge probability between new block " << directBlock->getName() << " and " << tail->getName() << "\n";
-        getEdgeProbability(directBlock, tail);
+    BPI->calculate(*F, *LI);
+    errs() << "Checking edge probability between " << head->getName()
+           << " and new block " << directBlock->getName() << "\n";
+    getEdgeProbability(head, directBlock);
+    errs() << "Checking edge probability between new block "
+           << directBlock->getName() << " and " << tail->getName() << "\n";
+    getEdgeProbability(directBlock, tail);
 #endif
 
       /* Instrumenting the cost in the new branch */
@@ -6503,7 +6537,7 @@ struct CompilerInterrupt : public ModulePass {
     /* order of the calls are important */
 
 #if 0
-      //profile_loops(F);
+  // profile_loops(F);
 #endif
     /* Traverse & reduce graph */
     traverseNReduce(F);
@@ -6516,10 +6550,12 @@ struct CompilerInterrupt : public ModulePass {
     costEvaluate(F);
 
 #if 0
-      /* Create local variables for loading & storing the thread local counter & flag */
-      if(InstGranularity == OPTIMIZE_HEURISTIC || InstGranularity == OPTIMIZE_ACCURATE) {
-        initializeLocals(F);
-      }
+  /* Create local variables for loading & storing the thread local counter &
+   * flag */
+  if (InstGranularity == OPTIMIZE_HEURISTIC ||
+      InstGranularity == OPTIMIZE_ACCURATE) {
+    initializeLocals(F);
+  }
 #endif
 
     /* Instrument new blocks for branches, where needed & instruments costs in
@@ -6974,10 +7010,10 @@ struct CompilerInterrupt : public ModulePass {
       return false;
 
 #if 0
-      /* Start should not be reachable from the end in the forward direction */
-      if(isPotentiallyReachable(*end, start, DT, LI)) {
-        return false;
-      }
+  /* Start should not be reachable from the end in the forward direction */
+  if (isPotentiallyReachable(*end, start, DT, LI)) {
+    return false;
+  }
 #endif
     if (!DFSCheckForComplexBr(start, *end, true, start)) {
       // errs() << "There are edges to this section before the postdom, that
@@ -7087,8 +7123,8 @@ struct CompilerInterrupt : public ModulePass {
   bool matchComplexBranch(BasicBlock *start, BasicBlock **end,
                           bool *direction) {
 #if 0
-      if(isBlockListed(start, debugNoInstrList))
-        return false;
+  if (isBlockListed(start, debugNoInstrList))
+    return false;
 #endif
 
     if (matchComplexBranchForward(start, end)) {
@@ -7103,11 +7139,14 @@ struct CompilerInterrupt : public ModulePass {
     // during analysis, & the singular block is instrumented if cost is
     // unreasonably large or unknown
 #if 0
-      errs() << "WARNING: Matched a backward complex branch at " << start->getName() << " (dominator: " << (*end)->getName() << " ). Since this is only for switch statements which we handle differently, we won't transform this.\n";
-      if(matchComplexBranchBackward(start, end)) {
-        *direction = false;
-        return true;
-      }
+  errs() << "WARNING: Matched a backward complex branch at " << start->getName()
+         << " (dominator: " << (*end)->getName()
+         << " ). Since this is only for switch statements which we handle "
+            "differently, we won't transform this.\n";
+  if (matchComplexBranchBackward(start, end)) {
+    *direction = false;
+    return true;
+  }
 #endif
 
     return false;
@@ -7300,10 +7339,12 @@ struct CompilerInterrupt : public ModulePass {
                    << " in the forward direction\n";
           }
 #if 0
-            else {
-              transformComplexBranchBackward(startBB, endBB);
-              errs() << F->getName() << "(): Transformed branch between " << startBB->getName() << " and " << endBB->getName() << " in the backward direction\n";
-            }
+        else {
+          transformComplexBranchBackward(startBB, endBB);
+          errs() << F->getName() << "(): Transformed branch between "
+                 << startBB->getName() << " and " << endBB->getName()
+                 << " in the backward direction\n";
+        }
 #endif
           break;
         }
@@ -7330,8 +7371,8 @@ struct CompilerInterrupt : public ModulePass {
     auto lBounds = L->getBounds(*SE);
     bool isCanonical = false;
     bool isInverseCond =
-        false; /* inverse condition is when first successor of loop condition is
-                  not the header of the loop */
+        false; /* inverse condition is when first successor of
+                  loop condition is not the header of the loop */
     int loopType;
 
     if (L->isCanonical(*SE))
@@ -8027,12 +8068,12 @@ struct CompilerInterrupt : public ModulePass {
         IRCostBlockTermInst.CreateMul(loopIterations, loopBodyCost);
 
 #if 0
-      // instrument the cost
-      makeContainersOfBB(costBlock);
-      LCCNode* costBlockLCC = getFirstLCCofBB(costBlock);
-      UnitLCC* costBlockUnitLCC = static_cast<UnitLCC*>(costBlockLCC);
-      errs() << "Cost accumulated: " << extraCost << "\n";
-      costBlockUnitLCC->instrumentValueForIC(loopCost, extraCost);
+  // instrument the cost
+  makeContainersOfBB(costBlock);
+  LCCNode *costBlockLCC = getFirstLCCofBB(costBlock);
+  UnitLCC *costBlockUnitLCC = static_cast<UnitLCC *>(costBlockLCC);
+  errs() << "Cost accumulated: " << extraCost << "\n";
+  costBlockUnitLCC->instrumentValueForIC(loopCost, extraCost);
 
 #else
     /* register the outer loop for the cost instrumentation phase */
@@ -8292,8 +8333,8 @@ struct CompilerInterrupt : public ModulePass {
     auto lBounds = L->getBounds(*SE);
     bool isCanonical = false;
     bool isInverseCond =
-        false; /* inverse condition is when first successor of loop condition is
-                  not the header of the loop */
+        false; /* inverse condition is when first successor of
+                  loop condition is not the header of the loop */
 
     if (L->isCanonical(*SE)) {
       isCanonical = true;
@@ -8353,13 +8394,13 @@ struct CompilerInterrupt : public ModulePass {
 #endif
 
 #if 0
-      ConstantInt* stepCI = dyn_cast<ConstantInt>(StepValue);
-      int64_t numStepVal = 0;
-      if (stepCI->getBitWidth() <= 64) {
-        numStepVal = stepCI->getSExtValue();
-      }
-      assert((numStepVal!=0) && "Step value cannot be 0");
-      errs() << "Step value is " << numStepVal << "\n";
+  ConstantInt *stepCI = dyn_cast<ConstantInt>(StepValue);
+  int64_t numStepVal = 0;
+  if (stepCI->getBitWidth() <= 64) {
+    numStepVal = stepCI->getSExtValue();
+  }
+  assert((numStepVal != 0) && "Step value cannot be 0");
+  errs() << "Step value is " << numStepVal << "\n";
 #endif
 
     auto *indVarPhiInst = L->getInductionVariable(*SE);
@@ -8374,16 +8415,16 @@ struct CompilerInterrupt : public ModulePass {
     }
 
 #if 0
-      auto preheaderBB = L->getLoopPreheader();
-      Value *indVarVal = nullptr;
-      /* find the value in preheader corresponding to the induction variable */
-      for (unsigned i = 0; i <= indVarPhiInst->getNumIncomingValues(); i++) {
-        BasicBlock *incomingBB = indVarPhiInst->getIncomingBlock(i);
-        if (incomingBB == preheaderBB) {
-          indVarVal = indVarPhiInst->getIncomingValue(i);
-          break;
-        }
-      }
+  auto preheaderBB = L->getLoopPreheader();
+  Value *indVarVal = nullptr;
+  /* find the value in preheader corresponding to the induction variable */
+  for (unsigned i = 0; i <= indVarPhiInst->getNumIncomingValues(); i++) {
+    BasicBlock *incomingBB = indVarPhiInst->getIncomingBlock(i);
+    if (incomingBB == preheaderBB) {
+      indVarVal = indVarPhiInst->getIncomingValue(i);
+      break;
+    }
+  }
 #endif
 
     /* Store Phi Nodes */
@@ -9527,83 +9568,94 @@ struct CompilerInterrupt : public ModulePass {
   }
 
 #if 0
-    void findFuncWithPointers(Module &M) {
-      for(auto &F : M) {
-        if(F.isDeclaration()) continue;
-        bool addFunctionToGlobal = false;
-        //bool isRecursive = isRecursiveFunc[F.getName()];
-        /* A thread function or a recursive function will be fully instrumented. So we don't need to clone it for function pointer usage. */
-        if(isThreadFunc(&F)) continue;
-        //errs() << "Checking if " << F.getName() << "() has been involved in any function pointers\n";
-        int usersOfFunc = 0;
-        for(auto *U : F.users()) {  // U is of type User*
-          usersOfFunc++;
-          //errs() << "User " << *U << "\n";
-          if (auto I = dyn_cast<Instruction>(U)) {
-            //errs() << "I: " << *I << "\n";
-            if (CallInst *ci = dyn_cast<CallInst>(I)) {
-              //errs() << "ci: " << *ci << "\n";
-              if(!ci->getCalledFunction()) {
+void findFuncWithPointers(Module &M) {
+  for (auto &F : M) {
+    if (F.isDeclaration())
+      continue;
+    bool addFunctionToGlobal = false;
+    // bool isRecursive = isRecursiveFunc[F.getName()];
+    /* A thread function or a recursive function will be fully instrumented. So
+     * we don't need to clone it for function pointer usage. */
+    if (isThreadFunc(&F))
+      continue;
+    // errs() << "Checking if " << F.getName() << "() has been involved in any
+    // function pointers\n";
+    int usersOfFunc = 0;
+    for (auto *U : F.users()) { // U is of type User*
+      usersOfFunc++;
+      // errs() << "User " << *U << "\n";
+      if (auto I = dyn_cast<Instruction>(U)) {
+        // errs() << "I: " << *I << "\n";
+        if (CallInst *ci = dyn_cast<CallInst>(I)) {
+          // errs() << "ci: " << *ci << "\n";
+          if (!ci->getCalledFunction()) {
 #ifdef DBG_VERBOSE
-                errs() << "findFuncWithPointers(): Not a direct function call for " << F.getName() << "(). Inst is: " << *ci << "\n";
+            errs() << "findFuncWithPointers(): Not a direct function call for "
+                   << F.getName() << "(). Inst is: " << *ci << "\n";
 #endif
-                addFunctionToGlobal = true;
-                break;
-              }
-              else {
-                //errs() << "getCalledFunction() is not null. I: " << *(ci->getCalledFunction()) << "\n";
-                Function* calledFunction = ci->getCalledFunction();
-                if( calledFunction->getName().compare(F.getName()) != 0 ) {
+            addFunctionToGlobal = true;
+            break;
+          } else {
+            // errs() << "getCalledFunction() is not null. I: " <<
+            // *(ci->getCalledFunction()) << "\n";
+            Function *calledFunction = ci->getCalledFunction();
+            if (calledFunction->getName().compare(F.getName()) != 0) {
 #ifdef DBG_VERBOSE
-                  errs() << "findFuncWithPointers(): User of function " << F.getName() << " calls a different function " << calledFunction->getName() << " \n";
-#endif
-                  addFunctionToGlobal = true;
-                  break;
-                }
-              }
-            }
-            else {
-#ifdef DBG_VERBOSE
-              errs() << "findFuncWithPointers(): User is not a call instruction for " << F.getName() << "(). Instruction --> " << *I << "\n";
+              errs() << "findFuncWithPointers(): User of function "
+                     << F.getName() << " calls a different function "
+                     << calledFunction->getName() << " \n";
 #endif
               addFunctionToGlobal = true;
               break;
             }
           }
-          else {
+        } else {
 #ifdef DBG_VERBOSE
-            errs() << "findFuncWithPointers(): User is not an instruction for " << F.getName() << "().  User --> " << *U << "\n";
+          errs()
+              << "findFuncWithPointers(): User is not a call instruction for "
+              << F.getName() << "(). Instruction --> " << *I << "\n";
 #endif
-            addFunctionToGlobal = true;
-            break;
-          }
-        }
-
-        if(usersOfFunc == 0) {
-#ifdef DBG_VERBOSE
-          /* Function with no user may be used in a function pointer */
-          errs() << "findFuncWithPointers(): " << F.getName() << "() has no user!!\n";
           addFunctionToGlobal = true;
-#endif
+          break;
         }
-
-        if(addFunctionToGlobal) {
-          funcUsedAsPointers.push_back(F.getName());
+      } else {
 #ifdef DBG_VERBOSE
-          errs() << "findFuncWithPointers: Added func " << F.getName() << " to list of functions that might have function pointers to it!\n";
+        errs() << "findFuncWithPointers(): User is not an instruction for "
+               << F.getName() << "().  User --> " << *U << "\n";
 #endif
-        }
+        addFunctionToGlobal = true;
+        break;
       }
     }
 
-    bool isFuncPointer(Function *F) {
-      //errs() << "Checking if " << F->getName() << " is a func pointer!!\n";
-      if(std::find(funcUsedAsPointers.begin(), funcUsedAsPointers.end(), F->getName()) != funcUsedAsPointers.end()) {
-        return true;
-      }
-      else
-        return false;
+    if (usersOfFunc == 0) {
+#ifdef DBG_VERBOSE
+      /* Function with no user may be used in a function pointer */
+      errs() << "findFuncWithPointers(): " << F.getName()
+             << "() has no user!!\n";
+      addFunctionToGlobal = true;
+#endif
     }
+
+    if (addFunctionToGlobal) {
+      funcUsedAsPointers.push_back(F.getName());
+#ifdef DBG_VERBOSE
+      errs()
+          << "findFuncWithPointers: Added func " << F.getName()
+          << " to list of functions that might have function pointers to it!\n";
+#endif
+    }
+  }
+}
+
+bool isFuncPointer(Function *F) {
+  // errs() << "Checking if " << F->getName() << " is a func pointer!!\n";
+  if (std::find(funcUsedAsPointers.begin(), funcUsedAsPointers.end(),
+                F->getName()) != funcUsedAsPointers.end()) {
+    return true;
+  } else
+    return false;
+}
 #endif
 
   /* Find all functions that are called using pthread_create */
@@ -9877,16 +9929,16 @@ struct CompilerInterrupt : public ModulePass {
         }
 
 #if 0
-        /* Print runtime statistis at the end of every function for the purpose of
-         * debugging. */
-        if (F.getName().compare("printCountersPi") != 0)
-          callPrintFunc(&F.back().back());
-          // /* print clock after every basic block */
-          // if (F.getName().compare("printCountersPi") != 0) {
-          //   for (auto &BB : F) {
-          //     callPrintFunc(&BB.back(), false);
-          //   }
-          // }
+      /* Print runtime statistis at the end of every function for the purpose of
+       * debugging. */
+      if (F.getName().compare("printCountersPi") != 0)
+        callPrintFunc(&F.back().back());
+        // /* print clock after every basic block */
+        // if (F.getName().compare("printCountersPi") != 0) {
+        //   for (auto &BB : F) {
+        //     callPrintFunc(&BB.back(), false);
+        //   }
+        // }
 #endif
       }
     }
@@ -10204,19 +10256,21 @@ struct CompilerInterrupt : public ModulePass {
                        nullptr, GlobalValue::GeneralDynamicTLSModel, 0, true);
 
 #if 0
-      auto initVal32 =
-        llvm::ConstantInt::get(M.getContext(), llvm::APInt(32, 0, false));
-      interrupt_disabled_count->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+  auto initVal32 =
+      llvm::ConstantInt::get(M.getContext(), llvm::APInt(32, 0, false));
+  interrupt_disabled_count->setThreadLocalMode(
+      GlobalValue::GeneralDynamicTLSModel);
 
-      // The variable is now maintained in the CI library
-      if(DefineClock) {
-        lc->setInitializer(initVal);
-        interrupt_disabled_count->setInitializer(initVal32);
-      }
+  // The variable is now maintained in the CI library
+  if (DefineClock) {
+    lc->setInitializer(initVal);
+    interrupt_disabled_count->setInitializer(initVal32);
+  }
 
-    GlobalVariable *ci_ir_interval = new GlobalVariable(M,
-    Type::getInt64Ty(M.getContext()), false, GlobalValue::ExternalLinkage, 0, "ci_ir_interval");
-    ci_ir_interval->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
+  GlobalVariable *ci_ir_interval =
+      new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false,
+                         GlobalValue::ExternalLinkage, 0, "ci_ir_interval");
+  ci_ir_interval->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
 #endif
 
 #ifdef DBG_RT_PRINT_STATS
@@ -10509,8 +10563,8 @@ struct CompilerInterrupt : public ModulePass {
 
       /* Compute stats for naive */
       computeCostEvalStats(
-          &F); // only because of computeInstrStats's dependence on the Fstat
-               // structure created by it
+          &F); // only because of computeInstrStats's dependence
+               // on the Fstat structure created by it
       computeInstrStats(&F);
 
       /* instrument locals */
@@ -10592,8 +10646,8 @@ struct CompilerInterrupt : public ModulePass {
 
       /* Compute stats for naive */
       computeCostEvalStats(
-          &F); // only because of computeInstrStats's dependence on the Fstat
-               // structure created by it
+          &F); // only because of computeInstrStats's dependence
+               // on the Fstat structure created by it
       computeInstrStats(&F);
 
       /* instrument locals */
@@ -11148,12 +11202,13 @@ struct CompilerInterrupt : public ModulePass {
       cycle->setInitializer(initVal);
 
 #if 0
-      Function *mainF = M.getFunction("main");
-      BasicBlock *enBB = &(mainF->getEntryBlock());
-      Instruction *I = enBB->getFirstNonPHIOrDbg();
-      IRBuilder<> IR(I);
-      CallInst *latestcycle = IR.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
-      IR.CreateStore(latestcycle, cycle);
+  Function *mainF = M.getFunction("main");
+  BasicBlock *enBB = &(mainF->getEntryBlock());
+  Instruction *I = enBB->getFirstNonPHIOrDbg();
+  IRBuilder<> IR(I);
+  CallInst *latestcycle =
+      IR.CreateIntrinsic(Intrinsic::readcyclecounter, {}, {});
+  IR.CreateStore(latestcycle, cycle);
 #endif
   }
 
@@ -11332,11 +11387,11 @@ struct CompilerInterrupt : public ModulePass {
 #endif
 
 #if 0
-      if(!readConfig()) {
-        errs() << "Error reading configuration file\n";
-        assert("Unable to read configuration file\n");
-        exit(1); // in case assertions are not enabled
-      }
+  if (!readConfig()) {
+    errs() << "Error reading configuration file\n";
+    assert("Unable to read configuration file\n");
+    exit(1); // in case assertions are not enabled
+  }
 #endif
 
     /* Function cost optimization & export/import is only available for all opt
@@ -11383,12 +11438,12 @@ struct CompilerInterrupt : public ModulePass {
 #endif
 
 #if 0
-    /* Clock type is deprecated */
-    if (ClockType == PREDICTIVE) {
-      /* Define the fences */
-      fenceList.insert("pthread_mutex_lock");
-      fenceList.insert("pthread_mutex_unlock");
-    }
+  /* Clock type is deprecated */
+  if (ClockType == PREDICTIVE) {
+    /* Define the fences */
+    fenceList.insert("pthread_mutex_lock");
+    fenceList.insert("pthread_mutex_unlock");
+  }
 #endif
 
     /* Find all functions that start a thread */
@@ -11398,25 +11453,30 @@ struct CompilerInterrupt : public ModulePass {
     getCallGraphOrder();
 
 #if 0
-      /* Find all functions that are involved in anything other than call statements (most likely it is a pointer). Must be called after findThreadFunc() & getCallGraphOrder() have been called */
-      findFuncWithPointers(M);
+  /* Find all functions that are involved in anything other than call statements
+   * (most likely it is a pointer). Must be called after findThreadFunc() &
+   * getCallGraphOrder() have been called */
+  findFuncWithPointers(M);
 
-      for (auto &F : M) {
-        if (F.isDeclaration()) continue;
-          DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
-          LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-          SE = &getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();
-          profile_loops(&F); /* get statistics for loops */
-      }
+  for (auto &F : M) {
+    if (F.isDeclaration())
+      continue;
+    DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
+    LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+    SE = &getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();
+    profile_loops(&F); /* get statistics for loops */
+  }
 
-      errs() << "#loops: " << g_NumLoops << "\n";
-      errs() << "#self loops: " << g_NumSelfLoops << "\n";
-      errs() << "#self loops with induction variables: " << g_NumSelfLoopsWithCanIndVar << "\n";
-      errs() << "#loops with induction variables: " << g_NumIndVar << "\n";
-      errs() << "#loops with canonical induction variables: " << g_NumCanIndVar << "\n";
-      errs() << "#loops with numeric backedges: " << g_NumIterations << "\n";
+  errs() << "#loops: " << g_NumLoops << "\n";
+  errs() << "#self loops: " << g_NumSelfLoops << "\n";
+  errs() << "#self loops with induction variables: "
+         << g_NumSelfLoopsWithCanIndVar << "\n";
+  errs() << "#loops with induction variables: " << g_NumIndVar << "\n";
+  errs() << "#loops with canonical induction variables: " << g_NumCanIndVar
+         << "\n";
+  errs() << "#loops with numeric backedges: " << g_NumIterations << "\n";
 
-      findAllLibraryCalls(M);
+  findAllLibraryCalls(M);
 #endif
 
     /* Initial instrumentations - must be done after callgraph traversal */
@@ -11497,10 +11557,10 @@ struct CompilerInterrupt : public ModulePass {
     }
 
 #if 0
-        case OPTIMIZE_HEURISTIC: {
-          gIsOnlyThreadLocal = true;
-          break;
-        }
+  case OPTIMIZE_HEURISTIC: {
+    gIsOnlyThreadLocal = true;
+    break;
+  }
 #endif
     case OPTIMIZE_HEURISTIC_WITH_TL: {
       gIsOnlyThreadLocal = true;

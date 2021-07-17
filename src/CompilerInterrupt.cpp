@@ -6477,7 +6477,11 @@ struct CompilerInterrupt : public ModulePass {
 
     DT->recalculate(*F);
     PDT->recalculate(*F);
+#ifdef LLVM9
+    BPI->calculate(*F, *LI, nullptr);
+#else
     BPI->calculate(*F, *LI, nullptr, DT, PDT);
+#endif
   }
 
   /* run all the passes of LCC creation, cost analysis & probe instrumentation
@@ -7145,7 +7149,11 @@ struct CompilerInterrupt : public ModulePass {
     Function *F = start->getParent();
     DT->recalculate(*F);
     PDT->recalculate(*F);
+#ifdef LLVM9
+    BPI->calculate(*F, *LI, nullptr);
+#else
     BPI->calculate(*F, *LI, nullptr, DT, PDT);
+#endif
 
 #ifdef DBG_DETAILED
     /********************************* Debug prints
@@ -7221,7 +7229,11 @@ struct CompilerInterrupt : public ModulePass {
     Function *F = start->getParent();
     DT->recalculate(*F);
     PDT->recalculate(*F);
+#ifdef LLVM9
+    BPI->calculate(*F, *LI, nullptr);
+#else
     BPI->calculate(*F, *LI, nullptr, DT, PDT);
+#endif
 
 #ifdef DBG_DETAILED
     /********************************* Debug prints
@@ -8041,7 +8053,11 @@ struct CompilerInterrupt : public ModulePass {
 
     DT->recalculate(*(onlyBlock->getParent()));
     PDT->recalculate(*(onlyBlock->getParent()));
+#ifdef LLVM9
+    BPI->calculate(*(onlyBlock->getParent()), *LI, nullptr);
+#else
     BPI->calculate(*(onlyBlock->getParent()), *LI, nullptr, DT, PDT);
+#endif
     // SE->forgetLoop(L);
     formLCSSARecursively(*L, *DT, LI, SE);
     simplifyLoop(L, DT, LI, SE, nullptr, nullptr, true);
@@ -9451,7 +9467,11 @@ struct CompilerInterrupt : public ModulePass {
           if (NodeVec.size() > 1) {
             isRecursiveFunc[F->getName()] = true;
             errs() << "Recursive func name: " << F->getName() << "\n";
+#ifdef LLVM9
+          } else if (NodeVec.size() == 1 && CGI.hasLoop()) {
+#else
           } else if (NodeVec.size() == 1 && CGI.hasCycle()) {
+#endif
             isRecursiveFunc[F->getName()] = true;
             errs() << "Self-Recursive func name: " << F->getName() << "(" << F
                    << ") --> " << isRecursiveFunc[F->getName()] << "\n";

@@ -6,7 +6,7 @@
 
 /* the handler should only be called in the CI-integrated binary */
 void interrupt_handler(long ic) {
-  __thread static long previous_ic = 0;
+  static __thread long previous_ic = 0;
   printf("CI: last interval = %ld IR\n", ic - previous_ic);
   previous_ic = ic;
 }

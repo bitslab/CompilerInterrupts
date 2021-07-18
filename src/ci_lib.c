@@ -45,7 +45,7 @@ void register_ci(int ir_interval, int cycles_interval, ci_handler ci_func) {
   intvActionHook = interrupt_handler;
 }
 
-void deregister() {
+void deregister_ci(void) {
   ci_ir_interval = LARGE_INTERVAL;
   ci_reset_ir_interval = LARGE_INTERVAL / 2;
   ci_cycles_interval = LARGE_INTERVAL;
@@ -63,14 +63,14 @@ void register_ci_enable_hook(ci_margin_hook ci_enable_hook) {
   enableHook = ci_enable_hook;
 }
 
-void ci_disable() {
+void ci_disable(void) {
   intvActionHook = dummy;
   lc_disabled_count++;
   if (disableHook)
     disableHook();
 }
 
-void ci_enable() {
+void ci_enable(void) {
   if (lc_disabled_count > 0)
     lc_disabled_count--;
   if (enableHook)
@@ -79,9 +79,9 @@ void ci_enable() {
     intvActionHook = interrupt_handler;
 }
 
-void instr_disable() {}
+void instr_disable(void) {}
 
-void instr_enable() {}
+void instr_enable(void) {}
 
 #ifdef __cplusplus
 }

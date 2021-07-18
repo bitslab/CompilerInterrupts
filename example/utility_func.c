@@ -31,7 +31,7 @@ void *decrement(void *arg) {
 #endif
 
 #ifdef CHECK_DEREGISTER
-  deregister(); /* deregisters CI */
+  deregister_ci(); /* deregisters CI */
 #endif
 
   for (i = 0; i < iterations; i++) {

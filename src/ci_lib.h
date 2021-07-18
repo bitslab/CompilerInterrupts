@@ -6,7 +6,7 @@
 typedef void (*ci_handler)(long);
 
 /* prototype of function that can be called before CI is disabled or
- * after CI is senabled in the interrupt handler */
+ * after CI is enabled in the interrupt handler */
 typedef void (*ci_margin_hook)(void);
 
 #ifdef __cplusplus
@@ -26,7 +26,7 @@ extern __thread int lc_disabled_count;
 void register_ci(int, int, ci_handler);
 
 /* de-register interrupt handler */
-void deregister();
+void deregister_ci(void);
 
 /* register a function to be called just before
  * CI is disabled in the interrupt handler */
@@ -37,18 +37,18 @@ void register_ci_disable_hook(ci_margin_hook ci_func);
 void register_ci_enable_hook(ci_margin_hook ci_func);
 
 /* disable interrupt calls */
-void ci_disable();
+void ci_disable(void);
 
 /* enable interrupt calls */
-void ci_enable();
+void ci_enable(void);
 
 /* disable probe instrumentation, code should be non-preemptible */
-void instr_disable();
+void instr_disable(void);
 
 /* enable probe instrumentation */
-void instr_enable();
+void instr_enable(void);
 
-/* for internal use by LIBCI & CI Pass */
+/* for internal use by CI API and CI Pass */
 
 /* CI pass interrupt handler */
 extern __thread ci_handler intvActionHook;

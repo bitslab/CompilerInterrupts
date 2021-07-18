@@ -46,6 +46,10 @@ else
   LOADABLE_MODULE_OPTIONS = -shared -O1
 endif
 
+ifndef VERBOSE
+  QUIET := @
+endif
+
 CI_ROOT := $(shell pwd)/../
 CI_LIB_HOME := $(CI_ROOT)/lib
 CI_PASS := $(CI_LIB_HOME)/CompilerInterrupt.so
@@ -62,50 +66,50 @@ all: orig_demo ci_demo ci_mult_files ci_modularity_demo
 
 # unmodified run of a demo program
 orig_demo: demo.c $(CI_LIB)
-	$(CC) demo.c $(INC) -L$(CI_LIB_HOME) -Wl,-rpath,$(CI_LIB_HOME) -o $@ -lpthread -lci
+	$(QUIET)$(CC) demo.c $(INC) -L$(CI_LIB_HOME) -Wl,-rpath,$(CI_LIB_HOME) -o $@ -lpthread -lci
 
 # ci-based run of a demo program
 ci_demo: ci_demo.ll $(CI_LIB)
-	$(CC) $(INC) -L$(CI_LIB_HOME) -Wl,-rpath,$(CI_LIB_HOME) -g $< -o $@ -lpthread -lci
+	$(QUIET)$(CC) $(INC) -L$(CI_LIB_HOME) -Wl,-rpath,$(CI_LIB_HOME) -g $< -o $@ -lpthread -lci
 
 ci_demo.ll: opt_demo.ll
-	$(OPT) -S $(CI_CONFIG) < $< > $@
+	$(QUIET)$(OPT) -S $(CI_CONFIG) < $< > $@
 
 opt_demo.ll: ir_demo.ll
-	$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
+	$(QUIET)$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
 
 # CI-based run of a demo program with multiple source files
 ci_mult_files: ci_mult_files.ll $(CI_LIB)
-	$(CC) $(INC) -L$(CI_LIB_HOME) -Wl,-rpath,$(CI_LIB_HOME) -g $< -o $@ -lpthread -lci
+	$(QUIET)$(CC) $(INC) -L$(CI_LIB_HOME) -Wl,-rpath,$(CI_LIB_HOME) -g $< -o $@ -lpthread -lci
 
 ci_mult_files.ll: opt_mult_files.ll
-	$(OPT) -S $(CI_CONFIG) < $< > $@
+	$(QUIET)$(OPT) -S $(CI_CONFIG) < $< > $@
 
 opt_mult_files.ll: combined_mult_files.ll
-	$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
+	$(QUIET)$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
 
 combined_mult_files.ll: ir_demo_mult_files.ll ir_utility_func.ll
-	$(LLVM_LINK) $^ -o $@
+	$(QUIET)$(LLVM_LINK) $^ -o $@
 
 # modularity example: CI-based run of a demo prgram using a CI-instrumented library
 ci_modularity_demo: ci_demo_mult_files.ll libutility.so $(CI_LIB)
-	$(CC) $(INC) -L./ -L$(CI_LIB_HOME) -Wl,-rpath,./ -Wl,-rpath,$(CI_LIB_HOME) -g $< -o $@ -lpthread -lci -lutility
+	$(QUIET)$(CC) $(INC) -L./ -L$(CI_LIB_HOME) -Wl,-rpath,./ -Wl,-rpath,$(CI_LIB_HOME) -g $< -o $@ -lpthread -lci -lutility
 
 libutility.so: ci_utility_func.ll
-	$(CC) $(LOADABLE_MODULE_OPTIONS) -fPIC $< -o $@
+	$(QUIET)$(CC) $(LOADABLE_MODULE_OPTIONS) -fPIC $< -o $@
 
 ci_%.ll: opt_%.ll
-	$(OPT) -S $(CI_CONFIG) < $< > $@
+	$(QUIET)$(OPT) -S $(CI_CONFIG) < $< > $@
 
 opt_%.ll: ir_%.ll
-	$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
+	$(QUIET)$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
 
 # compile all C files to LLVM IR
 ir_%.ll: %.c
-	$(CLANG_FORMAT) -style=llvm -i $(wildcard *.c) $(wildcard *.h)
-	$(CC) $(INC) -g -S -emit-llvm -o $@ $<
+	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.c) $(wildcard *.h)
+	$(QUIET)$(CC) $(INC) -g -S -emit-llvm -o $@ $<
 
 # clean
 clean:
-	rm -f orig_demo ci_demo ci_mult_files ci_modularity_demo *.ll
-	rm -rf *.dSYM
+	$(QUIET)rm -f orig_demo ci_demo ci_mult_files ci_modularity_demo *.ll
+	$(QUIET)rm -rf *.dSYM

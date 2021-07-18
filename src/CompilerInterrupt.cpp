@@ -6511,8 +6511,10 @@ struct CompilerInterrupt : public ModulePass {
 
     DT->recalculate(*F);
     PDT->recalculate(*F);
-#ifdef LLVM9
+#if defined(LLVM9) || defined(LLVM10)
     BPI->calculate(*F, *LI, nullptr);
+#elif defined(LLVM11)
+    BPI->calculate(*F, *LI, nullptr, PDT);
 #else
     BPI->calculate(*F, *LI, nullptr, DT, PDT);
 #endif
@@ -7188,8 +7190,10 @@ struct CompilerInterrupt : public ModulePass {
     Function *F = start->getParent();
     DT->recalculate(*F);
     PDT->recalculate(*F);
-#ifdef LLVM9
+#if defined(LLVM9) || defined(LLVM10)
     BPI->calculate(*F, *LI, nullptr);
+#elif defined(LLVM11)
+    BPI->calculate(*F, *LI, nullptr, PDT);
 #else
     BPI->calculate(*F, *LI, nullptr, DT, PDT);
 #endif
@@ -7268,8 +7272,10 @@ struct CompilerInterrupt : public ModulePass {
     Function *F = start->getParent();
     DT->recalculate(*F);
     PDT->recalculate(*F);
-#ifdef LLVM9
+#if defined(LLVM9) || defined(LLVM10)
     BPI->calculate(*F, *LI, nullptr);
+#elif defined(LLVM11)
+    BPI->calculate(*F, *LI, nullptr, PDT);
 #else
     BPI->calculate(*F, *LI, nullptr, DT, PDT);
 #endif
@@ -8094,8 +8100,10 @@ struct CompilerInterrupt : public ModulePass {
 
     DT->recalculate(*(onlyBlock->getParent()));
     PDT->recalculate(*(onlyBlock->getParent()));
-#ifdef LLVM9
+#if defined(LLVM9) || defined(LLVM10)
     BPI->calculate(*(onlyBlock->getParent()), *LI, nullptr);
+#elif defined(LLVM11)
+    BPI->calculate(*(onlyBlock->getParent()), *LI, nullptr, PDT);
 #else
     BPI->calculate(*(onlyBlock->getParent()), *LI, nullptr, DT, PDT);
 #endif
@@ -9508,7 +9516,7 @@ struct CompilerInterrupt : public ModulePass {
           if (NodeVec.size() > 1) {
             isRecursiveFunc[F->getName()] = true;
             errs() << "Recursive func name: " << F->getName() << "\n";
-#ifdef LLVM9
+#if defined(LLVM9) || defined(LLVM10)
           } else if (NodeVec.size() == 1 && CGI.hasLoop()) {
 #else
           } else if (NodeVec.size() == 1 && CGI.hasCycle()) {

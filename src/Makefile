@@ -1,12 +1,16 @@
-ifneq ($(shell command -v llvm-config-12 2> /dev/null),)
-  LLVM_CONFIG = llvm-config-12
-else ifneq ($(shell command -v llvm-config-9 2> /dev/null),)
+ifneq ($(shell command -v llvm-config-9 2> /dev/null),)
   LLVM_CONFIG = llvm-config-9
+else ifneq ($(shell command -v llvm-config-12 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-12
+else ifneq ($(shell command -v llvm-config-11 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-11
+else ifneq ($(shell command -v llvm-config-10 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-10
 else ifneq ($(shell command -v llvm-config 2> /dev/null),)
   LLVM_CONFIG = llvm-config
 else
   $(error Unable to locate the LLVM toolchain. \
-    Check your $$PATH or reinstall LLVM. Supported LLVM versions are 9 and 12)
+    Check your $$PATH or reinstall LLVM. Minimum supported LLVM version is 9)
 endif
 
 ifneq ($(shell command -v clang-format 2> /dev/null),)
@@ -17,8 +21,19 @@ endif
 
 LLVM_VERSION := $(shell $(LLVM_CONFIG) --version | cut -d '.' -f 1)
 ifeq ($(LLVM_VERSION), 12)
+  LLVM_VRSN_FLAG = -DLLVM12
   ifneq ($(shell command -v clang-format-12 2> /dev/null),)
     CLANG_FORMAT = clang-format-12
+  endif
+else ifeq ($(LLVM_VERSION), 11)
+  LLVM_VRSN_FLAG = -DLLVM11
+  ifneq ($(shell command -v clang-format-11 2> /dev/null),)
+    CLANG_FORMAT = clang-format-11
+  endif
+else ifeq ($(LLVM_VERSION), 10)
+  LLVM_VRSN_FLAG = -DLLVM10
+  ifneq ($(shell command -v clang-format-10 2> /dev/null),)
+    CLANG_FORMAT = clang-format-10
   endif
 else ifeq ($(LLVM_VERSION), 9)
   LLVM_VRSN_FLAG = -DLLVM9
@@ -26,7 +41,7 @@ else ifeq ($(LLVM_VERSION), 9)
     CLANG_FORMAT = clang-format-9
   endif
 else
-  $(error LLVM $(LLVM_VERSION) is not officialy supported. Supported LLVM versions are 9 and 12)
+  $(error LLVM $(LLVM_VERSION) is not supported. Minimum supported LLVM version is 9)
 endif
 
 $(info Found LLVM $(LLVM_VERSION) toolchain)

@@ -280,15 +280,15 @@ struct FuncInfo {
 static cl::opt<int> InstGranularity(
     "inst-gran",
     cl::desc("Select instrumentation granularity. 0: Per instruction, 1: "
-             "Optimized instrumentation 2. Optimized instrumentation with "
-             "statistics collection, 3. Per basic block, 4: Per Function"),
+             "Optimized instrumentation, 2: Optimized instrumentation with "
+             "statistics collection, 3: Per basic block, 4: Per Function"),
     cl::value_desc("0/1/2/3/4"), cl::init(1), cl::Optional);
 static cl::opt<int> Configuration(
     "config",
     cl::desc(
         "Select configuration type. 0: Single-threaded thread-local logical "
-        "clock, 1: Single-threaded passed logical clock 2. Multithreaded "
-        "thread-local logical clock, 3. Multithreaded passed logical clock"),
+        "clock, 1: Single-threaded passed logical clock, 2: Multi-threaded "
+        "thread-local logical clock, 3: Multi-threaded passed logical clock"),
     cl::value_desc("0/1/2/3/4"), cl::init(2), cl::Optional);
 static cl::opt<bool> DefineClock(
     "defclock",
@@ -305,16 +305,16 @@ static cl::opt<int> MemOpsCost("mem-ops-cost",
                                cl::Optional);
 static cl::opt<int>
     TargetInterval("push-intv",
-                   cl::desc("Interval in terms of number of instruction cost, "
-                            "for push to global logical clock"),
+                   cl::desc("Interval in terms of number of instruction cost "
+                            "for pushing to global logical clock"),
                    cl::value_desc("positive integer"), cl::Optional);
 static cl::opt<int> TargetIntervalInCycles(
     "target-cycles", cl::desc("Target interval in cycles"),
     cl::value_desc("positive integer"), cl::init(0), cl::Optional);
 static cl::opt<int> CommitInterval(
     "commit-intv",
-    cl::desc("Interval in terms of number of instruction cost, for commit to "
-             "local counter"),
+    cl::desc("Interval in terms of number of instruction cost for "
+             "commiting to local counter"),
     cl::value_desc(
         "positive integer")); /* Only needed for Instantaneous clock */
 static cl::opt<int>
@@ -11374,10 +11374,10 @@ bool isFuncPointer(Function *F) {
            << TargetInterval << ", Probe Interval: " << CommitInterval
            << ", Allowed Dev: " << ALLOWED_DEVIATION
            << ", Lib call cost: " << ExtLibFuncCost
-           << ", Target Interval in Cycle (unused): "
-           << TargetIntervalInCycles
+           << ", Target Interval in Cycle (unused): " << TargetIntervalInCycles
+           << "\n";
 
-        if (InstGranularity >= UNDEFINED_INST_TYPE) {
+    if (InstGranularity >= UNDEFINED_INST_TYPE) {
       errs()
           << "**********************\nUnsupported Instrumentation Granularity ("
           << InstGranularity << ")!\n";
@@ -11400,7 +11400,7 @@ bool isFuncPointer(Function *F) {
       /* Check & read instruction weight configuration file */
       if (!readCost()) {
         assert("Unable to library's cost configuration file\n");
-        errs() << "Error reading library's cost configuration file";
+        errs() << "Error reading library's cost configuration file\n";
         return false;
       }
     }
@@ -11593,7 +11593,7 @@ bool isFuncPointer(Function *F) {
 
     default:
       errs() << "Instruction Granularity " << InstGranularity
-             << " is not valid.";
+             << " is not valid\n";
       exit(1);
     }
 
@@ -11668,5 +11668,5 @@ Pass *createCompilerInterruptPass() { return new CompilerInterrupt(); }
 } // namespace llvm
 
 char CompilerInterrupt::ID = 0;
-static RegisterPass<CompilerInterrupt> Y("logicalclock", "Logical Clock pass",
-                                         true, false);
+static RegisterPass<CompilerInterrupt>
+    Y("logicalclock", "Compiler Interrupt Pass", true, false);

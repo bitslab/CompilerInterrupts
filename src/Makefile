@@ -1,27 +1,32 @@
-ifeq ($(shell which llvm-config-12),)
-  ifeq ($(shell which llvm-config-9),)
-    ifeq ($(shell which llvm-config),)
-      $(error Unable to locate the LLVM toolchain. \
-        Check your $$PATH or reinstall. Supported LLVM versions are 9 and 12)
-    else
-      LLVM_CONFIG = llvm-config
-      CLANG_FORMAT = clang-format
-    endif
-  else
-    LLVM_CONFIG = llvm-config-9
-    CLANG_FORMAT = clang-format-9
-  endif
-else
+ifneq ($(shell which llvm-config-12),)
   LLVM_CONFIG = llvm-config-12
-  CLANG_FORMAT = clang-format-12
+else ifneq ($(shell which llvm-config-9),)
+  LLVM_COFNIG = llvm-config-9
+else ifneq ($(shell which llvm-config),)
+  LLVM_CONFIG = llvm-config
+else
+  $(error Unable to locate the LLVM toolchain. \
+    Check your $$PATH or reinstall LLVM. Supported LLVM versions are 9 and 12)
+endif
+
+ifneq ($(shell which clang-format),)
+  CLANG_FORMAT = clang-format
+else
+  CLANG_FORMAT = -clang-format # ignore error
 endif
 
 LLVM_VERSION := $(shell $(LLVM_CONFIG) --version | cut -d '.' -f 1)
 ifeq ($(LLVM_VERSION), 12)
+  ifneq ($(shell which clang-format-12),)
+    CLANG_FORMAT = clang-format-12
+  endif
 else ifeq ($(LLVM_VERSION), 9)
-  LLVM = -DLLVM9
+  LLVM_VRSN_FLAG = -DLLVM9
+  ifneq ($(shell which clang-format-9),)
+    CLANG_FORMAT = clang-format-9
+  endif
 else
-  $(error LLVM $(LLVM_VERSION) is not supported. Supported LLVM versions are 9 and 12)
+  $(error LLVM $(LLVM_VERSION) is not officialy supported. Supported LLVM versions are 9 and 12)
 endif
 
 $(info Found LLVM $(LLVM_VERSION) toolchain)
@@ -33,7 +38,7 @@ else
 endif
 
 ifndef VERBOSE
-  QUIET:=@
+  QUIET := @
 endif
 
 SRC_DIR := $(shell pwd)
@@ -55,8 +60,8 @@ all: $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) $(LIB_DIR)/$(CI_LIB_STATIC)
 
 %.o: $(SRC_DIR)/%.cpp
 	$(info Compiling $*.cpp)
-	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.cpp) $(wildcard *.hpp)
-	$(QUIET)$(CXX) $(LLVM) -c $(CPPFLAGS) $(CXXFLAGS) $<
+	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.cpp)
+	$(QUIET)$(CXX) $(LLVM_VRSN_FLAG) -c $(CPPFLAGS) $(CXXFLAGS) $<
 
 $(LIB_DIR)/$(CI_PASS): $(CI_PASS_OBJECT)
 	$(info Creating Compiler Interrupt Pass library $@)

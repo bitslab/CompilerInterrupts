@@ -8,7 +8,7 @@ This repository contains source code for Compiler Interrupts framework, its C AP
 
 ## Requirements
 
-* [LLVM 12](https://releases.llvm.org/) or [LLVM 9](https://releases.llvm.org/) is required. Other LLVM versions are not officially supported. You can check the LLVM version by running `llvm-config --version`.
+* [LLVM](https://releases.llvm.org/) 9 or later is required. You can check the LLVM version by running `llvm-config --version`.
 * Linux system is required for running the benchmarks.
 
 ## Build
@@ -46,7 +46,7 @@ make
 #include "ci_lib.h"
 
 void interrupt_handler(long ic) {
-  __thread static long previous_ic = 0;
+  static __thread long previous_ic = 0;
   printf("CI: last interval = %ld IR\n", ic - previous_ic);
   previous_ic = ic;
 }
@@ -123,7 +123,7 @@ chmod +x ./setup.sh
 sudo ./setup.sh
 ```
 
-The setup script will change some system settings and create some directories. You should always carefully examine the source code before running anything with `sudo`.
+Linux system is required for running the benchmarks. The setup script will change some system settings and create some directories. You should always carefully examine the source code before running anything with `sudo`.
 
 ### List of benchmarks
 

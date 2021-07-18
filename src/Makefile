@@ -1,15 +1,15 @@
-ifneq ($(shell which llvm-config-12),)
+ifneq ($(shell command -v llvm-config-12 2> /dev/null),)
   LLVM_CONFIG = llvm-config-12
-else ifneq ($(shell which llvm-config-9),)
-  LLVM_COFNIG = llvm-config-9
-else ifneq ($(shell which llvm-config),)
+else ifneq ($(shell command -v llvm-config-9 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-9
+else ifneq ($(shell command -v llvm-config 2> /dev/null),)
   LLVM_CONFIG = llvm-config
 else
   $(error Unable to locate the LLVM toolchain. \
     Check your $$PATH or reinstall LLVM. Supported LLVM versions are 9 and 12)
 endif
 
-ifneq ($(shell which clang-format),)
+ifneq ($(shell command -v clang-format 2> /dev/null),)
   CLANG_FORMAT = clang-format
 else
   CLANG_FORMAT = -clang-format # ignore error
@@ -17,12 +17,12 @@ endif
 
 LLVM_VERSION := $(shell $(LLVM_CONFIG) --version | cut -d '.' -f 1)
 ifeq ($(LLVM_VERSION), 12)
-  ifneq ($(shell which clang-format-12),)
+  ifneq ($(shell command -v clang-format-12 2> /dev/null),)
     CLANG_FORMAT = clang-format-12
   endif
 else ifeq ($(LLVM_VERSION), 9)
   LLVM_VRSN_FLAG = -DLLVM9
-  ifneq ($(shell which clang-format-9),)
+  ifneq ($(shell command -v clang-format-9 2> /dev/null),)
     CLANG_FORMAT = clang-format-9
   endif
 else

@@ -15,6 +15,7 @@ extern "C" {
 /* for internal use by CI Pass */
 extern __thread int LocalLC;
 extern __thread int lc_disabled_count;
+extern __thread int64_t NextInterval;
 
 
 /****************************************** 

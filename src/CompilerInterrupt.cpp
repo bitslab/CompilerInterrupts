@@ -10147,9 +10147,6 @@ struct CompilerInterrupt : public ModulePass {
         new GlobalVariable(M, Type::getInt64Ty(M.getContext()), false,
                            GlobalValue::ExternalLinkage, 0, "NextInterval");
     nextIntv->setThreadLocalMode(GlobalValue::GeneralDynamicTLSModel);
-    if (DefineClock) {
-      nextIntv->setInitializer(initVal);
-    }
 #endif
 #ifdef CYCLES_ACCURATE
     GlobalVariable *irIncr =
@@ -11296,13 +11293,12 @@ struct CompilerInterrupt : public ModulePass {
            << ", Target Interval in Cycle (unused): "
            << TargetIntervalInCycles
 
-        if (InstGranularity >= UNDEFINED_INST_TYPE) {
+    if (InstGranularity >= UNDEFINED_INST_TYPE) {
       errs()
           << "**********************\nUnsupported Instrumentation Granularity ("
           << InstGranularity << ")!\n";
       exit(1);
     }
-    << "\n";
 #endif
 
 #if 0

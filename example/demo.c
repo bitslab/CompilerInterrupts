@@ -12,7 +12,15 @@
 void interrupt_handler(long ic) {
   /* This print should only appear in the CI integrated build */
   static __thread long previous_ic=0;
-  printf("CI: last interval = %ld IR\n", ic-previous_ic);
+  char thread_name[32];
+  pthread_getname_np(pthread_self(), thread_name, 32);
+
+  if(ic-previous_ic < 0) {
+    printf("Interval cannot be negative. Something went wrong!\n");
+    exit(1);
+  }
+
+  printf("CI @ %s: last interval = %ld IR\n", thread_name, ic-previous_ic);
   previous_ic=ic;
 }
 
@@ -77,6 +85,7 @@ int main(int argc, char **argv) {
 
   pthread_t t1[MAX_THREADS-1];
   pthread_t t2[MAX_THREADS-1];
+  char thread_name[32];
   int num_threads = MAX_THREADS;
   if(argc==2) {
     num_threads = atoi(argv[1]);
@@ -86,14 +95,20 @@ int main(int argc, char **argv) {
     }
   }
 
+  pthread_setname_np(pthread_self(), "main");
+
   printf("Starting %d increment threads\n", num_threads);
   for(int i=0; i<(num_threads-1); i++) {
     pthread_create(&t1[i], NULL, (void* (*)(void*))increment, (void*)i);
+    sprintf(thread_name, "inc%d", i);
+    pthread_setname_np(t1[i], thread_name);
   }
 
   printf("Starting %d decrement threads\n", num_threads);
   for(int i=0; i<(num_threads-1); i++) {
     pthread_create(&t2[i], NULL, (void* (*)(void*))decrement, (void*)i);
+    sprintf(thread_name, "dec%d", i);
+    pthread_setname_np(t1[i], thread_name);
   }
 
   for(int i=0; i<(num_threads-1); i++) {

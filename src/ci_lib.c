@@ -26,6 +26,7 @@ extern "C" {
 /* for internal use by CI Pass */
 __thread int LocalLC = 0;
 __thread int lc_disabled_count = 0;
+__thread int64_t NextInterval = 0;
 
 static void interrupt_handler(long ir) {
     intvActionHook = dummy;

@@ -1,52 +1,100 @@
-LLVM_CONFIG=llvm-config-9
-
-ifndef VERBOSE
-	QUIET:=@
+ifneq ($(shell command -v llvm-config-9 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-9
+else ifneq ($(shell command -v llvm-config-12 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-12
+else ifneq ($(shell command -v llvm-config-11 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-11
+else ifneq ($(shell command -v llvm-config-10 2> /dev/null),)
+  LLVM_CONFIG = llvm-config-10
+else ifneq ($(shell command -v llvm-config 2> /dev/null),)
+  LLVM_CONFIG = llvm-config
+else
+  $(error Unable to locate the LLVM toolchain. \
+    Check your $$PATH or reinstall LLVM. Minimum supported LLVM version is 9)
 endif
 
-SRC_DIR?=$(PWD)
-LIB_DIR=$(SRC_DIR)/../lib
+ifneq ($(shell command -v clang-format 2> /dev/null),)
+  CLANG_FORMAT = clang-format
+else
+  CLANG_FORMAT = -clang-format # ignore error
+endif
 
-COMMON_FLAGS=-g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -fPIC
-LDFLAGS+=$(shell $(LLVM_CONFIG) --ldflags)
-CXXFLAGS+=$(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cxxflags)
-CPPFLAGS+=$(shell $(LLVM_CONFIG) --cppflags) -I$(SRC_DIR)
+LLVM_VERSION := $(shell $(LLVM_CONFIG) --version | cut -d '.' -f 1)
+ifeq ($(LLVM_VERSION), 12)
+  LLVM_VRSN_FLAG = -DLLVM12
+  ifneq ($(shell command -v clang-format-12 2> /dev/null),)
+    CLANG_FORMAT = clang-format-12
+  endif
+else ifeq ($(LLVM_VERSION), 11)
+  LLVM_VRSN_FLAG = -DLLVM11
+  ifneq ($(shell command -v clang-format-11 2> /dev/null),)
+    CLANG_FORMAT = clang-format-11
+  endif
+else ifeq ($(LLVM_VERSION), 10)
+  LLVM_VRSN_FLAG = -DLLVM10
+  ifneq ($(shell command -v clang-format-10 2> /dev/null),)
+    CLANG_FORMAT = clang-format-10
+  endif
+else ifeq ($(LLVM_VERSION), 9)
+  LLVM_VRSN_FLAG = -DLLVM9
+  ifneq ($(shell command -v clang-format-9 2> /dev/null),)
+    CLANG_FORMAT = clang-format-9
+  endif
+else
+  $(error LLVM $(LLVM_VERSION) is not supported. Minimum supported LLVM version is 9)
+endif
+
+$(info Found LLVM $(LLVM_VERSION) toolchain)
 
 ifeq ($(shell uname), Darwin)
-LOADABLE_MODULE_OPTIONS=-bundle -undefined dynamic_lookup
+  LOADABLE_MODULE_OPTIONS = -bundle -undefined dynamic_lookup
 else
-LOADABLE_MODULE_OPTIONS=-shared -O1
+  LOADABLE_MODULE_OPTIONS = -shared -O1
 endif
 
-CI_PASS_OBJECTS=CompilerInterrupt.o
-CI_PASS=CompilerInterrupt.so
+ifndef VERBOSE
+  QUIET := @
+endif
 
-CI_LIB_OBJECTS=ci_lib.o
-CI_LIB_DYN=libci.so
-CI_LIB_STATIC=libci.a
+SRC_DIR := $(shell pwd)
+LIB_DIR = $(SRC_DIR)/../lib
 
-default: $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) $(LIB_DIR)/$(CI_LIB_STATIC)
+COMMON_FLAGS = -g -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -fPIC
+LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
+CXXFLAGS += $(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cxxflags)
+CPPFLAGS += $(shell $(LLVM_CONFIG) --cppflags) -I$(SRC_DIR)
+
+CI_PASS_OBJECT = CompilerInterrupt.o
+CI_PASS = CompilerInterrupt.so
+
+CI_LIB_OBJECT = ci_lib.o
+CI_LIB_DYN = libci.so
+CI_LIB_STATIC = libci.a
+
+all: $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) $(LIB_DIR)/$(CI_LIB_STATIC)
 
 %.o: $(SRC_DIR)/%.cpp
-	@echo "Compiling $*.cpp"
-	clang-format -i $<
-	$(QUIET)$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $<
+	$(info Compiling $*.cpp)
+	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.cpp)
+	$(QUIET)$(CXX) $(LLVM_VRSN_FLAG) -c $(CPPFLAGS) $(CXXFLAGS) $<
 
-$(LIB_DIR)/$(CI_PASS): $(CI_PASS_OBJECTS)
-	@echo "Creating Compiler Interrupt Pass library $@"
+$(LIB_DIR)/$(CI_PASS): $(CI_PASS_OBJECT)
+	$(info Creating Compiler Interrupt Pass library $@)
 	$(QUIET)$(CXX) -o $@ $(LOADABLE_MODULE_OPTIONS) $(CXXFLAGS) $(LDFLAGS) $^
 
 %.o: $(SRC_DIR)/%.c
-	@echo "Compiling $*.c"
+	$(info Compiling $*.c)
+	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.c) $(wildcard *.h)
 	$(QUIET)gcc -c -fPIC $< -o $@
 
-$(LIB_DIR)/$(CI_LIB_DYN): $(CI_LIB_OBJECTS)
-	@echo "Creating CI API dynamic library $@"
+$(LIB_DIR)/$(CI_LIB_DYN): $(CI_LIB_OBJECT)
+	$(info Creating Compiler Interrupt API dynamic library $@)
 	$(QUIET)gcc -shared $< -o $@
 
-$(LIB_DIR)/$(CI_LIB_STATIC): $(CI_LIB_OBJECTS)
-	@echo "Creating CI API static library $@"
+$(LIB_DIR)/$(CI_LIB_STATIC): $(CI_LIB_OBJECT)
+	$(info Creating Compiler Interrupt API static library $@)
 	$(QUIET)ar -rcs $@ $<
 
 clean:
-	$(QUIET)rm -f $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) $(LIB_DIR)/$(CI_LIB_STATIC) $(CI_PASS_OBJECTS) $(CI_LIB_OBJECTS)
+	$(QUIET)rm -f $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) \
+		$(LIB_DIR)/$(CI_LIB_STATIC) $(CI_PASS_OBJECT) $(CI_LIB_OBJECT)

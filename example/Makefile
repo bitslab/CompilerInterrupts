@@ -122,9 +122,10 @@ opt_%.ll: ir_%.ll
 	$(QUIET)$(OPT) -postdomtree -mem2reg -indvars -loop-simplify -branch-prob -scalar-evolution -S < $< > $@
 
 # compile all C files to LLVM IR
+
 ir_%.ll: %.c
 	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.c) $(wildcard *.h)
-	$(QUIET)$(CC) $(INC) -g -S -emit-llvm -o $@ $<
+	$(QUIET)$(CC) $(INC) -g -S -emit-llvm -o $@ $< # use -fno-discard-value-names to keep meaningful variable names for debugging
 
 # clean
 clean:

@@ -333,7 +333,9 @@ kill_all_processes() {
 
   proc_running=0
   for app in $all_apps; do
-    proc_present=`ps -aef | grep $app | grep -v grep`
+    ci_exec_name=$(get_executable_name $app $CI_RUN)
+    orig_exec_name=$(get_executable_name $app $PTHREAD_RUN)
+    proc_present=`ps -aef | grep -e "$ci_exec_name\|$orig_exec_name" | grep -v grep`
     if [ ! -z "$proc_present" ]; then
       printf "${RED}ATTENTION: Process is running!! ($proc_present) Will try to kill them.${NC}\n" | tee -a $CMD_LOG
       proc_running=1
@@ -351,7 +353,7 @@ kill_all_processes() {
     #echo "Killing $ci_exec_name $orig_exec_name"
     sudo pkill $ci_exec_name 
     sudo pkill $orig_exec_name
-    proc_present=`ps -aef | grep $app | grep -v grep`
+    proc_present=`ps -aef | grep -e "$ci_exec_name\|$orig_exec_name" | grep -v grep`
     while [ ! -z "$proc_present" ]; do
       printf "${RED}ATTENTION: Process ($app) is still running!! ($proc_present) Trying to kill again.${NC}\n" | tee -a $CMD_LOG
     done

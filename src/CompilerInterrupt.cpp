@@ -2065,7 +2065,7 @@ public:
 
   void replaceInst(Instruction *oldI, Instruction *newI) {
 #ifdef DBG_VERBOSE
-    errs() << "Replacing " << *oldI << " with " << *newI << "\n";
+    errs() << "Replacing instructions\n";
 #endif
     if (_firstInst == oldI)
       _firstInst = newI;
@@ -2083,11 +2083,6 @@ public:
     if (instrInfoIt != _instrInfo.end()) {
       _instrInfo[newI] = instrInfoIt->second;
       _instrInfo.erase(instrInfoIt);
-#ifdef DBG_VERBOSE
-      errs() << "Block : " << getBlock()->getName() << ", OldI : " << *oldI
-             << ", NewI : " << *newI << ", first inst : " << *_firstInst
-             << ", last inst : " << *_lastInst << "\n";
-#endif
     }
   }
 
@@ -2972,8 +2967,10 @@ public:
     long initialNumCost = getConstCost(initialCost);
     int numBackEdgeCost = -1;
 #ifdef DBG_SUMMARY
-    errs() << "Cost Evaluation of Loop: " << _loop->getHeader()->getName()
-           << " at depth " << _loop->getLoopDepth() << "\n";
+    errs() << "Cost Evaluation of Loop "
+           << _loop->getHeader()->getParent()->getName()
+           << "():" << _loop->getHeader()->getName() << " at depth "
+           << _loop->getLoopDepth() << "\n";
 #endif
 #ifdef DBG_DETAILED
     // errs() << "Getting cost for loop: " << *_loop << "\n";
@@ -2989,7 +2986,8 @@ public:
       numBackEdgeCost = hasConstCost(_backEdges);
       errs() << "Has backedges: " << *_backEdges
              << " (numCost: " << numBackEdgeCost << ")\n";
-      assert((numBackEdgeCost != 0) && "A self loop cost cannot be zero!");
+      if (numBackEdgeCost == 0)
+        errs() << "WARNING: A loop backedge count was noted to be 0!\n";
     }
 
     InstructionCost *zeroCost = getConstantInstCost(0);
@@ -3791,7 +3789,11 @@ struct CompilerInterrupt : public ModulePass {
     uint32_t numeratorBP = bp.getNumerator();
     uint32_t denominatorBP = bp.getDenominator();
     double edgeProb = (double)numeratorBP / denominatorBP;
+#if defined(LLVM9)
     double directEdgeProb = (edgeProb * numEdges);
+#else
+    double directEdgeProb = edgeProb;
+#endif
 
 #ifdef DBG_DETAILED
     errs() << "Edge probability between " << start->getName() << " and "
@@ -4198,7 +4200,7 @@ struct CompilerInterrupt : public ModulePass {
 
 #ifdef DBG_VERBOSE
     if (backEdgeTakenCount) {
-      errs() << "Loop " << *currentLoop << "\n";
+      errs() << "Loop: " << *currentLoop << "\n";
       errs() << "Backedge count for loop with header " << entryBlock->getName()
              << " : " << *(SE->getBackedgeTakenCount(currentLoop)) << "\n";
     }

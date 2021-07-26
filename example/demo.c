@@ -6,7 +6,7 @@
 
 #include "ci_lib.h"
 
-#define BASE_VAL 10000
+#define BASE_VAL 1000000
 #define MAX_THREADS 64
 
 // define this flag to check ci_enable functionality
@@ -90,10 +90,10 @@ int main(int argc, char **argv) {
   /* register the interrupt handler */
   register_ci(1000, 1000, interrupt_handler);
 
-  pthread_t t1[MAX_THREADS - 1];
-  pthread_t t2[MAX_THREADS - 1];
+  pthread_t t1[MAX_THREADS];
+  pthread_t t2[MAX_THREADS];
   char thread_name[32];
-  int num_threads = MAX_THREADS;
+  int num_threads = 2;
   if (argc == 2) {
     num_threads = atoi(argv[1]);
     if (num_threads > MAX_THREADS) {
@@ -105,25 +105,24 @@ int main(int argc, char **argv) {
   pthread_setname_np(pthread_self(), "main");
 
   printf("Starting %d increment threads\n", num_threads);
-  for (int i = 0; i < (num_threads - 1); i++) {
+  for (int i = 0; i < num_threads; i++) {
     pthread_create(&t1[i], NULL, increment, (void *)(uintptr_t)i);
-    // pthread_create(&t1[i], NULL, (void* (*)(void*))increment, (void*)i);
     sprintf(thread_name, "inc%d", i);
     pthread_setname_np(t1[i], thread_name);
   }
 
   printf("Starting %d decrement threads\n", num_threads);
-  for (int i = 0; i < (num_threads - 1); i++) {
+  for (int i = 0; i < num_threads; i++) {
     pthread_create(&t2[i], NULL, decrement, (void *)(uintptr_t)i);
     sprintf(thread_name, "dec%d", i);
-    pthread_setname_np(t1[i], thread_name);
+    pthread_setname_np(t2[i], thread_name);
   }
 
-  for (int i = 0; i < (num_threads - 1); i++) {
+  for (int i = 0; i < num_threads; i++) {
     pthread_join(t1[i], NULL);
   }
 
-  for (int i = 0; i < (num_threads - 1); i++) {
+  for (int i = 0; i < num_threads; i++) {
     pthread_join(t2[i], NULL);
   }
 

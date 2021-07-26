@@ -77,6 +77,9 @@ namespace {
 // For debugging this pass: print minimal info of the pass
 #define DBG_SUMMARY
 
+// For debugging this pass: warning for unusual cases
+#define DBG_WARNING
+
 // For debugging this pass: temporary prints
 #define DBG_TEMP
 
@@ -92,10 +95,12 @@ namespace {
 #ifdef DBG_VERBOSE
 #define DBG_DETAILED
 #define DBG_PRINT_PASS_STATS
+#define DBG_WARNING
 #endif
 
 #ifdef DBG_DETAILED
 #define DBG_SUMMARY
+#define DBG_WARNING
 #endif
 
 #define ALLOWED_DEVIATION (CommitInterval)
@@ -566,13 +571,17 @@ InstructionCost *scevToCost(const SCEV *scev) {
       if (CI->getBitWidth() <= 64) {
         intVal = CI->getSExtValue();
       } else if (CI->getBitWidth() > 64) {
+#ifdef DBG_WARNING
         errs() << "BitWidth of SCEV Constant is larger than 64. Cannot convert "
                   "to InstructionCost type. \n";
+#endif
         return new InstructionCost(InstructionCost::UNKNOWN);
       }
     } else {
+#ifdef DBG_WARNING
       errs() << "SCEV Constant value is not a ConstantInt. Cannot convert to "
                 "InstructionCost type. \n";
+#endif
       return new InstructionCost(InstructionCost::UNKNOWN);
     }
     InstructionCost *cost = new InstructionCost(InstructionCost::CONST, intVal);
@@ -830,11 +839,13 @@ const SCEV *costToSCEV(const InstructionCost *cost,
          * don't match!") */
         if (SE->getEffectiveSCEVType(prev->getType()) !=
             SE->getEffectiveSCEVType(scev->getType())) {
+#ifdef DBG_WARNING
           errs() << "SMAX: Types of operands are different. Prev is "
                  << *(prev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(prev->getType())) << ")"
                  << ", current is " << *(scev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(scev->getType())) << ")\n";
+#endif
           return SE->getCouldNotCompute();
         }
       } else
@@ -864,11 +875,13 @@ const SCEV *costToSCEV(const InstructionCost *cost,
          * don't match!") */
         if (SE->getEffectiveSCEVType(prev->getType()) !=
             SE->getEffectiveSCEVType(scev->getType())) {
+#ifdef DBG_WARNING
           errs() << "SMIN: Types of operands are different. Prev is "
                  << *(prev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(prev->getType())) << ")"
                  << ", current is " << *(scev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(scev->getType())) << ")\n";
+#endif
           return SE->getCouldNotCompute();
         }
       } else
@@ -898,11 +911,13 @@ const SCEV *costToSCEV(const InstructionCost *cost,
          * don't match!") */
         if (SE->getEffectiveSCEVType(prev->getType()) !=
             SE->getEffectiveSCEVType(scev->getType())) {
+#ifdef DBG_WARNING
           errs() << "UMAX: Types of operands are different. Prev is "
                  << *(prev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(prev->getType())) << ")"
                  << ", current is " << *(scev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(scev->getType())) << ")\n";
+#endif
           return SE->getCouldNotCompute();
         }
       } else
@@ -931,11 +946,13 @@ const SCEV *costToSCEV(const InstructionCost *cost,
          * don't match!") */
         if (SE->getEffectiveSCEVType(prev->getType()) !=
             SE->getEffectiveSCEVType(scev->getType())) {
+#ifdef DBG_WARNING
           errs() << "UMIN: Types of operands are different. Prev is "
                  << *(prev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(prev->getType())) << ")"
                  << ", current is " << *(scev->getType()) << "("
                  << *(SE->getEffectiveSCEVType(scev->getType())) << ")\n";
+#endif
           return SE->getCouldNotCompute();
         }
       } else
@@ -1020,8 +1037,10 @@ const SCEV *costToSCEV(const InstructionCost *cost,
     return fSCEV;
   }
   default:
+#ifdef DBG_WARNING
     errs() << "Unknown InstructionCost type: " << cost->_type
            << ", returning null\n";
+#endif
     return 0;
   }
 }
@@ -1150,8 +1169,10 @@ InstructionCost *getInstCostForPC(Instruction *I) {
       InstructionCost *ic = new InstructionCost(InstructionCost::ADD, callCost);
       InstructionCost *simplifiedCost = simplifyCost(F, ic);
       if (!simplifiedCost) {
+#ifdef DBG_VERBOSE
         errs() << " cost that cannot be simplified for "
                << calledFunction->getName() << "\n";
+#endif
         // assert(simplifiedCost && "Call instruction's simplified cost cannot
         // be null!");
         return getConstantInstCost(1);
@@ -1177,13 +1198,12 @@ bool checkIfExternalLibraryCall(Instruction *I) {
     if (calledFunction) {
       if (isa<DbgInfoIntrinsic>(I)) {
         return false;
-      }
-#if 1
-      else if (isa<IntrinsicInst>(I)) {
+      } else if (isa<IntrinsicInst>(I)) {
+#ifdef DBG_DETAILED
         errs() << "Intrinsic call: " << *I << "\n";
+#endif
         return false;
       }
-#endif
       // errs() << "Called function name: " << calledFunction->getName() <<
       // "\n";
       int foundInOwnLib =
@@ -4575,8 +4595,10 @@ struct CompilerInterrupt : public ModulePass {
 
         /* delete from global outer list */
         eraseFromGlobalLCCList(currentLCC);
+#ifdef DBG_VERBOSE
         errs() << "manageDanglingLCCs(inverted V shape): Removing cost "
                << *predCost << " of " << currBB->getName() << "\n";
+#endif
 
         /* update successor initial costs using setInitialCost of UnitLCC */
         for (auto succIt = succSetOfLCC.begin(); succIt != succSetOfLCC.end();
@@ -4585,9 +4607,11 @@ struct CompilerInterrupt : public ModulePass {
           BasicBlock *succBB = succLCC->getBlock();
           succLCC->setInitialCost(predCost);
           ruleCoredet++;
+#ifdef DBG_VERBOSE
           errs() << "manageDanglingLCCs(inverted V shape): Adding pred cost "
                  << *predCost << " of " << currBB->getName() << " to successor "
                  << succBB->getName() << "\n";
+#endif
         }
 
         checkAgain = true;
@@ -7342,9 +7366,11 @@ struct CompilerInterrupt : public ModulePass {
           preprocessing++;
           if (direction) {
             transformComplexBranchForward(startBB, endBB);
+#ifdef DBG_SUMMARY
             errs() << F->getName() << "(): Transformed branch between "
                    << startBB->getName() << " and " << endBB->getName()
                    << " in the forward direction\n";
+#endif
           }
 #if 0
         else {
@@ -9524,8 +9550,10 @@ struct CompilerInterrupt : public ModulePass {
           } else if (NodeVec.size() == 1 && CGI.hasCycle()) {
 #endif
             isRecursiveFunc[F->getName()] = true;
+#ifdef DBG_DETAILED
             errs() << "Self-Recursive func name: " << F->getName() << "(" << F
                    << ") --> " << isRecursiveFunc[F->getName()] << "\n";
+#endif
           } else {
             isRecursiveFunc[F->getName()] = false;
             // errs() << "Func name: " << F->getName() << "(" << F << ") --> "

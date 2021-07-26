@@ -16,30 +16,18 @@ endif
 ifneq ($(shell command -v clang-format 2> /dev/null),)
   CLANG_FORMAT = clang-format
 else
-  CLANG_FORMAT = -clang-format # ignore error
+  $(error Please install clang-format)
 endif
 
 LLVM_VERSION := $(shell $(LLVM_CONFIG) --version | cut -d '.' -f 1)
 ifeq ($(LLVM_VERSION), 12)
   LLVM_VRSN_FLAG = -DLLVM12
-  ifneq ($(shell command -v clang-format-12 2> /dev/null),)
-    CLANG_FORMAT = clang-format-12
-  endif
 else ifeq ($(LLVM_VERSION), 11)
   LLVM_VRSN_FLAG = -DLLVM11
-  ifneq ($(shell command -v clang-format-11 2> /dev/null),)
-    CLANG_FORMAT = clang-format-11
-  endif
 else ifeq ($(LLVM_VERSION), 10)
   LLVM_VRSN_FLAG = -DLLVM10
-  ifneq ($(shell command -v clang-format-10 2> /dev/null),)
-    CLANG_FORMAT = clang-format-10
-  endif
 else ifeq ($(LLVM_VERSION), 9)
   LLVM_VRSN_FLAG = -DLLVM9
-  ifneq ($(shell command -v clang-format-9 2> /dev/null),)
-    CLANG_FORMAT = clang-format-9
-  endif
 else
   $(error LLVM $(LLVM_VERSION) is not supported. Minimum supported LLVM version is 9)
 endif
@@ -75,7 +63,6 @@ all: $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) $(LIB_DIR)/$(CI_LIB_STATIC)
 
 %.o: $(SRC_DIR)/%.cpp
 	$(info Compiling $*.cpp)
-	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.cpp)
 	$(QUIET)$(CXX) $(LLVM_VRSN_FLAG) -c $(CPPFLAGS) $(CXXFLAGS) $<
 
 $(LIB_DIR)/$(CI_PASS): $(CI_PASS_OBJECT)
@@ -84,7 +71,6 @@ $(LIB_DIR)/$(CI_PASS): $(CI_PASS_OBJECT)
 
 %.o: $(SRC_DIR)/%.c
 	$(info Compiling $*.c)
-	$(QUIET)$(CLANG_FORMAT) -style=llvm -i $(wildcard *.c) $(wildcard *.h)
 	$(QUIET)gcc -c -fPIC $< -o $@
 
 $(LIB_DIR)/$(CI_LIB_DYN): $(CI_LIB_OBJECT)
@@ -94,6 +80,9 @@ $(LIB_DIR)/$(CI_LIB_DYN): $(CI_LIB_OBJECT)
 $(LIB_DIR)/$(CI_LIB_STATIC): $(CI_LIB_OBJECT)
 	$(info Creating Compiler Interrupt API static library $@)
 	$(QUIET)ar -rcs $@ $<
+
+format:
+	$(CLANG_FORMAT) -style=llvm -i $(wildcard *.cpp) $(wildcard *.c) $(wildcard *.h)
 
 clean:
 	$(QUIET)rm -f $(LIB_DIR)/$(CI_PASS) $(LIB_DIR)/$(CI_LIB_DYN) \

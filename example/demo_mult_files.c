@@ -4,19 +4,14 @@
 
 #define MAX_THREADS 64
 
-/* the handler should only be called in the CI-integrated binary */
-void interrupt_handler(long ic) {
-  static __thread long previous_ic = 0;
-  printf("CI: last interval = %ld IR\n", ic - previous_ic);
-  previous_ic = ic;
-}
-
 int main(int argc, char **argv) {
+  char thread_name[32];
+
   /* register the interrupt handler */
   register_ci(1000, 1000, interrupt_handler);
 
-  pthread_t t[MAX_THREADS - 1];
-  int num_threads = MAX_THREADS;
+  pthread_t t[MAX_THREADS];
+  int num_threads = 2;
   if (argc == 2) {
     num_threads = atoi(argv[1]);
     if (num_threads > MAX_THREADS) {
@@ -25,9 +20,13 @@ int main(int argc, char **argv) {
     }
   }
 
+  pthread_setname_np(pthread_self(), "main");
+
   printf("Starting %d increment threads\n", num_threads);
   for (int i = 0; i < (num_threads - 1); i++) {
     pthread_create(&t[i], NULL, increment, (void *)(uintptr_t)i);
+    sprintf(thread_name, "inc%d", i);
+    pthread_setname_np(t[i], thread_name);
   }
 
   for (int i = 0; i < (num_threads - 1); i++) {
@@ -37,6 +36,8 @@ int main(int argc, char **argv) {
   printf("Starting %d decrement threads\n", num_threads);
   for (int i = 0; i < (num_threads - 1); i++) {
     pthread_create(&t[i], NULL, decrement, (void *)(uintptr_t)i);
+    sprintf(thread_name, "dec%d", i);
+    pthread_setname_np(t[i], thread_name);
   }
 
   for (int i = 0; i < (num_threads - 1); i++) {

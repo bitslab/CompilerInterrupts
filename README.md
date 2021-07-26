@@ -30,13 +30,17 @@ cd example
 make
 ./orig_demo           # original binary
 ./ci_llvm_demo        # CI-integrated binary
+./ci_profiler         # check the median interval in cycles for a configured IR interval
 ./ci_mult_files       # compiled using multiple source files
 ./ci_modularity_demo  # compiled using a CI-instrumented library
+./test.sh             # runs some basic test cases and checks if the output is as expected
 ```
 
-* `gcc_demo` is the original, unmodified binary. It simply spawns multiple threads to print out a thread-local counter. Check out the [`demo.c`](example/demo.c) source code for more info.
-* `ci_llvm_demo` is the same as `gcc_demo`, except that it has been integrated with Compiler Interrupts. You should expect to see *a lot* of `CI: last interval = {} IR` besides ordinary counter prints. These CI prints are from `interrupt_handler` function, which is called by the Compiler Interrupts every 1000 instructions.
+* `orig_demo` is the original, unmodified binary. It simply spawns multiple threads to print out a thread-local counter. Check out the [`demo.c`](example/demo.c) source code for more info.
+* `ci_llvm_demo` is the same as `orig_demo`, except that it has been integrated with Compiler Interrupts. You should expect to see *a lot* of `CI: last interval = {} IR` besides ordinary counter prints. These CI prints are from `interrupt_handler` function, which is called by the Compiler Interrupts every 1000 instructions.
+* `ci_profiler` is a program meant to understand the IR instruction to cycles relation for a specific program. You can run it with different IR intervals and check the corresponding median cycle intervals achieved.
 * `ci_mult_files` and `ci_modularity_demo` demonstrate the modularity and flexibility when integrating the Compiler Interrupts for your program. Check out the [`Makefile`](example/Makefile) for more info.
+* `test.sh` is a basic test case that verifies the output of `ci_llvm_demo`
 
 ## Usage
 
